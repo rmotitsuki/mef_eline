@@ -1,0 +1,11 @@
+{
+  "author": "amlight",
+  "username": "amlight",
+  "name": "mef_eline",
+  "description": "NApp to provision circuits from user request",
+  "version": "latest",
+  "napp_dependencies": [],
+  "license": "",
+  "tags": [],
+  "url": ""
+}
