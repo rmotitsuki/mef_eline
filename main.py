@@ -4,7 +4,9 @@ NApp to provision circuits from user request
 """
 
 from kytos.core import KytosNApp, log, rest
-from flask import request
+from flask import request, abort
+from napps.amlight.mef_eline.models import NewCircuit
+import json
 
 from napps.amlight.mef_eline import settings
 
@@ -44,7 +46,11 @@ class Main(KytosNApp):
 
     @rest('/circuit', methods=['POST'])
     def create_circuit(self):
-        pass
+        data = request.get_json()
+
+        v = NewCircuit.validate(data)
+
+        return json.dumps(v)
 
     @rest('/circuit/<circuit_id>', methods=['GET', 'POST', 'DELETE'])
     def circuit_operation(self, circuit_id):
