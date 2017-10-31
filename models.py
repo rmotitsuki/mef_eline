@@ -10,6 +10,11 @@ class Endpoint:
     _port = None
     _tag = None
 
+    def __init__(self, dpid, port, tag=None):
+        self._dpid = dpid
+        self._port = port
+        self._tag = tag
+
     @staticmethod
     def validate(data):
         if not isinstance(data, dict):
@@ -120,6 +125,7 @@ class NewCircuit:
                 return False
         return True
 
+
 class Circuit:
     _id = None
     _name = None
@@ -128,5 +134,10 @@ class Circuit:
     _path = None
     _backup_path = None
 
-    def __init__(self):
-        pass
+    def __init__(self, id, name, path, start_date=None, end_date=None, backup_path=None):
+        self._id = id
+        self._name = name
+        self._start_date = start_date
+        self._end_date = end_date
+        self._path = path
+        self._backup_path = backup_path
