@@ -2,15 +2,15 @@
 
 NApp to provision circuits from user request
 """
-
-from kytos.core import KytosNApp, log, rest
-from flask import request, abort
-from napps.amlight.mef_eline.models import NewCircuit, Endpoint, Circuit
 import json
 import requests
 import hashlib
 from sortedcontainers import SortedDict
 
+from kytos.core import KytosNApp, log, rest
+from flask import request, abort
+
+from napps.amlight.mef_eline.models import NewCircuit, Endpoint, Circuit
 from napps.amlight.mef_eline import settings
 
 
@@ -58,7 +58,7 @@ class Main(KytosNApp):
         """
         Receive a user request to create a new circuit, find a path for the circuit,
         install the necessary flows and stores the information about it.
-        :return: 
+        :return:
         """
         data = request.get_json()
 
