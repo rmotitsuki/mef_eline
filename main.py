@@ -29,7 +29,7 @@ class Main(KytosNApp):
         So, if you have any setup routine, insert it here.
         """
         self._installed_circuits = {'ids': SortedDict(), 'ports': SortedDict()}
-        self._pathfinder_url = 'http://localhost:8181/api/kytos/pathfinder/v1/%s/%s'
+        self._pathfinder_url = settings.PATHFINDER_URL + '%s:%s/%s:%s'
 
     def execute(self):
         """This method is executed right after the setup method execution.
@@ -72,8 +72,11 @@ class Main(KytosNApp):
 
         if new_circuit.validate():
 
-            url = self._pathfinder_url % ('%s:%s' % (self.uni_a['dpid'], self.uni_a['port']),
-                                          '%s:%s' % (self.uni_z['dpid'], self.uni_z['port']))
+            url = self._pathfinder_url % (self.uni_a['dpid'],
+                                          self.uni_a['port'],
+                                          self.uni_z['dpid'],
+                                          self.uni_z['port'])
+
             log.info("Pathfinder URL: %s" % url)
             r = requests.get(url)
 
