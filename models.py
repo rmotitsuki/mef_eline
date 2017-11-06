@@ -67,77 +67,69 @@ class Link:
         if Endpoint.validate(endpoint_b) is False:
             return False
 
-class NewCircuit:
-    _name = None
-    _start_date = None
-    _end_date = None
-    _links = None
-    _backup_links = None
-    _uni_a = None
-    _uni_z = None
 
-    @staticmethod
+class Circuit:
+    circuit_id = None
+    name = None
+    start_date = None
+    end_date = None
+    path = None
+    backup_path = None
+    uni_a = None
+    uni_z = None
+
+    def __init__(self, circuit_id=None, name=None, start_date=None,
+                 end_date=None, path=None, backup_path=None, uni_a=None,
+                 uni_z=None, bandwidth=None):
+        self.circuit_id = circuit_id
+        self.name = name
+        self.start_date = start_date
+        self.end_date = end_date
+        self.path = path
+        self.backup_path = backup_path
+        self.uni_a = uni_a
+        self.uni_z = uni_z
+        self.bandwidth = bandwidth
+
     def validate(data):
-        if not isinstance(data, dict):
-            return False
-        uni_a = data.get('uni_a')
-        uni_z = data.get('uni_z')
-        name = data.get('name')
-        if uni_a is None or uni_z is None or name is None:
+        if self.uni_a is None or self.uni_z is None or self.name is None:
             return False
         if Endpoint.validate(uni_a) is False:
             return False
         if Endpoint.validate(uni_z) is False:
             return False
-        links = data.get('links')
-        if links is not None:
+
+        if self.path is not None:
             try:
-                for link in links:
+                for link in self.path:
                     if Link.validate(link) is False:
                         return False
             except TypeError:
                 return False
-        backup_links = data.get('backup_links')
-        if backup_links is not None:
+        if self.backup_path is not None:
             try:
-                for link in backup_links:
+                for link in backup_path:
                     if Link.validate(link) is False:
                         return False
             except TypeError:
                 return False
-        start_date = data.get('start_date')
-        if start_date is not None:
+
+        if self.start_date is not None:
             try:
-                datetime.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+                datetime.datetime.strptime(self.start_date,
+                                           '%Y-%m-%d %H:%M:%S')
             except ValueError:
                 return False
-        end_date = data.get('end_date')
-        if end_date is not None:
+        if self.end_date is not None:
             try:
-                datetime.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+                datetime.datetime.strptime(self.end_date, '%Y-%m-%d %H:%M:%S')
             except ValueError:
                 return False
-        bandwidth = data.get('bandwidth')
-        if bandwidth is not None:
+
+        if self.bandwidth is not None:
             try:
-                int(bandwidth)
+                int(self.bandwidth)
             except TypeError:
                 return False
         return True
 
-
-class Circuit:
-    _id = None
-    _name = None
-    _start_date = None
-    _end_date = None
-    _path = None
-    _backup_path = None
-
-    def __init__(self, id, name, path, start_date=None, end_date=None, backup_path=None):
-        self._id = id
-        self._name = name
-        self._start_date = start_date
-        self._end_date = end_date
-        self._path = path
-        self._backup_path = backup_path

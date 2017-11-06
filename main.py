@@ -10,7 +10,7 @@ from sortedcontainers import SortedDict
 from kytos.core import KytosNApp, log, rest
 from flask import request, abort
 
-from napps.amlight.mef_eline.models import NewCircuit, Endpoint, Circuit
+from napps.amlight.mef_eline.models import Endpoint, Circuit
 from napps.amlight.mef_eline import settings
 
 
@@ -62,13 +62,21 @@ class Main(KytosNApp):
         """
         data = request.get_json()
 
-        if NewCircuit.validate(data):
-            uni_a = data['uni_a']
-            uni_z = data['uni_z']
-            url = self._pathfinder_url % ('%s:%s' % (uni_a['dpid'], uni_a['port']),
-                                          '%s:%s' % (uni_z['dpid'], uni_z['port']))
+        if not isinstance(data, dict):
+            abort(400)
+
+        new_circuit = Circuit(None, data.get('name'),
+                              data.get('start_date'), data.get('end_date'),
+                              data.get('path'), data.get('backup_path'),
+                              data.get('uni_a'), data.get('uni_b'))
+
+        if new_circuit.validate():
+
+            url = self._pathfinder_url % ('%s:%s' % (self.uni_a['dpid'], self.uni_a['port']),
+                                          '%s:%s' % (self.uni_z['dpid'], self.uni_z['port']))
             log.info("Pathfinder URL: %s" % url)
             r = requests.get(url)
+
             if r.status_code // 100 != 2:
                 log.error('Pathfinder returned error code %s.' % r.status_code)
                 return json.dumps(False)
@@ -76,20 +84,26 @@ class Main(KytosNApp):
             if len(paths) < 1:
                 log.error('Pathfinder returned no path.')
                 return json.dumps(False)
+
             path = paths[0]['hops']
             endpoints = []
-            m = hashlib.md5()
-            m.update(uni_a['dpid'].encode('utf-8'))
-            m.update(uni_a['port'].encode('utf-8'))
-            m.update(uni_z['dpid'].encode('utf-8'))
-            m.update(uni_z['port'].encode('utf-8'))
             for endpoint in path:
                 dpid = endpoint[:23]
                 if len(endpoint) > 23:
                     port = endpoint[24:]
                     endpoints.append(Endpoint(dpid, port))
-            circuit = Circuit(m.hexdigest(), data['name'], endpoints)
-            self.add_circuit(circuit)
+
+            new_circuit.path = endpoints
+
+            m = hashlib.md5()
+            m.update(uni_a['dpid'].encode('utf-8'))
+            m.update(uni_a['port'].encode('utf-8'))
+            m.update(uni_z['dpid'].encode('utf-8'))
+            m.update(uni_z['port'].encode('utf-8'))
+
+            new_circuit.circuit_id = m.hexdigest()
+
+            self.add_circuit(new_circuit)
         else:
             abort(400)
         return json.dumps(circuit._id)
