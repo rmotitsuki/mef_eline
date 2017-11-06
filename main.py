@@ -3,15 +3,14 @@
 NApp to provision circuits from user request
 """
 import json
+
 import requests
-import hashlib
-from sortedcontainers import SortedDict
+from flask import abort, request
 
 from kytos.core import KytosNApp, log, rest
-from flask import request, abort
-
-from napps.amlight.mef_eline.models import Endpoint, Circuit
 from napps.amlight.mef_eline import settings
+from napps.amlight.mef_eline.models import Circuit, Endpoint
+from sortedcontainers import SortedDict
 
 
 class Main(KytosNApp):
@@ -50,15 +49,17 @@ class Main(KytosNApp):
 
     def add_circuit(self, name, circuit):
         self._installed_circuits['ids'][name] = circuit
-        for endpoint in circuit._path:
-            self._installed_circuits['ports']['%s:%s' % (endpoint._dpid, endpoint._port)] = circuit._id
+        for endpoint in circuit.path:
+            self._installed_circuits['ports']['%s:%s' %
+                                              (endpoint._dpid,
+                                               endpoint._port)] = circuit._id
 
     @rest('/circuit', methods=['POST'])
     def create_circuit(self):
         """
-        Receive a user request to create a new circuit, find a path for the circuit,
-        install the necessary flows and stores the information about it.
-        :return:
+        Receive a user request to create a new circuit, find a path for the
+        circuit, install the necessary flows and stores the information about
+        it.
         """
         data = request.get_json()
 
@@ -78,10 +79,10 @@ class Main(KytosNApp):
 
         if new_circuit.validate():
 
-            url = self._pathfinder_url % (self.uni_a['dpid'],
-                                          self.uni_a['port'],
-                                          self.uni_z['dpid'],
-                                          self.uni_z['port'])
+            url = self._pathfinder_url % (new_circuit.uni_a['dpid'],
+                                          new_circuit.uni_a['port'],
+                                          new_circuit.uni_z['dpid'],
+                                          new_circuit.uni_z['port'])
 
             log.info("Pathfinder URL: %s" % url)
             r = requests.get(url)
@@ -107,7 +108,7 @@ class Main(KytosNApp):
             self.add_circuit(circuit_name, new_circuit)
         else:
             abort(400)
-        return json.dumps(circuit._id)
+        return json.dumps(circuit_name)
 
     @rest('/circuit/<circuit_id>', methods=['GET', 'POST', 'DELETE'])
     def circuit_operation(self, circuit_id):

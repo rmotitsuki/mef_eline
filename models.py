@@ -1,5 +1,6 @@
 import datetime
 
+
 class Path:
     _id = None
     _endpoints = []
@@ -82,12 +83,12 @@ class Circuit:
         self.uni_z = uni_z
         self.bandwidth = bandwidth
 
-    def validate(data):
+    def validate(self):
         if self.uni_a is None or self.uni_z is None:
             return False
-        if Endpoint.validate(uni_a) is False:
+        if Endpoint.validate(self.uni_a) is False:
             return False
-        if Endpoint.validate(uni_z) is False:
+        if Endpoint.validate(self.uni_z) is False:
             return False
 
         if self.path is not None:
@@ -99,7 +100,7 @@ class Circuit:
                 return False
         if self.backup_path is not None:
             try:
-                for link in backup_path:
+                for link in self.backup_path:
                     if Link.validate(link) is False:
                         return False
             except TypeError:
@@ -123,4 +124,3 @@ class Circuit:
             except TypeError:
                 return False
         return True
-
