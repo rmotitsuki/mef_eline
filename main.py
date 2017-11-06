@@ -48,8 +48,8 @@ class Main(KytosNApp):
         """
         pass
 
-    def add_circuit(self, circuit):
-        self._installed_circuits['ids'][circuit._id] = circuit
+    def add_circuit(self, name, circuit):
+        self._installed_circuits['ids'][name] = circuit
         for endpoint in circuit._path:
             self._installed_circuits['ports']['%s:%s' % (endpoint._dpid, endpoint._port)] = circuit._id
 
@@ -65,10 +65,16 @@ class Main(KytosNApp):
         if not isinstance(data, dict):
             abort(400)
 
-        new_circuit = Circuit(None, data.get('name'),
-                              data.get('start_date'), data.get('end_date'),
+        circuit_name = data.get('name')
+
+        if circuit_name is None:
+            log.error('No name defined for the circuit')
+            return json.dumps(False)
+
+        new_circuit = Circuit(data.get('uni_a'), data.get('uni_z'),
                               data.get('path'), data.get('backup_path'),
-                              data.get('uni_a'), data.get('uni_b'))
+                              data.get('start_date'), data.get('end_date'),
+                              data.get('bandwidth'))
 
         if new_circuit.validate():
 
@@ -98,15 +104,7 @@ class Main(KytosNApp):
 
             new_circuit.path = endpoints
 
-            m = hashlib.md5()
-            m.update(uni_a['dpid'].encode('utf-8'))
-            m.update(uni_a['port'].encode('utf-8'))
-            m.update(uni_z['dpid'].encode('utf-8'))
-            m.update(uni_z['port'].encode('utf-8'))
-
-            new_circuit.circuit_id = m.hexdigest()
-
-            self.add_circuit(new_circuit)
+            self.add_circuit(circuit_name, new_circuit)
         else:
             abort(400)
         return json.dumps(circuit._id)

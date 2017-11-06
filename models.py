@@ -69,20 +69,11 @@ class Link:
 
 
 class Circuit:
-    circuit_id = None
-    name = None
-    start_date = None
-    end_date = None
-    path = None
-    backup_path = None
-    uni_a = None
-    uni_z = None
 
-    def __init__(self, circuit_id=None, name=None, start_date=None,
-                 end_date=None, path=None, backup_path=None, uni_a=None,
-                 uni_z=None, bandwidth=None):
-        self.circuit_id = circuit_id
-        self.name = name
+    def __init__(self, uni_a=None, uni_z=None, path=None,
+                 backup_path=None, start_date=None, end_date=None,
+                 bandwidth=None):
+
         self.start_date = start_date
         self.end_date = end_date
         self.path = path
@@ -92,7 +83,7 @@ class Circuit:
         self.bandwidth = bandwidth
 
     def validate(data):
-        if self.uni_a is None or self.uni_z is None or self.name is None:
+        if self.uni_a is None or self.uni_z is None:
             return False
         if Endpoint.validate(uni_a) is False:
             return False
