@@ -7,44 +7,32 @@ class Path:
 
 
 class Endpoint:
-    _dpid = None
-    _port = None
-    _tag = None
 
-    def __init__(self, dpid, port, tag=None):
-        self._dpid = dpid
-        self._port = port
-        self._tag = tag
+    def __init__(self, dpid=None, port=None, tag=None):
+        self.dpid = dpid
+        self.port = port
+        self.tag = Tag(tag)
 
-    @staticmethod
-    def validate(data):
-        if not isinstance(data, dict):
+    def validate(self):
+        if self.dpid is None or self.port is None:
             return False
-        dpid = data.get('dpid')
-        port = data.get('port')
-        if dpid is None or port is None:
-            return False
-        tag = data.get('tag')
         if tag is not None:
-            if Tag.validade(tag) is False:
+            if self.tag.validade() is False:
                 return False
         return True
 
 
 class Tag:
-    _type = None
-    _value = None
 
-    @staticmethod
+    def __init__(self, tag_type=None, value=None):
+        self.tag_type = tag_type
+        self.value = value
+
     def validate(data):
-        if not isinstance(data, dict):
-            return False
-        type = data.get('type')
-        value = data.get('value')
-        if type is None or value is None:
+        if self.tag_type is None or self.value is None:
             return False
         try:
-            int(value)
+            int(self.value)
         except TypeError:
             return False
         return True
@@ -76,17 +64,15 @@ class Circuit:
 
         self.start_date = start_date
         self.end_date = end_date
-        self.path = path
-        self.uni_a = uni_a
-        self.uni_z = uni_z
+        self.path = path or []
+        self.uni_a = Endpoint(uni_a)
+        self.uni_z = Endpoint(uni_z)
         self.bandwidth = bandwidth
 
     def validate(self):
-        if self.uni_a is None or self.uni_z is None:
+        if self.uni_a.validate() is False:
             return False
-        if Endpoint.validate(self.uni_a) is False:
-            return False
-        if Endpoint.validate(self.uni_z) is False:
+        if self.uni_z.validate() is False:
             return False
 
         if self.start_date is not None:

@@ -77,12 +77,10 @@ class Main(KytosNApp):
                               data.get('bandwidth'))
 
         if new_circuit.validate():
-
             url = self._pathfinder_url % (new_circuit.uni_a['dpid'],
                                           new_circuit.uni_a['port'],
                                           new_circuit.uni_z['dpid'],
                                           new_circuit.uni_z['port'])
-
             log.info("Pathfinder URL: %s" % url)
             r = requests.get(url)
 
