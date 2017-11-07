@@ -73,7 +73,6 @@ class Main(KytosNApp):
             return json.dumps(False)
 
         new_circuit = Circuit(data.get('uni_a'), data.get('uni_z'),
-                              data.get('path'), data.get('backup_path'),
                               data.get('start_date'), data.get('end_date'),
                               data.get('bandwidth'))
 

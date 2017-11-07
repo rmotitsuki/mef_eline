@@ -71,14 +71,12 @@ class Link:
 
 class Circuit:
 
-    def __init__(self, uni_a=None, uni_z=None, path=None,
-                 backup_path=None, start_date=None, end_date=None,
-                 bandwidth=None):
+    def __init__(self, uni_a=None, uni_z=None, path=None, start_date=None,
+                 end_date=None, bandwidth=None):
 
         self.start_date = start_date
         self.end_date = end_date
         self.path = path
-        self.backup_path = backup_path
         self.uni_a = uni_a
         self.uni_z = uni_z
         self.bandwidth = bandwidth
@@ -90,21 +88,6 @@ class Circuit:
             return False
         if Endpoint.validate(self.uni_z) is False:
             return False
-
-        if self.path is not None:
-            try:
-                for link in self.path:
-                    if Link.validate(link) is False:
-                        return False
-            except TypeError:
-                return False
-        if self.backup_path is not None:
-            try:
-                for link in self.backup_path:
-                    if Link.validate(link) is False:
-                        return False
-            except TypeError:
-                return False
 
         if self.start_date is not None:
             try:
