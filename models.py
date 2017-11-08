@@ -22,6 +22,25 @@ import uuid
 #        if Endpoint.validate(endpoint_b) is False:
 #            return False
 
+class Link:
+    def __init__(self, endpoint_a, endpoint_b, bandwidth):
+        self.endpoint_a = endpoint_a
+        self.endpoint_b = endpoint_b
+        self.bandwidth = bandwidth
+
+    def __eq__(self, other):
+        if ((self.endpoint_a == other.endpoint_a) and
+            (self.endpoint_b == other.endpoint_b))
+            return True
+        else:
+            return False
+
+    def as_dict(self):
+        return {'endpoint_a': self.endpoint_a,
+                'endpoint_b': self.endpoint_b,
+                'bandwidth': self.bandwidth}
+
+
 class Tag:
     """Class that represents a TAG, a simple UNI property."""
 
@@ -58,6 +77,13 @@ class Endpoint:
         self.dpid = str(dpid)
         self.port = str(port)
         self.tag = tag or Tag()
+
+    def __eq__(self, other):
+        if (self.dpid == other.dpid and
+            self.port == other.port)
+            return True
+        else:
+            return False
 
     def is_valid(self):
         if not isinstance(self.dpid, str):
@@ -105,7 +131,7 @@ class Circuit:
         self.end_date = (end_date or self.start_date +
                          datetime.timedelta(days=365))
         self.bandwidth = bandwidth
-        self.path = path or []
+        self.path = path or [] # List of Links
 
     def is_valid(self):
         """Check if a circuit has valid properties or not."""
@@ -126,6 +152,7 @@ class Circuit:
             return False
 
         # Because we only support persistent VLAN tags for the service
+        # On the future we will support a multiple VLAN service
         if self.uni_a.tag.value != self.uni_z.tag.value:
             return False
 
@@ -143,8 +170,15 @@ class Circuit:
 
         return True
 
-    def add_endpoint_to_path(self, endpoint):
-        self.path.append(endpoint)
+    def add_link_to_path(self, link):
+        self.path.append(link)
+
+    def has_link(self, link):
+        for path_link in self.path:
+            if (path_link == link):
+                return True
+            else:
+                return False
 
     @classmethod
     def from_dict(cls, data):
@@ -170,7 +204,7 @@ class Circuit:
         return circuit
 
     def as_dict(self):
-        endpoints = [ endpoint.as_dict() for endpoint in self.path ]
+        links = [ link.as_dict() for link in self.path ]
 
         return {"id": self.id,
                 "name": self.name,
@@ -179,7 +213,7 @@ class Circuit:
                 "start_date": str(self.start_date),
                 "end_date": str(self.end_date),
                 "bandwidth": self.bandwidth,
-                "path": endpoints}
+                "path": links}
 
     def as_json(self):
         return json.dumps(self.as_dict())

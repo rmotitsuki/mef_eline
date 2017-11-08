@@ -101,18 +101,28 @@ class Main(KytosNApp):
         return data.get('paths')
 
     @staticmethod
-    def install_flow(dpid, in_port, out_port, vlan_id):
+    def install_flow(dpid, in_port, out_port, vlan_id, bidirectional=False):
         endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
         data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
                 "actions": [{"action_type": "output", "port": int(out_port)}]}]
         requests.post(endpoint, json=data)
 
+        if bidirectional:
+            self.install_flow(dpid, out_port, in_port, vlan_id)
+
     def install_flows_for_circuit(self, circuit):
         vlan_id = circuit.uni_a.tag.value
-        for end_a, end_b in zip(circuit.path[:-1], circuit.path[1:]):
-            if end_a.dpid == end_b.dpid:
-                self.install_flow(end_a.dpid, end_a.port, end_b.port, vlan_id)
-                self.install_flow(end_a.dpid, end_b.port, end_a.port, vlan_id)
+        for link in circuit.path:
+            if link.endpoint_a.dpid == link.endpoint_b.dpid:
+                self.install_flow(link.endpoint_a.dpid,
+                                  link.endpoint_a.port,
+                                  link.endpoint_b.port,
+                                  vlan_id,
+                                  True)
+
+    # TODO: clean path
+    def clean_path(self, path):
+        pass
 
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
@@ -137,7 +147,6 @@ class Main(KytosNApp):
         circuit, install the necessary flows and stores the information about
         it.
         """
-        # TODO: Check if circuit already exists
         data = request.get_json()
 
         try:
@@ -157,12 +166,18 @@ class Main(KytosNApp):
         # We do not need backup path, because we need to implement a more
         # suitable way to reconstruct paths
 
-        for endpoint in path:
-            dpid = endpoint[:23]
-            if len(endpoint) > 23:
-                port = endpoint[24:]
-                endpoint = Endpoint(dpid, port)
-                circuit.add_endpoint_to_path(endpoint)
+        # TODO: Check if any hop is already in a circuit
+        # 1o Circuito: 1:1 - 3:2 - 100gbps
+             # circuit.path = 1:1 - 1:2 (100gbps) - 2:1 - 2:2 - 3:1 - 3:2
+
+        # 2o Circuito: 1:2 - 3:2 - 100gbps
+
+        path = clean_path(path)
+        for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
+            link = Link(Endpoint(endpoint_a[:23], endpoint_a[24:]),
+                        Endpoint(endpoint_b[:23], endpoint_b[24:])
+                        circuit.bandwidth)
+            circuit.add_link_to_path(link)
 
         # Save circuit to disk
         self.save_circuit(circuit)
