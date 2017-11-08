@@ -1,16 +1,18 @@
-"""Main module of amlight/mef_eline Kytos Network Application.
+"""Main module of kytos/mef_eline Kytos Network Application.
 
 NApp to provision circuits from user request
 """
 import json
-
+import os
 import requests
-from flask import abort, request
+import pickle
+
+from flask import abort, request, jsonify
 
 from kytos.core import KytosNApp, log, rest
-from napps.amlight.mef_eline import settings
-from napps.amlight.mef_eline.models import Circuit, Endpoint
-from sortedcontainers import SortedDict
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.models import Circuit, Endpoint
+#from sortedcontainers import SortedDict
 
 
 class Main(KytosNApp):
@@ -27,8 +29,8 @@ class Main(KytosNApp):
 
         So, if you have any setup routine, insert it here.
         """
-        self._installed_circuits = {'ids': SortedDict(), 'ports': SortedDict()}
-        self._pathfinder_url = settings.PATHFINDER_URL + '%s:%s/%s:%s'
+        #self._installed_circuits = {'ids': SortedDict(), 'ports': SortedDict()}
+        #self._pathfinder_url = settings.PATHFINDER_URL + '%s:%s/%s:%s'
 
     def execute(self):
         """This method is executed right after the setup method execution.
@@ -47,83 +49,134 @@ class Main(KytosNApp):
         """
         pass
 
-    def add_circuit(self, name, circuit):
-        self._installed_circuits['ids'][name] = circuit
-        for endpoint in circuit.path:
-            self._installed_circuits['ports']['%s:%s' %
-                                              (endpoint._dpid,
-                                               endpoint._port)] = circuit._id
+    def save_circuit(self, circuit):
+        if not os.access(settings.CIRCUITS_PATH, os.W_OK):
+            log.error("Could not save circuit on %s", settings.CIRCUITS_PATH)
+            return False
 
-    @rest('/circuit', methods=['POST'])
+        output = os.path.join(settings.CIRCUITS_PATH, circuit.id)
+        with open(output, 'wb') as fp:
+            fp.write(pickle.dumps(circuit))
+
+        return True
+
+    def load_circuit(self, circuit_id):
+        path = os.path.join(settings.CIRCUITS_PATH, circuit_id)
+        if not os.access(path, os.R_OK):
+            log.error("Could not load circuit from %s", path)
+            return None
+
+        with open(path, 'rb') as fp:
+            return pickle.load(fp)
+
+    def load_circuits(self):
+        result = []
+        for (dirpath, dirnames, filenames) in os.walk(settings.CIRCUITS_PATH):
+            for filename in filenames:
+                result.append(self.load_circuit(filename))
+        return result
+
+    def remove_circuit(self, circuit_id):
+        path = os.path.join(settings.CIRCUITS_PATH, circuit_id)
+        if not os.access(path, os.W_OK):
+            log.error("Could not delete circuit from %s", path)
+            return None
+
+        os.remove(path)
+
+    def get_paths(self, circuit):
+        endpoint = "%s/%s:%s/%s:%s" % (settings.PATHFINDER_URL,
+                                       circuit.uni_a.dpid,
+                                       circuit.uni_a.port,
+                                       circuit.uni_z.dpid,
+                                       circuit.uni_z.port)
+        request = requests.get(endpoint)
+        if request.status_code != requests.codes.ok:
+            log.error("Failed to get paths at %s. Returned %s",
+                      endpoint,
+                      request.status_code)
+            return None
+        data = request.json()
+        paths = data.get('paths')
+
+
+    def install_flows_for_circuit(self, circuit):
+        pass
+
+    @rest('/circuits', methods=['GET'])
+    def get_circuits(self):
+        circuits = {}
+        for circuit in self.load_circuits():
+            circuits[circuit.id] = circuit.as_dict()
+
+        return jsonify({'circuits': circuits}), 200
+
+    @rest('/circuits/<circuit_id>', methods=['GET'])
+    def get_circuit(self, circuit_id):
+        circuit = self.load_circuit(circuit_id)
+        if not circuit:
+            return jsonify({"error": "Circuit not found"}), 404
+
+        return jsonify(circuit.as_dict()), 200
+
+    @rest('/circuits', methods=['POST'])
     def create_circuit(self):
         """
         Receive a user request to create a new circuit, find a path for the
         circuit, install the necessary flows and stores the information about
         it.
         """
+        # TODO: Check if circuit already exists
         data = request.get_json()
 
-        if not isinstance(data, dict):
-            abort(400)
+        try:
+            circuit = Circuit.from_dict(data)
+        except Exception as e:
+            return json.dumps({'error': e}), 400
 
-        circuit_name = data.get('name')
+        paths = self.get_paths(circuit)
+        if not paths:
+            error = "Pathfinder returned no path for this circuit."
+            log.error(error)
+            return jsonify({"error": error}), 503
 
-        if circuit_name is None:
-            log.error('No name defined for the circuit')
-            return json.dumps(False)
+        # Select best path
+        path = paths[0]['hops']
 
-        new_circuit = Circuit(data.get('uni_a'), data.get('uni_z'),
-                              data.get('start_date'), data.get('end_date'),
-                              data.get('bandwidth'))
+        # We do not need backup path, because we need to implement a more
+        # suitable way to reconstruct paths
 
-        if new_circuit.validate():
-            url = self._pathfinder_url % (new_circuit.uni_a['dpid'],
-                                          new_circuit.uni_a['port'],
-                                          new_circuit.uni_z['dpid'],
-                                          new_circuit.uni_z['port'])
-            log.info("Pathfinder URL: %s" % url)
-            r = requests.get(url)
+        for endpoint in path:
+            dpid = endpoint[:23]
+            if len(endpoint) > 23:
+                port = endpoint[24:]
+                endpoint = Endpoint(dpid, port)
+                circuit.add_endpoint_to_path(endpoint)
 
-            if r.status_code // 100 != 2:
-                log.error('Pathfinder returned error code %s.' % r.status_code)
-                return json.dumps(False)
-            paths = r.json()['paths']
-            if len(paths) < 1:
-                log.error('Pathfinder returned no path.')
-                return json.dumps(False)
+        # Save circuit to disk
+        self.save_circuit(circuit)
 
-            path = paths[0]['hops']
-            endpoints = []
-            for endpoint in path:
-                dpid = endpoint[:23]
-                if len(endpoint) > 23:
-                    port = endpoint[24:]
-                    endpoints.append(Endpoint(dpid, port))
+        self.install_flows_for_circuit(circuit)
 
-            new_circuit.path = endpoints
+        return jsonify(circuit.as_dict()), 201
 
-            self.add_circuit(circuit_name, new_circuit)
-        else:
-            abort(400)
-        return json.dumps(circuit_name)
+    @rest('/circuits/<circuit_id>', methods=['DELETE'])
+    def delete_circuit(self, circuit_id):
+        try:
+            self.remove_circuit(circuit_id)
+        except Exception as e:
+            return jsonify({"error": e}), 503
 
-    @rest('/circuit/<circuit_id>', methods=['GET', 'POST', 'DELETE'])
-    def circuit_operation(self, circuit_id):
-        if request.method == 'GET':
-            pass
-        elif request.method == 'POST':
-            pass
-        elif request.method == 'DELETE':
-            pass
+        return jsonify({"success": "Circuit deleted"}), 200
 
-    @rest('/circuits', methods=['GET'])
-    def get_circuits(self):
-        pass
+    #@rest('/circuits/<circuit_id>', methods=['PATCH'])
+    #def update_circuit(self, circuit_id):
+    #    pass
 
-    @rest('/circuits/byLink/<link_id>')
-    def circuits_by_link(self, link_id):
-        pass
+    #@rest('/circuits/byLink/<link_id>')
+    #def circuits_by_link(self, link_id):
+    #    pass
 
-    @rest('/circuits/byUNI/<dpid>/<port>')
-    def circuits_by_uni(self, dpid, port):
-        pass
+    #@rest('/circuits/byUNI/<dpid>/<port>')
+    #def circuits_by_uni(self, dpid, port):
+    #    pass

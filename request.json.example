@@ -1,0 +1,12 @@
+{"name": "balblaab",
+  "uni_a": {"dpid": "00:00:00:00:00:00:00:01",
+            "port": "1",
+            "tag": {"tag_type": "VLAN",
+                    "value": 3790}},
+  "uni_z": {"dpid": "00:00:00:00:00:00:00:03",
+            "port": "1",
+            "tag": {"tag_type": "VLAN",
+                    "value": 3790}},
+  "start_date": "2017-12-20 00:00:00",
+  "end_date": "2017-12-20 00:00:00",
+  "bandwidth": 23123912321983} 
