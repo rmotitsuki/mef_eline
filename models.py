@@ -125,6 +125,10 @@ class Circuit:
         if not self.uni_z.is_valid():
             return False
 
+        # Because we only support persistent VLAN tags for the service
+        if self.uni_a.tag.value != self.uni_z.tag.value:
+            return False
+
         if not isinstance(self.start_date, datetime):
             return False
 

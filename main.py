@@ -7,12 +7,12 @@ import os
 import requests
 import pickle
 
+from pathlib import Path
 from flask import abort, request, jsonify
 
 from kytos.core import KytosNApp, log, rest
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.models import Circuit, Endpoint
-#from sortedcontainers import SortedDict
 
 
 class Main(KytosNApp):
@@ -29,8 +29,7 @@ class Main(KytosNApp):
 
         So, if you have any setup routine, insert it here.
         """
-        #self._installed_circuits = {'ids': SortedDict(), 'ports': SortedDict()}
-        #self._pathfinder_url = settings.PATHFINDER_URL + '%s:%s/%s:%s'
+        pass
 
     def execute(self):
         """This method is executed right after the setup method execution.
@@ -50,11 +49,13 @@ class Main(KytosNApp):
         pass
 
     def save_circuit(self, circuit):
-        if not os.access(settings.CIRCUITS_PATH, os.W_OK):
-            log.error("Could not save circuit on %s", settings.CIRCUITS_PATH)
+        save_path = Path(__file__).parent / settings.CIRCUITS_PATH
+        save_path.mkdir(exist_ok=True)
+        if not os.access(save_path, os.W_OK):
+            log.error("Could not save circuit on %s", save_path)
             return False
 
-        output = os.path.join(settings.CIRCUITS_PATH, circuit.id)
+        output = os.path.join(save_path, circuit.id)
         with open(output, 'wb') as fp:
             fp.write(pickle.dumps(circuit))
 
@@ -85,11 +86,11 @@ class Main(KytosNApp):
         os.remove(path)
 
     def get_paths(self, circuit):
-        endpoint = "%s/%s:%s/%s:%s" % (settings.PATHFINDER_URL,
-                                       circuit.uni_a.dpid,
-                                       circuit.uni_a.port,
-                                       circuit.uni_z.dpid,
-                                       circuit.uni_z.port)
+        endpoint = "%s%s:%s/%s:%s" % (settings.PATHFINDER_URL,
+                                      circuit.uni_a.dpid,
+                                      circuit.uni_a.port,
+                                      circuit.uni_z.dpid,
+                                      circuit.uni_z.port)
         request = requests.get(endpoint)
         if request.status_code != requests.codes.ok:
             log.error("Failed to get paths at %s. Returned %s",
@@ -97,11 +98,21 @@ class Main(KytosNApp):
                       request.status_code)
             return None
         data = request.json()
-        paths = data.get('paths')
+        return data.get('paths')
 
+    @staticmethod
+    def install_flow(dpid, in_port, out_port, vlan_id):
+        endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
+        data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
+                "actions": [{"action_type": "output", "port": int(out_port)}]}]
+        requests.post(endpoint, json=data)
 
     def install_flows_for_circuit(self, circuit):
-        pass
+        vlan_id = circuit.uni_a.tag.value
+        for end_a, end_b in zip(circuit.path[:-1], circuit.path[1:]):
+            if end_a.dpid == end_b.dpid:
+                self.install_flow(end_a.dpid, end_a.port, end_b.port, vlan_id)
+                self.install_flow(end_a.dpid, end_b.port, end_a.port, vlan_id)
 
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
