@@ -1,6 +1,6 @@
 from datetime import datetime
 import uuid
-
+import json
 #class Path:
 #    _id = None
 #    _endpoints = []
@@ -29,15 +29,15 @@ class Link:
         self.bandwidth = bandwidth
 
     def __eq__(self, other):
-        if ((self.endpoint_a == other.endpoint_a) and
-            (self.endpoint_b == other.endpoint_b))
+        if (self.endpoint_a == other.endpoint_a and
+            self.endpoint_b == other.endpoint_b):
             return True
         else:
             return False
 
     def as_dict(self):
-        return {'endpoint_a': self.endpoint_a,
-                'endpoint_b': self.endpoint_b,
+        return {'endpoint_a': self.endpoint_a.as_dict(),
+                'endpoint_b': self.endpoint_b.as_dict(),
                 'bandwidth': self.bandwidth}
 
 
@@ -80,7 +80,7 @@ class Endpoint:
 
     def __eq__(self, other):
         if (self.dpid == other.dpid and
-            self.port == other.port)
+            self.port == other.port):
             return True
         else:
             return False
@@ -204,7 +204,7 @@ class Circuit:
         return circuit
 
     def as_dict(self):
-        links = [ link.as_dict() for link in self.path ]
+        links = [link.as_dict() for link in self.path]
 
         return {"id": self.id,
                 "name": self.name,

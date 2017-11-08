@@ -7,12 +7,11 @@ import os
 import requests
 import pickle
 
-from pathlib import Path
-from flask import abort, request, jsonify
+from flask import request, jsonify
 
 from kytos.core import KytosNApp, log, rest
 from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.models import Circuit, Endpoint
+from napps.kytos.mef_eline.models import Circuit, Endpoint, Link
 
 
 class Main(KytosNApp):
@@ -49,13 +48,12 @@ class Main(KytosNApp):
         pass
 
     def save_circuit(self, circuit):
-        save_path = Path(__file__).parent / settings.CIRCUITS_PATH
-        save_path.mkdir(exist_ok=True)
-        if not os.access(save_path, os.W_OK):
-            log.error("Could not save circuit on %s", save_path)
+        os.makedirs(settings.CIRCUITS_PATH, exist_ok=True)
+        if not os.access(settings.CIRCUITS_PATH, os.W_OK):
+            log.error("Could not save circuit on %s", settings.CIRCUITS_PATH)
             return False
 
-        output = os.path.join(save_path, circuit.id)
+        output = os.path.join(settings.CIRCUITS_PATH, circuit.id)
         with open(output, 'wb') as fp:
             fp.write(pickle.dumps(circuit))
 
@@ -100,8 +98,7 @@ class Main(KytosNApp):
         data = request.json()
         return data.get('paths')
 
-    @staticmethod
-    def install_flow(dpid, in_port, out_port, vlan_id, bidirectional=False):
+    def install_flow(self, dpid, in_port, out_port, vlan_id, bidirectional=False):
         endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
         data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
                 "actions": [{"action_type": "output", "port": int(out_port)}]}]
@@ -120,9 +117,8 @@ class Main(KytosNApp):
                                   vlan_id,
                                   True)
 
-    # TODO: clean path
     def clean_path(self, path):
-        pass
+        return [endpoint for endpoint in path if len(endpoint) > 23]
 
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
@@ -161,7 +157,7 @@ class Main(KytosNApp):
             return jsonify({"error": error}), 503
 
         # Select best path
-        path = paths[0]['hops']
+        path = self.clean_path(paths[0]['hops'])
 
         # We do not need backup path, because we need to implement a more
         # suitable way to reconstruct paths
@@ -172,10 +168,10 @@ class Main(KytosNApp):
 
         # 2o Circuito: 1:2 - 3:2 - 100gbps
 
-        path = clean_path(path)
+
         for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
             link = Link(Endpoint(endpoint_a[:23], endpoint_a[24:]),
-                        Endpoint(endpoint_b[:23], endpoint_b[24:])
+                        Endpoint(endpoint_b[:23], endpoint_b[24:]),
                         circuit.bandwidth)
             circuit.add_link_to_path(link)
 
