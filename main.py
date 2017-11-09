@@ -120,6 +120,28 @@ class Main(KytosNApp):
     def clean_path(self, path):
         return [endpoint for endpoint in path if len(endpoint) > 23]
 
+    def check_link_availability(self, link):
+        circuits = self.load_circuits()
+        total = 0
+        for circuit in circuits:
+            exists = circuit.get_link(link)
+            if exists:
+                total += exists.bandwidth
+            if total + link.bandwidth >= 100000000000 # 100 Gigabits
+                return False
+        return True, total
+
+    def check_circuit_availability(self, path, bandwidth):
+        circuits = self.load_circuits()
+        total = 0
+        for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
+            link = Link(endpoint_a, endpoint_b, bandwidth)
+            avail, usage = self.check_link_availability(link)
+            if not avail:
+                return False
+            total += usage
+        return True, total
+
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
         circuits = {}
@@ -156,20 +178,26 @@ class Main(KytosNApp):
             log.error(error)
             return jsonify({"error": error}), 503
 
+        best_path = None
         # Select best path
-        path = self.clean_path(paths[0]['hops'])
+        for path in paths:
+            clean_path = self.clean_path(path['hops'])
+            avail, usage = self.check_circuit_availability(clean_path,
+                                                           circuit.bandwidth)
+            if avail:
+                if not best_path:
+                    best_path = {'path': clean_path, 'usage': usage}
+                elif best_path['usage'] > usage:
+                    best_path = {'path': clean_path, 'usage': usage}
+
+        if not best_path:
+            return jsonify({"error": "Not enought resources."}), 503
 
         # We do not need backup path, because we need to implement a more
         # suitable way to reconstruct paths
 
-        # TODO: Check if any hop is already in a circuit
-        # 1o Circuito: 1:1 - 3:2 - 100gbps
-             # circuit.path = 1:1 - 1:2 (100gbps) - 2:1 - 2:2 - 3:1 - 3:2
-
-        # 2o Circuito: 1:2 - 3:2 - 100gbps
-
-
-        for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
+        for endpoint_a, endpoint_b in zip(best_path['path'][:-1],
+                                          best_path['path'][1:]):
             link = Link(Endpoint(endpoint_a[:23], endpoint_a[24:]),
                         Endpoint(endpoint_b[:23], endpoint_b[24:]),
                         circuit.bandwidth)
