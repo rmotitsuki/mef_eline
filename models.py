@@ -114,7 +114,7 @@ class Endpoint:
 
 class Circuit:
     """Class that represents a circuit according to MEF 6.2 and MEF 10.3.
-    
+
     This class has only the basics properties. We have plans to implement all
     other properties soon.
     """
@@ -173,12 +173,11 @@ class Circuit:
     def add_link_to_path(self, link):
         self.path.append(link)
 
-    def has_link(self, link):
+    def get_link(self, link):
         for path_link in self.path:
-            if (path_link == link):
-                return True
-            else:
-                return False
+            if path_link == link:
+                return path_link
+        return False
 
     @classmethod
     def from_dict(cls, data):

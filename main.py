@@ -127,20 +127,21 @@ class Main(KytosNApp):
             exists = circuit.get_link(link)
             if exists:
                 total += exists.bandwidth
-            if total + link.bandwidth >= 100000000000 # 100 Gigabits
-                return False
-        return True, total
+            if total + link.bandwidth > 100000000000: # 100 Gigabits
+                return None
+        return total
 
     def check_circuit_availability(self, path, bandwidth):
-        circuits = self.load_circuits()
         total = 0
         for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
-            link = Link(endpoint_a, endpoint_b, bandwidth)
-            avail, usage = self.check_link_availability(link)
-            if not avail:
-                return False
-            total += usage
-        return True, total
+            link = Link(Endpoint(endpoint_a[:23], endpoint_a[24:]),
+                        Endpoint(endpoint_b[:23], endpoint_b[24:]),
+                        bandwidth)
+            avail = self.check_link_availability(link)
+            if avail is None:
+                return None
+            total += avail
+        return total
 
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
@@ -182,13 +183,14 @@ class Main(KytosNApp):
         # Select best path
         for path in paths:
             clean_path = self.clean_path(path['hops'])
-            avail, usage = self.check_circuit_availability(clean_path,
-                                                           circuit.bandwidth)
-            if avail:
+            avail = self.check_circuit_availability(clean_path,
+                                                    circuit.bandwidth)
+            log.warning(avail)
+            if avail is not None:
                 if not best_path:
-                    best_path = {'path': clean_path, 'usage': usage}
-                elif best_path['usage'] > usage:
-                    best_path = {'path': clean_path, 'usage': usage}
+                    best_path = {'path': clean_path, 'usage': avail}
+                elif best_path['usage'] > avail:
+                    best_path = {'path': clean_path, 'usage': avail}
 
         if not best_path:
             return jsonify({"error": "Not enought resources."}), 503
