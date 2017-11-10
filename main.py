@@ -98,24 +98,33 @@ class Main(KytosNApp):
         data = request.json()
         return data.get('paths')
 
-    def install_flow(self, dpid, in_port, out_port, vlan_id, bidirectional=False):
-        endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
-        data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
-                "actions": [{"action_type": "output", "port": int(out_port)}]}]
+    def send_flow_mod(self, dpid, in_port, out_port, vlan_id,
+                      bidirectional=False, remove=False):
+        if remove:
+            endpoint = "%sdelete/%s" % (settings.MANAGER_URL, dpid)
+            data = [{"out_port": int(out_port),
+                     "match": {"in_port": int(in_port), "dl_vlan": vlan_id}}]
+        else:
+            endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
+            data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
+                    "actions": [{"action_type": "output",
+                                 "port": int(out_port)}]}]
+
         requests.post(endpoint, json=data)
 
         if bidirectional:
-            self.install_flow(dpid, out_port, in_port, vlan_id)
+            self.send_flow_mod(dpid, out_port, in_port, vlan_id, remove=remove)
 
-    def install_flows_for_circuit(self, circuit):
+    def manage_circuit_flows(self, circuit, remove=False):
         vlan_id = circuit.uni_a.tag.value
         for link in circuit.path:
             if link.endpoint_a.dpid == link.endpoint_b.dpid:
-                self.install_flow(link.endpoint_a.dpid,
+                self.send_flow_mod(link.endpoint_a.dpid,
                                   link.endpoint_a.port,
                                   link.endpoint_b.port,
                                   vlan_id,
-                                  True)
+                                  bidirectional=True,
+                                  remove=remove)
 
     def clean_path(self, path):
         return [endpoint for endpoint in path if len(endpoint) > 23]
@@ -185,7 +194,6 @@ class Main(KytosNApp):
             clean_path = self.clean_path(path['hops'])
             avail = self.check_circuit_availability(clean_path,
                                                     circuit.bandwidth)
-            log.warning(avail)
             if avail is not None:
                 if not best_path:
                     best_path = {'path': clean_path, 'usage': avail}
@@ -208,13 +216,15 @@ class Main(KytosNApp):
         # Save circuit to disk
         self.save_circuit(circuit)
 
-        self.install_flows_for_circuit(circuit)
+        self.manage_circuit_flows(circuit)
 
         return jsonify(circuit.as_dict()), 201
 
     @rest('/circuits/<circuit_id>', methods=['DELETE'])
     def delete_circuit(self, circuit_id):
         try:
+            circuit = self.load_circuit(circuit_id)
+            self.manage_circuit_flows(circuit, remove=True)
             self.remove_circuit(circuit_id)
         except Exception as e:
             return jsonify({"error": e}), 503
