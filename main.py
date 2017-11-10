@@ -1,13 +1,14 @@
 """Main module of kytos/mef_eline Kytos Network Application.
 
-NApp to provision circuits from user request
+NApp to provision circuits from user request.
 """
+
 import json
 import os
-import requests
 import pickle
 
-from flask import request, jsonify
+import requests
+from flask import jsonify, request
 
 from kytos.core import KytosNApp, log, rest
 from napps.kytos.mef_eline import settings
@@ -47,35 +48,41 @@ class Main(KytosNApp):
         """
         pass
 
-    def save_circuit(self, circuit):
+    @staticmethod
+    def save_circuit(circuit):
+        """Save a circuit to disk in the circuits path."""
         os.makedirs(settings.CIRCUITS_PATH, exist_ok=True)
         if not os.access(settings.CIRCUITS_PATH, os.W_OK):
             log.error("Could not save circuit on %s", settings.CIRCUITS_PATH)
             return False
 
         output = os.path.join(settings.CIRCUITS_PATH, circuit.id)
-        with open(output, 'wb') as fp:
-            fp.write(pickle.dumps(circuit))
+        with open(output, 'wb') as circuit_file:
+            circuit_file.write(pickle.dumps(circuit))
 
         return True
 
-    def load_circuit(self, circuit_id):
+    @staticmethod
+    def load_circuit(circuit_id):
+        """Load a circuit from the circuits path."""
         path = os.path.join(settings.CIRCUITS_PATH, circuit_id)
         if not os.access(path, os.R_OK):
             log.error("Could not load circuit from %s", path)
             return None
 
-        with open(path, 'rb') as fp:
-            return pickle.load(fp)
+        with open(path, 'rb') as circuit_file:
+            return pickle.load(circuit_file)
 
     def load_circuits(self):
-        result = []
-        for (dirpath, dirnames, filenames) in os.walk(settings.CIRCUITS_PATH):
-            for filename in filenames:
-                result.append(self.load_circuit(filename))
-        return result
+        """Load all available circuits in the circuits path."""
+        os.makedirs(settings.CIRCUITS_PATH, exist_ok=True)
+        return [self.load_circuit(filename) for
+                filename in os.listdir(settings.CIRCUITS_PATH) if
+                os.path.isfile(os.path.join(settings.CIRCUITS_PATH, filename))]
 
-    def remove_circuit(self, circuit_id):
+    @staticmethod
+    def remove_circuit(circuit_id):
+        """Delete a circuit from the circuits path."""
         path = os.path.join(settings.CIRCUITS_PATH, circuit_id)
         if not os.access(path, os.W_OK):
             log.error("Could not delete circuit from %s", path)
@@ -83,23 +90,26 @@ class Main(KytosNApp):
 
         os.remove(path)
 
-    def get_paths(self, circuit):
+    @staticmethod
+    def get_paths(circuit):
+        """Get a valid path for the circuit from the Pathfinder."""
         endpoint = "%s%s:%s/%s:%s" % (settings.PATHFINDER_URL,
                                       circuit.uni_a.dpid,
                                       circuit.uni_a.port,
                                       circuit.uni_z.dpid,
                                       circuit.uni_z.port)
-        request = requests.get(endpoint)
-        if request.status_code != requests.codes.ok:
+        api_request = requests.get(endpoint)
+        if api_request.status_code != requests.codes.ok:
             log.error("Failed to get paths at %s. Returned %s",
                       endpoint,
                       request.status_code)
             return None
-        data = request.json()
+        data = api_request.json()
         return data.get('paths')
 
     def send_flow_mod(self, dpid, in_port, out_port, vlan_id,
                       bidirectional=False, remove=False):
+        """Send a FlowMod request to the Flow Manager."""
         if remove:
             endpoint = "%sdelete/%s" % (settings.MANAGER_URL, dpid)
             data = [{"out_port": int(out_port),
@@ -116,31 +126,36 @@ class Main(KytosNApp):
             self.send_flow_mod(dpid, out_port, in_port, vlan_id, remove=remove)
 
     def manage_circuit_flows(self, circuit, remove=False):
+        """Install or remove flows that belong to the circuit."""
         vlan_id = circuit.uni_a.tag.value
         for link in circuit.path:
             if link.endpoint_a.dpid == link.endpoint_b.dpid:
                 self.send_flow_mod(link.endpoint_a.dpid,
-                                  link.endpoint_a.port,
-                                  link.endpoint_b.port,
-                                  vlan_id,
-                                  bidirectional=True,
-                                  remove=remove)
+                                   link.endpoint_a.port,
+                                   link.endpoint_b.port,
+                                   vlan_id,
+                                   bidirectional=True,
+                                   remove=remove)
 
-    def clean_path(self, path):
+    @staticmethod
+    def clean_path(path):
+        """Return the path containing only the interfaces."""
         return [endpoint for endpoint in path if len(endpoint) > 23]
 
     def check_link_availability(self, link):
+        """Check if a link is available and return its total weight."""
         circuits = self.load_circuits()
         total = 0
         for circuit in circuits:
             exists = circuit.get_link(link)
             if exists:
                 total += exists.bandwidth
-            if total + link.bandwidth > 100000000000: # 100 Gigabits
+            if total + link.bandwidth > 100000000000:  # 100 Gigabits
                 return None
         return total
 
-    def check_circuit_availability(self, path, bandwidth):
+    def check_path_availability(self, path, bandwidth):
+        """Check if a path is available and return its total weight."""
         total = 0
         for endpoint_a, endpoint_b in zip(path[:-1], path[1:]):
             link = Link(Endpoint(endpoint_a[:23], endpoint_a[24:]),
@@ -154,6 +169,7 @@ class Main(KytosNApp):
 
     @rest('/circuits', methods=['GET'])
     def get_circuits(self):
+        """Get all the currently installed circuits."""
         circuits = {}
         for circuit in self.load_circuits():
             circuits[circuit.id] = circuit.as_dict()
@@ -162,6 +178,7 @@ class Main(KytosNApp):
 
     @rest('/circuits/<circuit_id>', methods=['GET'])
     def get_circuit(self, circuit_id):
+        """Get a installed circuit by its ID."""
         circuit = self.load_circuit(circuit_id)
         if not circuit:
             return jsonify({"error": "Circuit not found"}), 404
@@ -170,17 +187,17 @@ class Main(KytosNApp):
 
     @rest('/circuits', methods=['POST'])
     def create_circuit(self):
-        """
-        Receive a user request to create a new circuit, find a path for the
-        circuit, install the necessary flows and stores the information about
-        it.
+        """Receive a user request to create a new circuit.
+
+        Find a path for the circuit, install the necessary flows and store
+        the information about it.
         """
         data = request.get_json()
 
         try:
             circuit = Circuit.from_dict(data)
-        except Exception as e:
-            return json.dumps({'error': e}), 400
+        except Exception as exception:
+            return json.dumps({'error': exception}), 400
 
         paths = self.get_paths(circuit)
         if not paths:
@@ -192,8 +209,7 @@ class Main(KytosNApp):
         # Select best path
         for path in paths:
             clean_path = self.clean_path(path['hops'])
-            avail = self.check_circuit_availability(clean_path,
-                                                    circuit.bandwidth)
+            avail = self.check_path_availability(clean_path, circuit.bandwidth)
             if avail is not None:
                 if not best_path:
                     best_path = {'path': clean_path, 'usage': avail}
@@ -222,23 +238,24 @@ class Main(KytosNApp):
 
     @rest('/circuits/<circuit_id>', methods=['DELETE'])
     def delete_circuit(self, circuit_id):
+        """Remove a circuit identified by its ID."""
         try:
             circuit = self.load_circuit(circuit_id)
             self.manage_circuit_flows(circuit, remove=True)
             self.remove_circuit(circuit_id)
-        except Exception as e:
-            return jsonify({"error": e}), 503
+        except Exception as exception:
+            return jsonify({"error": exception}), 503
 
         return jsonify({"success": "Circuit deleted"}), 200
 
-    #@rest('/circuits/<circuit_id>', methods=['PATCH'])
-    #def update_circuit(self, circuit_id):
-    #    pass
+    # @rest('/circuits/<circuit_id>', methods=['PATCH'])
+    # def update_circuit(self, circuit_id):
+    #     pass
 
-    #@rest('/circuits/byLink/<link_id>')
-    #def circuits_by_link(self, link_id):
-    #    pass
+    # @rest('/circuits/byLink/<link_id>')
+    # def circuits_by_link(self, link_id):
+    #     pass
 
-    #@rest('/circuits/byUNI/<dpid>/<port>')
-    #def circuits_by_uni(self, dpid, port):
-    #    pass
+    # @rest('/circuits/byUNI/<dpid>/<port>')
+    # def circuits_by_uni(self, dpid, port):
+    #     pass

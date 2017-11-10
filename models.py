@@ -1,41 +1,30 @@
-from datetime import datetime
-import uuid
+"""Classes used in the main application."""
+
 import json
-#class Path:
-#    _id = None
-#    _endpoints = []
-#class Link:
-#    _id = None
-#    _endpoint_a = None
-#    _endpoint_b = None
-#
-#    @staticmethod
-#    def validate(data):
-#        if not isinstance(data, dict):
-#            return False
-#        endpoint_a = data.get('endpoint_a')
-#        endpoint_b = data.get('endpoint_b')
-#        if endpoint_a is None or endpoint_b is None:
-#            return False
-#        if Endpoint.validate(endpoint_a) is False:
-#            return False
-#        if Endpoint.validate(endpoint_b) is False:
-#            return False
+import uuid
+from datetime import datetime
+
+# class Path:
+#     _id = None
+#     _endpoints = []
+
 
 class Link:
+    """Define a link between two Endpoints."""
+
     def __init__(self, endpoint_a, endpoint_b, bandwidth):
+        """Create a Link instance and set its attributes."""
         self.endpoint_a = endpoint_a
         self.endpoint_b = endpoint_b
         self.bandwidth = bandwidth
 
     def __eq__(self, other):
-        if (self.endpoint_a == other.endpoint_a and
-            self.endpoint_b == other.endpoint_b):
-            return True
-        else:
-            return False
+        """Check if two instances of Link are equal."""
+        return (self.endpoint_a == other.endpoint_a and
+                self.endpoint_b == other.endpoint_b)
 
     def as_dict(self):
+        """Return the Link as a dictionary."""
         return {'endpoint_a': self.endpoint_a.as_dict(),
                 'endpoint_b': self.endpoint_b.as_dict(),
                 'bandwidth': self.bandwidth}
@@ -45,10 +34,12 @@ class Tag:
     """Class that represents a TAG, a simple UNI property."""
 
     def __init__(self, tag_type='VLAN', value=None):
+        """Create a Tag instance and set its attributes."""
         self.tag_type = tag_type
         self.value = value
 
     def is_valid(self):
+        """Check if a Tag has valid properties."""
         if self.tag_type not in ['VLAN', 'MPLS']:
             return False
 
@@ -59,14 +50,17 @@ class Tag:
 
     @classmethod
     def from_dict(cls, data):
+        """Create a Tag instance from a dictionary."""
         return cls(data.get('tag_type'),
                    data.get('value'))
 
     def as_dict(self):
+        """Return the Tag as a dictionary."""
         return {"tag_type": self.tag_type,
                 "value": self.value}
 
     def as_json(self):
+        """Return the Tag as a JSON string."""
         return json.dumps(self.as_dict())
 
 
@@ -74,18 +68,17 @@ class Endpoint:
     """Class that represents an endpoint according to MEF 6.2 and MEF 10.3."""
 
     def __init__(self, dpid, port, tag=None):
+        """Create an Endpoint instance and set its attributes."""
         self.dpid = str(dpid)
         self.port = str(port)
         self.tag = tag or Tag()
 
     def __eq__(self, other):
-        if (self.dpid == other.dpid and
-            self.port == other.port):
-            return True
-        else:
-            return False
+        """Check if two instances of Endpoint are equal."""
+        return self.dpid == other.dpid and self.port == other.port
 
     def is_valid(self):
+        """Check if an Endpoint has valid properties."""
         if not isinstance(self.dpid, str):
             return False
 
@@ -99,16 +92,19 @@ class Endpoint:
 
     @classmethod
     def from_dict(cls, data):
+        """Create an Endpoint instance from a dictionary."""
         return cls(data.get('dpid'),
                    data.get('port'),
                    Tag.from_dict(data.get('tag')))
 
     def as_dict(self):
+        """Return the Endpoint as a dictionary."""
         return {"dpid": self.dpid,
                 "port": self.port,
                 "tag": self.tag.as_dict()}
 
     def as_json(self):
+        """Return the Endpoint as a JSON string."""
         return json.dumps(self.as_dict())
 
 
@@ -119,10 +115,9 @@ class Circuit:
     other properties soon.
     """
 
-
-
     def __init__(self, name, uni_a, uni_z, start_date=None, end_date=None,
                  bandwidth=None, path=None):
+        """Create a Circuit instance and set its attributes."""
         self.id = str(uuid.uuid4())
         self.name = name
         self.uni_a = uni_a
@@ -131,24 +126,27 @@ class Circuit:
         self.end_date = (end_date or self.start_date +
                          datetime.timedelta(days=365))
         self.bandwidth = bandwidth
-        self.path = path or [] # List of Links
+        self.path = path or []  # List of Links
 
     def is_valid(self):
-        """Check if a circuit has valid properties or not."""
-
-        if not isinstance(self.name, str):
+        """Check if a Circuit has valid properties."""
+        # Check basic types
+        if not (isinstance(self.name, str) and isinstance(self.bandwidth, int)
+                and isinstance(self.path, list)):
             return False
 
-        if not isinstance(self.uni_a, Endpoint):
+        # Check Endpoint instances
+        if not (isinstance(self.uni_a, Endpoint) and
+                isinstance(self.uni_z, Endpoint)):
             return False
 
-        if not isinstance(self.uni_z, Endpoint):
+        # Check datetime instances
+        if not (isinstance(self.start_date, datetime) and
+                isinstance(self.end_date, datetime)):
             return False
 
-        if not self.uni_a.is_valid():
-            return False
-
-        if not self.uni_z.is_valid():
+        # Perform recursive validation on Endpoints
+        if not (self.uni_a.is_valid() and self.uni_z.is_valid()):
             return False
 
         # Because we only support persistent VLAN tags for the service
@@ -156,24 +154,14 @@ class Circuit:
         if self.uni_a.tag.value != self.uni_z.tag.value:
             return False
 
-        if not isinstance(self.start_date, datetime):
-            return False
-
-        if not isinstance(self.end_date, datetime):
-            return False
-
-        if not isinstance(self.bandwidth, int):
-            return False
-
-        if not isinstance(self.path, list):
-            return False
-
         return True
 
     def add_link_to_path(self, link):
+        """Add a Link to the Circuit's path."""
         self.path.append(link)
 
     def get_link(self, link):
+        """Get a Link from the Circuit's path."""
         for path_link in self.path:
             if path_link == link:
                 return path_link
@@ -181,6 +169,7 @@ class Circuit:
 
     @classmethod
     def from_dict(cls, data):
+        """Create a Circuit instance from a dictionary."""
         start_date = data.get('start_date')
         end_date = data.get('end_date')
 
@@ -203,6 +192,7 @@ class Circuit:
         return circuit
 
     def as_dict(self):
+        """Return the Circuit as a dictionary."""
         links = [link.as_dict() for link in self.path]
 
         return {"id": self.id,
@@ -215,4 +205,5 @@ class Circuit:
                 "path": links}
 
     def as_json(self):
+        """Return the Circuit as a JSON string."""
         return json.dumps(self.as_dict())

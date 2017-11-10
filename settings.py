@@ -1,3 +1,5 @@
+"""Settings for the mef_eline NApp."""
+
 # Base URL of the Pathfinder endpoint
 PATHFINDER_URL = 'http://localhost:8181/api/kytos/pathfinder/v1/'
 
