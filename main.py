@@ -102,7 +102,7 @@ class Main(KytosNApp):
         if api_request.status_code != requests.codes.ok:
             log.error("Failed to get paths at %s. Returned %s",
                       endpoint,
-                      request.status_code)
+                      api_request.status_code)
             return None
         data = api_request.json()
         return data.get('paths')
