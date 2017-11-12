@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # class Path:
 #     _id = None
@@ -124,7 +124,7 @@ class Circuit:
         self.uni_z = uni_z
         self.start_date = start_date or datetime.utcnow()
         self.end_date = (end_date or self.start_date +
-                         datetime.timedelta(days=365))
+                         timedelta(days=365))
         self.bandwidth = bandwidth
         self.path = path or []  # List of Links
 

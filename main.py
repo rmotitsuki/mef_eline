@@ -167,7 +167,7 @@ class Main(KytosNApp):
             total += avail
         return total
 
-    @rest('/circuits', methods=['GET'])
+    @rest('/v1/circuits', methods=['GET'])
     def get_circuits(self):
         """Get all the currently installed circuits."""
         circuits = {}
