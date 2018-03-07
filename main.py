@@ -27,8 +27,12 @@ class EVC:
                  dynamic_backup_path=None):
 
         # Do some basic validations
-        if uni_a or uni_z or name is None:
+        if uni_a is None or uni_z is None or name is None:
             raise TypeError("Invalid arguments")
+
+        if ((not isinstance(uni_a, UNI)) or
+           (not isinstance(uni_z, UNI))):
+            raise TypeError("Invalid UNI")
 
         if not uni_a.is_valid() or not uni_z.is_valid():
             raise TypeError("Invalid UNI")
@@ -236,7 +240,7 @@ class Main(KytosNApp):
     def _find_interface_by_id(self, interface_id):
         """Find a Interface on controller with interface_id."""
         switch_id = ":".join(interface_id.split(":")[:-1])
-        interface_number = interface_id.split(":")[-1]
+        interface_number = int(interface_id.split(":")[-1])
         try:
             switch = self.controller.switches[switch_id]
         except KeyError:
@@ -327,10 +331,15 @@ class Main(KytosNApp):
 
         try:
             circuit = EVC(uni_a, uni_z, name)
-        except TypeError:
-            return jsonify("Bad request on interface information."), 400
+        except TypeError as e:
+            return jsonify("Bad request: {}".format(e)), 400
 
         # Request paths to Pathfinder
+
+        # Create event
+
+        # Notify users
+
         return jsonify({"circuit_id": circuit.id}), 201
 
     # Old methods
