@@ -239,6 +239,9 @@ class Main(KytosNApp):
 
     def _find_interface_by_id(self, interface_id):
         """Find a Interface on controller with interface_id."""
+        if interface_id is None:
+            return None
+
         switch_id = ":".join(interface_id.split(":")[:-1])
         interface_number = int(interface_id.split(":")[-1])
         try:
