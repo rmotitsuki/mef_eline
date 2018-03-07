@@ -13,6 +13,7 @@ from flask import jsonify, request
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.helpers import now
+from kytos.core.link import Link
 from kytos.core.interface import TAG, UNI
 from napps.kytos.mef_eline import settings
 
@@ -160,6 +161,28 @@ class Main(KytosNApp):
     #     os.remove(path)
     #     return True
 
+    @staticmethod
+    def _clear_path(path):
+        """Remove switches from a path, returning only interfaeces."""
+        return [endpoint for endpoint in path if len(endpoint) > 23]
+
+    def create_path(self, path):
+        """Return the path containing only the interfaces."""
+        new_path = []
+        clean_path = self._clear_path(path)
+
+        if len(clean_path) % 2:
+            return None
+
+        for link in zip(clean_path[1:-1:2], clean_path[2::2]):
+            interface_a = self._find_interface_by_id(link[0])
+            interface_b = self._find_interface_by_id(link[1])
+            if interface_a is None or interface_b is None:
+                return None
+            new_path.append(Link(interface_a, interface_b))
+
+        return new_path
+
     def send_flow_mod(self, dpid, in_port, out_port, vlan_id,
                       bidirectional=False, remove=False):
         """Send a FlowMod request to the Flow Manager."""
@@ -177,23 +200,6 @@ class Main(KytosNApp):
 
         if bidirectional:
             self.send_flow_mod(dpid, out_port, in_port, vlan_id, remove=remove)
-
-    def manage_circuit_flows(self, circuit, remove=False):
-        """Install or remove flows that belong to the circuit."""
-        vlan_id = circuit.uni_a.tag.value
-        for link in circuit.path:
-            if link.endpoint_a.dpid == link.endpoint_b.dpid:
-                self.send_flow_mod(link.endpoint_a.dpid,
-                                   link.endpoint_a.port,
-                                   link.endpoint_b.port,
-                                   vlan_id,
-                                   bidirectional=True,
-                                   remove=remove)
-
-    # @staticmethod
-    # def clean_path(path):
-    #     """Return the path containing only the interfaces."""
-    #     return [endpoint for endpoint in path if len(endpoint) > 23]
 
     # def check_link_availability(self, link):
     #     """Check if a link is available and return its total weight."""
@@ -331,11 +337,18 @@ class Main(KytosNApp):
 
         try:
             circuit = EVC(uni_a, uni_z, name)
-        except TypeError as e:
-            return jsonify("Bad request: {}".format(e)), 400
+        except TypeError as exception:
+            return jsonify("Bad request: {}".format(exception)), 400
 
         # Request paths to Pathfinder
-        circuit.primary_path = self.get_paths(circuit)[0]['hops']
+        path_list = self.get_paths(circuit)
+
+        if not path_list:
+            error = "Pathfinder returned no path for this circuit."
+            log.error(error)
+            return jsonify({"error": error}), 503
+
+        circuit.primary_path = self.create_path(path_list[0]['hops'])
 
         # Install the flows using FlowManager
 
