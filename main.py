@@ -31,7 +31,7 @@ class EVC:
             raise TypeError("Invalid arguments")
 
         if ((not isinstance(uni_a, UNI)) or
-           (not isinstance(uni_z, UNI))):
+                (not isinstance(uni_z, UNI))):
             raise TypeError("Invalid UNI")
 
         if not uni_a.is_valid() or not uni_z.is_valid():
@@ -160,23 +160,6 @@ class Main(KytosNApp):
     #     os.remove(path)
     #     return True
 
-    # @staticmethod
-    # def get_paths(circuit):
-    #     """Get a valid path for the circuit from the Pathfinder."""
-    #     endpoint = "%s%s:%s/%s:%s" % (settings.PATHFINDER_URL,
-    #                                   circuit.uni_a.dpid,
-    #                                   circuit.uni_a.port,
-    #                                   circuit.uni_z.dpid,
-    #                                   circuit.uni_z.port)
-    #     api_request = requests.get(endpoint)
-    #     if api_request.status_code != requests.codes.ok:
-    #         log.error("Failed to get paths at %s. Returned %s",
-    #                   endpoint,
-    #                   api_request.status_code)
-    #         return None
-    #     data = api_request.json()
-    #     return data.get('paths')
-
     def send_flow_mod(self, dpid, in_port, out_port, vlan_id,
                       bidirectional=False, remove=False):
         """Send a FlowMod request to the Flow Manager."""
@@ -187,8 +170,8 @@ class Main(KytosNApp):
         else:
             endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
             data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
-                    "actions": [{"action_type": "output",
-                                 "port": int(out_port)}]}]
+                     "actions": [{"action_type": "output",
+                                  "port": int(out_port)}]}]
 
         requests.post(endpoint, json=data)
 
@@ -236,6 +219,20 @@ class Main(KytosNApp):
     #             return None
     #         total += avail
     #     return total
+
+    @staticmethod
+    def get_paths(circuit):
+        """Get a valid path for the circuit from the Pathfinder."""
+        endpoint = settings.PATHFINDER_URL
+        request_data = {"source": circuit.uni_a.interface.id,
+                        "destination": circuit.uni_z.interface.id}
+        api_reply = requests.post(endpoint, json=request_data)
+        if api_reply.status_code != requests.codes.ok:
+            log.error("Failed to get paths at %s. Returned %s",
+                      endpoint, api_reply.status_code)
+            return None
+        reply_data = api_reply.json()
+        return reply_data.get('paths')
 
     def _find_interface_by_id(self, interface_id):
         """Find a Interface on controller with interface_id."""
@@ -338,6 +335,9 @@ class Main(KytosNApp):
             return jsonify("Bad request: {}".format(e)), 400
 
         # Request paths to Pathfinder
+        circuit.primary_path = self.get_paths(circuit)[0]['hops']
+
+        # Install the flows using FlowManager
 
         # Create event
 
