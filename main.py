@@ -14,6 +14,7 @@ from flask import jsonify, request
 from kytos.core import KytosNApp, log, rest
 from kytos.core.helpers import now
 from kytos.core.interface import TAG, UNI
+from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
 
 # from napps.kytos.mef_eline.models import Circuit, Endpoint, Link
@@ -25,13 +26,16 @@ class EVC:
     def __init__(self, uni_a, uni_z, name, start_date=None, end_date=None,
                  bandwidth=None, primary_links=None, backup_links=None,
                  dynamic_backup_path=None):
+        """Create an EVC instance with the provided parameters.
 
-        # Do some basic validations
+        Do some basic validations to attributes.
+        """
+
         if uni_a is None or uni_z is None or name is None:
             raise TypeError("Invalid arguments")
 
         if ((not isinstance(uni_a, UNI)) or
-           (not isinstance(uni_z, UNI))):
+                (not isinstance(uni_z, UNI))):
             raise TypeError("Invalid UNI")
 
         if not uni_a.is_valid() or not uni_z.is_valid():
@@ -80,7 +84,121 @@ class EVC:
 
     @property
     def id(self):  # pylint: disable=invalid-name
+        """Return this EVC's ID."""
         return self._id
+
+    @staticmethod
+    def send_flow_mods(switch, flow_mods):
+        """Send a flow_mod list to a specific switch."""
+        endpoint = "%s/flows/%s" % (settings.MANAGER_URL, switch.id)
+
+        data = {"flows": flow_mods}
+        requests.post(endpoint, json=data)
+
+    @staticmethod
+    def prepare_flow_mod(in_interface, out_interface, in_vlan=None,
+                         out_vlan=None, push=False, pop=False, change=False):
+        """Create a flow_mod dictionary with the correct parameters."""
+        default_action = {"action_type": "output",
+                          "port": out_interface.port_number}
+
+        flow_mod = {"match": {"in_port": in_interface.port_number},
+                    "actions": [default_action]}
+        if in_vlan:
+            flow_mod['match']['dl_vlan'] = in_vlan
+        if out_vlan and not pop:
+            new_action = {"action_type": "set_vlan",
+                          "vlan_id": out_vlan}
+            flow_mod["actions"].insert(0, new_action)
+        if pop:
+            new_action = {"action_type": "pop_vlan"}
+            flow_mod["actions"].insert(0, new_action)
+        if push:
+            new_action = {"action_type": "push_vlan",
+                          "tag_type": "s"}
+            flow_mod["actions"].insert(0, new_action)
+        if change:
+            new_action = {"action_type": "set_vlan",
+                          "vlan_id": change}
+            flow_mod["actions"].insert(0, new_action)
+        return flow_mod
+
+    def _chose_vlans(self):
+        """Chose the VLANs to be used for the circuit."""
+        for link in self.primary_links:
+            tag = link.get_next_available_tag()
+            link.use_tag(tag)
+            link.add_metadata('s_vlan', tag)
+
+    def primary_links_zipped(self):
+        """Return an iterator which yields pairs of links in order."""
+        return zip(self.primary_links[:-1],
+                   self.primary_links[1:])
+
+    def deploy(self):
+        """Install the flows for this circuit."""
+        if self.primary_links is None:
+            return False
+
+        self._chose_vlans()
+
+        # Install NNI flows
+        for incoming, outcoming in self.primary_links_zipped():
+            in_vlan = incoming.get_metadata('s_vlan').value
+            out_vlan = outcoming.get_metadata('s_vlan').value
+
+            flows = []
+            # Flow for one direction
+            flows.append(self.prepare_flow_mod(incoming.endpoint_b,
+                                               outcoming.endpoint_a,
+                                               in_vlan, out_vlan))
+
+            # Flow for the other direction
+            flows.append(self.prepare_flow_mod(outcoming.endpoint_a,
+                                               incoming.endpoint_b,
+                                               out_vlan, in_vlan))
+
+            self.send_flow_mods(incoming.endpoint_b.switch, flows)
+
+        # Install UNI flows
+        # Determine VLANs
+        in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
+        out_vlan_a = self.primary_links[0].get_metadata('s_vlan').value
+
+        in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        out_vlan_z = self.primary_links[-1].get_metadata('s_vlan').value
+
+        # Flows for the first UNI
+        flows_a = []
+
+        # Flow for one direction, pushing the service tag
+        flows_a.append(self.prepare_flow_mod(self.uni_a.interface,
+                                             self.primary_links[0].endpoint_a,
+                                             in_vlan_a, out_vlan_a, True,
+                                             change=in_vlan_z))
+
+        # Flow for the other direction, popping the service tag
+        flows_a.append(self.prepare_flow_mod(self.primary_links[0].endpoint_a,
+                                             self.uni_a.interface,
+                                             out_vlan_a, in_vlan_a, pop=True))
+
+        self.send_flow_mods(self.uni_a.interface.switch, flows_a)
+
+        # Flows for the second UNI
+        flows_z = []
+
+        # Flow for one direction, pushing the service tag
+        flows_z.append(self.prepare_flow_mod(self.uni_z.interface,
+                                             self.primary_links[-1].endpoint_b,
+                                             in_vlan_z, out_vlan_z, True,
+                                             change=in_vlan_a))
+
+        # Flow for the other direction, popping the service tag
+        flows_z.append(self.prepare_flow_mod(self.primary_links[-1].endpoint_b,
+                                             self.uni_z.interface,
+                                             out_vlan_z, in_vlan_z, pop=True))
+
+        self.send_flow_mods(self.uni_z.interface.switch, flows_z)
 
 
 class Main(KytosNApp):
@@ -160,57 +278,10 @@ class Main(KytosNApp):
     #     os.remove(path)
     #     return True
 
-    # @staticmethod
-    # def get_paths(circuit):
-    #     """Get a valid path for the circuit from the Pathfinder."""
-    #     endpoint = "%s%s:%s/%s:%s" % (settings.PATHFINDER_URL,
-    #                                   circuit.uni_a.dpid,
-    #                                   circuit.uni_a.port,
-    #                                   circuit.uni_z.dpid,
-    #                                   circuit.uni_z.port)
-    #     api_request = requests.get(endpoint)
-    #     if api_request.status_code != requests.codes.ok:
-    #         log.error("Failed to get paths at %s. Returned %s",
-    #                   endpoint,
-    #                   api_request.status_code)
-    #         return None
-    #     data = api_request.json()
-    #     return data.get('paths')
-
-    def send_flow_mod(self, dpid, in_port, out_port, vlan_id,
-                      bidirectional=False, remove=False):
-        """Send a FlowMod request to the Flow Manager."""
-        if remove:
-            endpoint = "%sdelete/%s" % (settings.MANAGER_URL, dpid)
-            data = [{"out_port": int(out_port),
-                     "match": {"in_port": int(in_port), "dl_vlan": vlan_id}}]
-        else:
-            endpoint = "%sflows/%s" % (settings.MANAGER_URL, dpid)
-            data = [{"match": {"in_port": int(in_port), "dl_vlan": vlan_id},
-                    "actions": [{"action_type": "output",
-                                 "port": int(out_port)}]}]
-
-        requests.post(endpoint, json=data)
-
-        if bidirectional:
-            self.send_flow_mod(dpid, out_port, in_port, vlan_id, remove=remove)
-
-    def manage_circuit_flows(self, circuit, remove=False):
-        """Install or remove flows that belong to the circuit."""
-        vlan_id = circuit.uni_a.tag.value
-        for link in circuit.path:
-            if link.endpoint_a.dpid == link.endpoint_b.dpid:
-                self.send_flow_mod(link.endpoint_a.dpid,
-                                   link.endpoint_a.port,
-                                   link.endpoint_b.port,
-                                   vlan_id,
-                                   bidirectional=True,
-                                   remove=remove)
-
-    # @staticmethod
-    # def clean_path(path):
-    #     """Return the path containing only the interfaces."""
-    #     return [endpoint for endpoint in path if len(endpoint) > 23]
+    @staticmethod
+    def _clear_path(path):
+        """Remove switches from a path, returning only interfaeces."""
+        return [endpoint for endpoint in path if len(endpoint) > 23]
 
     # def check_link_availability(self, link):
     #     """Check if a link is available and return its total weight."""
@@ -237,8 +308,49 @@ class Main(KytosNApp):
     #         total += avail
     #     return total
 
+    @staticmethod
+    def get_paths(circuit):
+        """Get a valid path for the circuit from the Pathfinder."""
+        endpoint = settings.PATHFINDER_URL
+        request_data = {"source": circuit.uni_a.interface.id,
+                        "destination": circuit.uni_z.interface.id}
+        api_reply = requests.post(endpoint, json=request_data)
+        if api_reply.status_code != requests.codes.ok:
+            log.error("Failed to get paths at %s. Returned %s",
+                      endpoint, api_reply.status_code)
+            return None
+        reply_data = api_reply.json()
+        return reply_data.get('paths')
+
+    def get_best_path(self, circuit):
+        """Return the best path available for a circuit, if exists."""
+        paths = self.get_paths(circuit)
+        if paths:
+            return self.create_path(self.get_paths(circuit)[0]['hops'])
+        return None
+
+    def create_path(self, path):
+        """Return the path containing only the interfaces."""
+        new_path = []
+        clean_path = self._clear_path(path)
+
+        if len(clean_path) % 2:
+            return None
+
+        for link in zip(clean_path[1:-1:2], clean_path[2::2]):
+            interface_a = self._find_interface_by_id(link[0])
+            interface_b = self._find_interface_by_id(link[1])
+            if interface_a is None or interface_b is None:
+                return None
+            new_path.append(Link(interface_a, interface_b))
+
+        return new_path
+
     def _find_interface_by_id(self, interface_id):
         """Find a Interface on controller with interface_id."""
+        if interface_id is None:
+            return None
+
         switch_id = ":".join(interface_id.split(":")[:-1])
         interface_number = int(interface_id.split(":")[-1])
         try:
@@ -331,10 +443,14 @@ class Main(KytosNApp):
 
         try:
             circuit = EVC(uni_a, uni_z, name)
-        except TypeError as e:
-            return jsonify("Bad request: {}".format(e)), 400
+        except TypeError as exception:
+            return jsonify("Bad request: {}".format(exception)), 400
 
         # Request paths to Pathfinder
+        circuit.primary_links = self.get_best_path(circuit)
+
+        # Install the flows using FlowManager
+        circuit.deploy()
 
         # Create event
 
