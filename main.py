@@ -7,6 +7,8 @@ NApp to provision circuits from user request.
 # import os
 # import pickle
 from uuid import uuid4
+from datetime import datetime
+from datetime import timezone
 
 import requests
 from flask import jsonify, request
@@ -16,6 +18,7 @@ from kytos.core.helpers import now
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.schedule import Schedule
 
 # from napps.kytos.mef_eline.models import Circuit, Endpoint, Link
 
@@ -25,7 +28,7 @@ class EVC:
 
     def __init__(self, uni_a, uni_z, name, start_date=None, end_date=None,
                  bandwidth=None, primary_links=None, backup_links=None,
-                 dynamic_backup_path=None):
+                 dynamic_backup_path=None, creation_time=None):
         """Create an EVC instance with the provided parameters.
 
         Do some basic validations to attributes.
@@ -66,7 +69,7 @@ class EVC:
         # created)
         self.request_time = now()
         # datetime when the circuit should be activated. now() || schedule()
-        self.creation_time = None
+        self.creation_time =  creation_time or now()
         self.owner = None
         # Operational State
         self.active = False
@@ -138,6 +141,7 @@ class EVC:
     def deploy(self):
         """Install the flows for this circuit."""
         if self.primary_links is None:
+            log.info("Primary links are empty.")
             return False
 
         self._chose_vlans()
@@ -200,6 +204,8 @@ class EVC:
 
         self.send_flow_mods(self.uni_z.interface.switch, flows_z)
 
+        log.info(f"The circuit {self.id} was deployed.")
+
 
 class Main(KytosNApp):
     """Main class of amlight/mef_eline NApp.
@@ -215,7 +221,8 @@ class Main(KytosNApp):
 
         So, if you have any setup routine, insert it here.
         """
-        pass
+        self.execute_as_loop(1)
+        self.schedule = Schedule()
 
     def execute(self):
         """This method is executed right after the setup method execution.
@@ -225,7 +232,7 @@ class Main(KytosNApp):
 
             self.execute_as_loop(30)  # 30-second interval.
         """
-        pass
+        self.schedule.run_pending()
 
     def shutdown(self):
         """This method is executed when your napp is unloaded.
@@ -437,26 +444,57 @@ class Main(KytosNApp):
         # Try to create the circuit object
         data = request.get_json()
 
+        name = data.get('name')
         uni_a = self._get_uni_from_request(data.get('uni_a'))
         uni_z = self._get_uni_from_request(data.get('uni_z'))
-        name = data.get('name')
+        creation_time =  self._get_time_from_data(data.get('creation_time'))
 
         try:
-            circuit = EVC(uni_a, uni_z, name)
+            circuit = EVC(uni_a, uni_z, name, creation_time=creation_time)
         except TypeError as exception:
             return jsonify("Bad request: {}".format(exception)), 400
 
         # Request paths to Pathfinder
         circuit.primary_links = self.get_best_path(circuit)
 
-        # Install the flows using FlowManager
-        circuit.deploy()
-
-        # Create event
+        # Schedule the circuit deploy
+        self.schedule.circuit_deploy(circuit)
 
         # Notify users
 
         return jsonify({"circuit_id": circuit.id}), 201
+
+    def _get_time_from_data(self, data=None):
+        """Receive a dictionary or a string and return a datatime instance.
+
+           data = {
+                 "year": 2006,
+                 "month": 11,
+                 "day": 21,
+                 "hour": 16,
+                 "minute": 30 ,
+                 "second": 00
+           }
+
+           or
+
+           data = "21/11/06 16:30:00"
+
+           2018-04-17T17:13:50Z
+
+        Args:
+            data (str, dict): python dict or string to be converted to datetime
+
+        Returns:
+            datetime: datetime instance.
+        """
+        if isinstance(data, str):
+            date =  datetime.strptime(data, "%Y-%m-%dT%H:%M:%S")
+        elif (isinstance(data, dict)):
+            date = datetime(**data)
+        else:
+            return None
+        return date.replace(tzinfo=timezone.utc)
 
     # Old methods
     # @rest('/v1/circuits', methods=['GET'])
