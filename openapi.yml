@@ -9,7 +9,7 @@ schemes:
 tags:
   - name: Future
 paths:
-  /circuits:
+  /v2/evc/:
     post:
       summary: Creates a new circuit
       description: Creates a new circuit based on the endpoints and constraints given
@@ -25,101 +25,38 @@ paths:
           schema:
             $ref: '#/definitions/NewCircuit'
       responses:
-        200:
+        '200':
           description: OK
-  /circuits/{circuitId}:
+  /v2/evc/{circuit_id}:
     get:
       summary: Get details of a circuit
       description: Show the details of a single circuit
       produces:
         - applications/json
       parameters:
-        - name: circuitId
+        - name: circuit_id
           in: path
           required: true
           type: integer
+      tags:
+        - Future
       responses:
-        200:
+        '200':
           description: OK
-    post:
-      summary: Updates a circuit
-      description: Updates an existing circuit based on data given
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - name: circuitId
-          in: path
-          required: true
-          type: integer
-        - in: body
-          name: circuit
-          description: Circuit endpoints and constraints
-          required: true
-          schema:
-            $ref: '#/definitions/NewCircuit'
-      responses:
-        200:
-          description: OK
-    delete:
-      summary: Removes a circuit
-      description: ''
-      parameters:
-        - name: circuitId
-          in: path
-          required: true
-          type: integer
-      responses:
-        200:
-          description: OK
-  /v1/circuits:
+
+  /v2/evc/:
     get:
       summary: All circuts
       description: Gets all circuits
       responses:
-        200:
+        '200':
           description: OK
           schema:
             type: array
             items:
               $ref: '#/definitions/Circuit'
-  /circuits/byLink/{linkId}:
-    get:
-      summary: Circuits by link
-      description: Gets all circuits using given link
-      parameters:
-        - name: linkId
-          in: path
-          required: true
-          type: string
-      responses:
-        200:
-          description: OK
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Circuit'
-  /circuits/byUNI/{dpid}/{port}:
-    get:
-      summary: Circuits by UNI
-      description: Gets all circuits using given UNI (dpid and port)
-      parameters:
-        - name: dpid
-          in: path
-          required: true
-          type: string
-        - name: port
-          in: path
-          required: true
-          type: string
-      responses:
-        200:
-          description: OK
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Circuit'
+      tags:
+        - Future
 definitions:
   NewCircuit:
     type: object
