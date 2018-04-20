@@ -43,20 +43,6 @@ paths:
       responses:
         '200':
           description: OK
-
-  /v2/evc/:
-    get:
-      summary: All circuts
-      description: Gets all circuits
-      responses:
-        '200':
-          description: OK
-          schema:
-            type: array
-            items:
-              $ref: '#/definitions/Circuit'
-      tags:
-        - Future
 definitions:
   NewCircuit:
     type: object
