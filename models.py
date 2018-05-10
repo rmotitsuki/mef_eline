@@ -1,209 +1,201 @@
 """Classes used in the main application."""
+from uuid import uuid4
 
-import json
-import uuid
-from datetime import datetime, timedelta
-
-# class Path:
-#     _id = None
-#     _endpoints = []
-
-
-class Link:
-    """Define a link between two Endpoints."""
-
-    def __init__(self, endpoint_a, endpoint_b, bandwidth):
-        """Create a Link instance and set its attributes."""
-        self.endpoint_a = endpoint_a
-        self.endpoint_b = endpoint_b
-        self.bandwidth = bandwidth
-
-    def __eq__(self, other):
-        """Check if two instances of Link are equal."""
-        return (self.endpoint_a == other.endpoint_a and
-                self.endpoint_b == other.endpoint_b)
-
-    def as_dict(self):
-        """Return the Link as a dictionary."""
-        return {'endpoint_a': self.endpoint_a.as_dict(),
-                'endpoint_b': self.endpoint_b.as_dict(),
-                'bandwidth': self.bandwidth}
+import requests
+from kytos.core import log
+from kytos.core.helpers import now
+from kytos.core.interface import UNI
+from napps.kytos.mef_eline import settings
 
 
-class Tag:
-    """Class that represents a TAG, a simple UNI property."""
+class EVC:
+    """Class that represents a E-Line Virtual Connection."""
 
-    def __init__(self, tag_type='VLAN', value=None):
-        """Create a Tag instance and set its attributes."""
-        self.tag_type = tag_type
-        self.value = value
+    def __init__(self, uni_a, uni_z, name, start_date=None, end_date=None,
+                 bandwidth=None, primary_links=None, backup_links=None,
+                 dynamic_backup_path=None, creation_time=None):
+        """Create an EVC instance with the provided parameters.
 
-    def is_valid(self):
-        """Check if a Tag has valid properties."""
-        if self.tag_type not in ['VLAN', 'MPLS']:
-            return False
+        Do some basic validations to attributes.
+        """
 
-        if not isinstance(self.value, int):
-            return False
+        if uni_a is None or uni_z is None or name is None:
+            raise TypeError("Invalid arguments")
 
-        return True
+        if ((not isinstance(uni_a, UNI)) or
+                (not isinstance(uni_z, UNI))):
+            raise TypeError("Invalid UNI")
 
-    @classmethod
-    def from_dict(cls, data):
-        """Create a Tag instance from a dictionary."""
-        return cls(data.get('tag_type'),
-                   data.get('value'))
+        if not uni_a.is_valid() or not uni_z.is_valid():
+            raise TypeError("Invalid UNI")
 
-    def as_dict(self):
-        """Return the Tag as a dictionary."""
-        return {"tag_type": self.tag_type,
-                "value": self.value}
-
-    def as_json(self):
-        """Return the Tag as a JSON string."""
-        return json.dumps(self.as_dict())
-
-
-class Endpoint:
-    """Class that represents an endpoint according to MEF 6.2 and MEF 10.3."""
-
-    def __init__(self, dpid, port, tag=None):
-        """Create an Endpoint instance and set its attributes."""
-        self.dpid = str(dpid)
-        self.port = str(port)
-        self.tag = tag or Tag()
-
-    def __eq__(self, other):
-        """Check if two instances of Endpoint are equal."""
-        return self.dpid == other.dpid and self.port == other.port
-
-    def is_valid(self):
-        """Check if an Endpoint has valid properties."""
-        if not isinstance(self.dpid, str):
-            return False
-
-        if not isinstance(self.port, str):
-            return False
-
-        if not isinstance(self.tag, Tag):
-            return False
-
-        return self.tag.is_valid()
-
-    @classmethod
-    def from_dict(cls, data):
-        """Create an Endpoint instance from a dictionary."""
-        return cls(data.get('dpid'),
-                   data.get('port'),
-                   Tag.from_dict(data.get('tag')))
-
-    def as_dict(self):
-        """Return the Endpoint as a dictionary."""
-        return {"dpid": self.dpid,
-                "port": self.port,
-                "tag": self.tag.as_dict()}
-
-    def as_json(self):
-        """Return the Endpoint as a JSON string."""
-        return json.dumps(self.as_dict())
-
-
-class Circuit:
-    """Class that represents a circuit according to MEF 6.2 and MEF 10.3.
-
-    This class has only the basics properties. We have plans to implement all
-    other properties soon.
-    """
-
-    def __init__(self, name, uni_a, uni_z, start_date=None, end_date=None,
-                 bandwidth=None, path=None):
-        """Create a Circuit instance and set its attributes."""
-        self.id = str(uuid.uuid4())
-        self.name = name
+        self._id = uuid4().hex
         self.uni_a = uni_a
         self.uni_z = uni_z
-        self.start_date = start_date or datetime.utcnow()
-        self.end_date = (end_date or self.start_date +
-                         timedelta(days=365))
+        self.name = name
+        self.start_date = start_date if start_date else now()
+        self.end_date = end_date
+        # Bandwidth profile
         self.bandwidth = bandwidth
-        self.path = path or []  # List of Links
+        self.primary_links = primary_links
+        self.backup_links = backup_links
+        self.dynamic_backup_path = dynamic_backup_path
+        # dict with the user original request (input)
+        self._requested = None
+        # circuit being used at the moment if this is an active circuit
+        self.current_path = None
+        # primary circuit offered to user IF one or more links were provided in
+        # the request
+        self.primary_path = None
+        # backup circuit offered to the user IF one or more links were provided
+        # in the request
+        self.backup_path = None
+        # datetime of user request for a EVC (or datetime when object was
+        # created)
+        self.request_time = now()
+        # datetime when the circuit should be activated. now() || schedule()
+        self.creation_time =  creation_time or now()
+        self.owner = None
+        # Operational State
+        self.active = False
+        # Administrative State
+        self.enabled = False
+        # Service level provided in the request. "Gold", "Silver", ...
+        self.priority = 0
+        # (...) everything else from request must be @property
 
-    def is_valid(self):
-        """Check if a Circuit has valid properties."""
-        # Check basic types
-        if not (isinstance(self.name, str) and isinstance(self.bandwidth, int)
-                and isinstance(self.path, list)):
+    def create(self):
+        pass
+
+    def discover_new_path(self):
+        pass
+
+    def change_path(self, path):
+        pass
+    def reprovision(self):
+        """Force the EVC (re-)provisioning"""
+        pass
+
+    def remove(self):
+        pass
+
+    @property
+    def id(self):  # pylint: disable=invalid-name
+        """Return this EVC's ID."""
+        return self._id
+
+    @staticmethod
+    def send_flow_mods(switch, flow_mods):
+        """Send a flow_mod list to a specific switch."""
+        endpoint = "%s/flows/%s" % (settings.MANAGER_URL, switch.id)
+
+        data = {"flows": flow_mods}
+        requests.post(endpoint, json=data)
+
+    @staticmethod
+    def prepare_flow_mod(in_interface, out_interface, in_vlan=None,
+                         out_vlan=None, push=False, pop=False, change=False):
+        """Create a flow_mod dictionary with the correct parameters."""
+        default_action = {"action_type": "output",
+                          "port": out_interface.port_number}
+
+        flow_mod = {"match": {"in_port": in_interface.port_number},
+                    "actions": [default_action]}
+        if in_vlan:
+            flow_mod['match']['dl_vlan'] = in_vlan
+        if out_vlan and not pop:
+            new_action = {"action_type": "set_vlan",
+                          "vlan_id": out_vlan}
+            flow_mod["actions"].insert(0, new_action)
+        if pop:
+            new_action = {"action_type": "pop_vlan"}
+            flow_mod["actions"].insert(0, new_action)
+        if push:
+            new_action = {"action_type": "push_vlan",
+                          "tag_type": "s"}
+            flow_mod["actions"].insert(0, new_action)
+        if change:
+            new_action = {"action_type": "set_vlan",
+                          "vlan_id": change}
+            flow_mod["actions"].insert(0, new_action)
+        return flow_mod
+
+    def _chose_vlans(self):
+        """Chose the VLANs to be used for the circuit."""
+        for link in self.primary_links:
+            tag = link.get_next_available_tag()
+            link.use_tag(tag)
+            link.add_metadata('s_vlan', tag)
+
+    def primary_links_zipped(self):
+        """Return an iterator which yields pairs of links in order."""
+        return zip(self.primary_links[:-1],
+                   self.primary_links[1:])
+
+    def deploy(self):
+        """Install the flows for this circuit."""
+        if self.primary_links is None:
+            log.info("Primary links are empty.")
             return False
 
-        # Check Endpoint instances
-        if not (isinstance(self.uni_a, Endpoint) and
-                isinstance(self.uni_z, Endpoint)):
-            return False
+        self._chose_vlans()
 
-        # Check datetime instances
-        if not (isinstance(self.start_date, datetime) and
-                isinstance(self.end_date, datetime)):
-            return False
+        # Install NNI flows
+        for incoming, outcoming in self.primary_links_zipped():
+            in_vlan = incoming.get_metadata('s_vlan').value
+            out_vlan = outcoming.get_metadata('s_vlan').value
 
-        # Perform recursive validation on Endpoints
-        if not (self.uni_a.is_valid() and self.uni_z.is_valid()):
-            return False
+            flows = []
+            # Flow for one direction
+            flows.append(self.prepare_flow_mod(incoming.endpoint_b,
+                                               outcoming.endpoint_a,
+                                               in_vlan, out_vlan))
 
-        # Because we only support persistent VLAN tags for the service
-        # On the future we will support a multiple VLAN service
-        if self.uni_a.tag.value != self.uni_z.tag.value:
-            return False
+            # Flow for the other direction
+            flows.append(self.prepare_flow_mod(outcoming.endpoint_a,
+                                               incoming.endpoint_b,
+                                               out_vlan, in_vlan))
 
-        return True
+            self.send_flow_mods(incoming.endpoint_b.switch, flows)
 
-    def add_link_to_path(self, link):
-        """Add a Link to the Circuit's path."""
-        self.path.append(link)
+        # Install UNI flows
+        # Determine VLANs
+        in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
+        out_vlan_a = self.primary_links[0].get_metadata('s_vlan').value
 
-    def get_link(self, link):
-        """Get a Link from the Circuit's path."""
-        for path_link in self.path:
-            if path_link == link:
-                return path_link
-        return False
+        in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        out_vlan_z = self.primary_links[-1].get_metadata('s_vlan').value
 
-    @classmethod
-    def from_dict(cls, data):
-        """Create a Circuit instance from a dictionary."""
-        start_date = data.get('start_date')
-        end_date = data.get('end_date')
+        # Flows for the first UNI
+        flows_a = []
 
-        if start_date:
-            start_date = datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+        # Flow for one direction, pushing the service tag
+        flows_a.append(self.prepare_flow_mod(self.uni_a.interface,
+                                             self.primary_links[0].endpoint_a,
+                                             in_vlan_a, out_vlan_a, True,
+                                             change=in_vlan_z))
 
-        if end_date:
-            end_date = datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+        # Flow for the other direction, popping the service tag
+        flows_a.append(self.prepare_flow_mod(self.primary_links[0].endpoint_a,
+                                             self.uni_a.interface,
+                                             out_vlan_a, in_vlan_a, pop=True))
 
-        circuit = cls(data.get('name'),
-                      Endpoint.from_dict(data['uni_a']),
-                      Endpoint.from_dict(data['uni_z']),
-                      start_date,
-                      end_date,
-                      data.get('bandwidth'))
+        self.send_flow_mods(self.uni_a.interface.switch, flows_a)
 
-        if not circuit.is_valid():
-            raise Exception("Invalid Circuit attributes/types")
+        # Flows for the second UNI
+        flows_z = []
 
-        return circuit
+        # Flow for one direction, pushing the service tag
+        flows_z.append(self.prepare_flow_mod(self.uni_z.interface,
+                                             self.primary_links[-1].endpoint_b,
+                                             in_vlan_z, out_vlan_z, True,
+                                             change=in_vlan_a))
 
-    def as_dict(self):
-        """Return the Circuit as a dictionary."""
-        links = [link.as_dict() for link in self.path]
+        # Flow for the other direction, popping the service tag
+        flows_z.append(self.prepare_flow_mod(self.primary_links[-1].endpoint_b,
+                                             self.uni_z.interface,
+                                             out_vlan_z, in_vlan_z, pop=True))
 
-        return {"id": self.id,
-                "name": self.name,
-                "uni_a": self.uni_a.as_dict(),
-                "uni_z": self.uni_z.as_dict(),
-                "start_date": str(self.start_date),
-                "end_date": str(self.end_date),
-                "bandwidth": self.bandwidth,
-                "path": links}
+        self.send_flow_mods(self.uni_z.interface.switch, flows_z)
 
-    def as_json(self):
-        """Return the Circuit as a JSON string."""
-        return json.dumps(self.as_dict())
+        log.info(f"The circuit {self.id} was deployed.")
