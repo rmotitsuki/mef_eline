@@ -102,6 +102,67 @@ class EVC:
                     message = f'VLAN tag {tag} is not available in {attribute}'
                     raise ValueError(message)
 
+    def as_dict(self):
+        """A dictionary representing an EVC object."""
+        evc_dict = {"id": self.id, "name": self.name,
+                    "uni_a": self.uni_a.as_dict(),
+                    "uni_z": self.uni_z.as_dict()}
+
+        time_fmt = "%Y-%m-%dT%H:%M:%S"
+
+        def link_as_dict(links):
+            """Return list comprehension of links as_dict."""
+            return [link.as_dict() for link in links if link]
+
+        evc_dict["start_date"] = self.start_date
+        if isinstance(self.start_date, datetime):
+            evc_dict["start_date"] = self.start_date.strftime(time_fmt)
+
+        evc_dict["end_date"] = self.end_date
+        if isinstance(self.end_date, datetime):
+            evc_dict["end_date"] = self.end_date.strftime(time_fmt)
+
+        evc_dict['bandwidth'] = self.bandwidth
+        evc_dict['primary_links'] = link_as_dict(self.primary_links)
+        evc_dict['backup_links'] = link_as_dict(self.backup_links)
+        evc_dict['current_path'] = link_as_dict(self.current_path)
+        evc_dict['primary_path'] = link_as_dict(self.primary_path)
+        evc_dict['backup_path'] = link_as_dict(self.backup_path)
+        evc_dict['dynamic_backup_path'] = self.dynamic_backup_path
+
+        if self._requested:
+            evc_dict['_requested'] = self._requested
+
+        time = self.request_time.strftime(time_fmt)
+        evc_dict['request_time'] = time
+
+        time = self.creation_time.strftime(time_fmt)
+        evc_dict['creation_time'] = time
+
+        evc_dict['owner'] = self.owner
+        evc_dict['active'] = self.active
+        evc_dict['enabled'] = self.enabled
+        evc_dict['priority'] = self.priority
+
+        return evc_dict
+
+    @classmethod
+    def load_from_dict(cls, **kwargs):
+        """Load a EVC instance from dictionary.
+
+        This method will receive all the constructor parameters and the
+        following parameters:
+
+        Args:
+            current_path(list):circuit being used at the moment if this is an
+                                active circuit. Default is [].
+            primary_path(list): primary circuit offered to user IF one or more
+                                links were provided. Default is [].
+            backup_path(list): backup circuit offered to the user IF one or
+                               more links were provided. Default is [].
+        """
+        return cls(**kwargs)
+
     def create(self):
         pass
 
