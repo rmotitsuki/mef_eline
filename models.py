@@ -41,6 +41,8 @@ class EVC:
         Raises:
             ValueError: raised when object attributes are invalid.
         """
+        self._validate(**kwargs)
+
         # required attributes
         self._id = kwargs.get('id', uuid4().hex)
         self.uni_a = kwargs.get('uni_a')
@@ -71,6 +73,34 @@ class EVC:
         self.current_path = []
         self.primary_path = []
         self.backup_path = []
+
+    def _validate(self, **kwargs):
+        """Do Basic validations.
+
+        Verify required attributes: name, uni_a, uni_z
+        Verify if the attributes uni_a and uni_z are valid.
+
+        Raises:
+            ValueError: message with error detail.
+
+        """
+        required_attributes = ['name', 'uni_a', 'uni_z']
+
+        for attribute in required_attributes:
+
+            if attribute not in kwargs:
+                raise ValueError(f'{attribute} is required.')
+
+            if 'uni' in attribute:
+                uni = kwargs.get(attribute)
+
+                if not isinstance(uni, UNI):
+                    raise ValueError(f'{attribute} is an invalid UNI.')
+
+                elif not uni.is_valid():
+                    tag = uni_a.user_tag.value
+                    message = f'VLAN tag {tag} is not available in {attribute}'
+                    raise ValueError(message)
 
     def create(self):
         pass
