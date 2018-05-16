@@ -287,4 +287,5 @@ class EVC:
 
         self.send_flow_mods(self.uni_z.interface.switch, flows_z)
 
+        self.active = True
         log.info(f"The circuit {self.id} was deployed.")

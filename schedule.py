@@ -2,6 +2,7 @@
 import time
 from sched import scheduler
 from kytos.core.helpers import now
+from kytos.core import log
 
 
 class Schedule:
@@ -19,4 +20,11 @@ class Schedule:
     def circuit_deploy(self, circuit):
         """Add a new circuit deploy event."""
         seconds = (circuit.creation_time - now()).total_seconds()
-        self.scheduler.enter(seconds, 1, circuit.deploy)
+
+        if not circuit.enabled:
+            log.debug(f'{circuit.id} is not enabled')
+        elif not circuit.active:
+            log.debug(f'{circuit.id} is not active')
+        elif circuit.enabled and not circuit.active:
+            self.scheduler.enter(seconds, circuit.priority, circuit.deploy)
+            log.debug(f'{circuit.id} scheduled to be activated.')
