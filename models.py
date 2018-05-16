@@ -27,6 +27,12 @@ class EVC:
             bandwidth(int): Bandwidth used by EVC instance. Default is 0.
             primary_links(list): Primary links used by evc. Default is []
             backup_links(list): Backups links used by evc. Default is []
+            current_path(list):circuit being used at the moment if this is an
+                                active circuit. Default is [].
+            primary_path(list): primary circuit offered to user IF one or more
+                                links were provided. Default is [].
+            backup_path(list): backup circuit offered to the user IF one or
+                               more links were provided. Default is [].
             dynamic_backup_path(bool): Enable computer backup path dynamically.
                                        Dafault is False.
             creation_time(datetime|str): datetime when the circuit should be
@@ -56,6 +62,9 @@ class EVC:
         self.bandwidth = kwargs.get('bandwidth', 0)
         self.primary_links = kwargs.get('primary_links', [])
         self.backup_links =  kwargs.get('backup_links', [])
+        self.current_path = kwargs.get('current_path', [])
+        self.primary_path = kwargs.get('primary_path', [])
+        self.backup_path = kwargs.get('backup_path', [])
         self.dynamic_backup_path = kwargs.get('dynamic_backup_path', False)
         self.creation_time = get_time(kwargs.get('creation_time')) or  now()
         self.owner = kwargs.get('owner', None)
@@ -68,11 +77,6 @@ class EVC:
         self.request_time = now()
         # dict with the user original request (input)
         self._requested = kwargs
-
-        # internal paths attribute
-        self.current_path = []
-        self.primary_path = []
-        self.backup_path = []
 
     def _validate(self, **kwargs):
         """Do Basic validations.
@@ -131,7 +135,10 @@ class EVC:
         evc_dict['dynamic_backup_path'] = self.dynamic_backup_path
 
         if self._requested:
-            evc_dict['_requested'] = self._requested
+            request_dict = self._requested.copy()
+            request_dict['uni_a'] = request_dict['uni_a'].as_dict()
+            request_dict['uni_z'] = request_dict['uni_z'].as_dict()
+            evc_dict['_requested'] = request_dict
 
         time = self.request_time.strftime(time_fmt)
         evc_dict['request_time'] = time
@@ -145,23 +152,6 @@ class EVC:
         evc_dict['priority'] = self.priority
 
         return evc_dict
-
-    @classmethod
-    def load_from_dict(cls, **kwargs):
-        """Load a EVC instance from dictionary.
-
-        This method will receive all the constructor parameters and the
-        following parameters:
-
-        Args:
-            current_path(list):circuit being used at the moment if this is an
-                                active circuit. Default is [].
-            primary_path(list): primary circuit offered to user IF one or more
-                                links were provided. Default is [].
-            backup_path(list): backup circuit offered to the user IF one or
-                               more links were provided. Default is [].
-        """
-        return cls(**kwargs)
 
     def create(self):
         pass
