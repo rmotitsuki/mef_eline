@@ -89,32 +89,13 @@ class Main(KytosNApp):
             return None
 
         for link in zip(clean_path[1:-1:2], clean_path[2::2]):
-            interface_a = self._find_interface_by_id(link[0])
-            interface_b = self._find_interface_by_id(link[1])
+            interface_a = self.controller.get_interface_by_id(link[0])
+            interface_b = self.controller.get_interface_by_id(link[1])
             if interface_a is None or interface_b is None:
                 return None
             new_path.append(Link(interface_a, interface_b))
 
         return new_path
-
-    def _find_interface_by_id(self, interface_id):
-        """Find a Interface on controller with interface_id."""
-        if interface_id is None:
-            return None
-
-        switch_id = ":".join(interface_id.split(":")[:-1])
-        interface_number = int(interface_id.split(":")[-1])
-        try:
-            switch = self.controller.switches[switch_id]
-        except KeyError:
-            return None
-
-        try:
-            interface = switch.interfaces[interface_number]
-        except KeyError:
-            return None
-
-        return interface
 
     @rest('/v2/evc/', methods=['GET'])
     def list_circuits(self):
@@ -282,20 +263,17 @@ class Main(KytosNApp):
             if ('path' in attribute or 'link' in attribute) and \
                ('dynamic_backup_path' != attribute):
                 if len(value) != 0:
-                    link = Link(value.get('endpoint_a'),
-                                value.get('endpoint_b'))
-                    link.extend_metadata(value.get('metadata'))
-                    data[attribute] = link
+                    data[attribute] = link_from_dict(value)
 
         return EVC(**data)
 
     def uni_from_dict(self, uni_dict):
+        """Return a UNI object from python dict."""
         if uni_dict is None:
             return False
 
         interface_id = uni_dict.get("interface_id")
-
-        interface = self._find_interface_by_id(interface_id)
+        interface = self.controller.get_interface_by_id(interface_id)
         if interface is None:
             return False
 
@@ -310,3 +288,16 @@ class Main(KytosNApp):
             return False
 
         return uni
+
+    def link_from_dict(self, link_dict):
+        """Return a Link object from python dict."""
+        id_a = link_dict.get('endpoint_a')
+        id_b = link_dict.get('endpoint_b')
+
+        endpoint_a = self.controller.get_interface_by_id(id_b)
+        endpoint_b = self.controller.get_interface_by_id(id_a)
+
+        link = Link(endpoint_a, endpoint_b)
+        link.extend_metadata(link_dict.get('metadata'))
+
+        return link
