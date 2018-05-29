@@ -100,12 +100,16 @@ class Main(KytosNApp):
     @rest('/v2/evc/', methods=['GET'])
     def list_circuits(self):
         """Endpoint to return all circuits stored."""
+        if not self.box:
+            return jsonify({"response": "No circuit stored."}), 200
+
         return jsonify(self.box.data), 200
 
     @rest('/v2/evc/<circuit_id>', methods=['GET'])
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
-        circuits = self.box.data
+        circuits = self.box.data if self.box else {}
+
         if circuit_id in circuits:
             result = circuits[circuit_id]
             status = 200
@@ -241,7 +245,8 @@ class Main(KytosNApp):
 
         Schedule all Circuits with valid UNIs.
         """
-        for data in self.box.data.values():
+        stored_data = self.box.data.values() if not self.box else []
+        for data in stored_data:
             try:
                 evc = self.evc_from_dict(data)
                 self.schedule.circuit_deploy(evc)
