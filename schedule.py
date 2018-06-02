@@ -22,9 +22,9 @@ class Schedule:
         seconds = (circuit.creation_time - now()).total_seconds()
 
         if not circuit.enabled:
-            log.debug(f'{circuit.id} is not enabled')
-        elif not circuit.active:
-            log.debug(f'{circuit.id} is not active')
-        elif circuit.enabled and not circuit.active:
+            log.debug(f'{circuit} is not enabled')
+        if not circuit.active:
+            log.debug(f'{circuit} is not active')
+        if circuit.enabled and not circuit.active:
             self.scheduler.enter(seconds, circuit.priority, circuit.deploy)
-            log.debug(f'{circuit.id} scheduled to be activated.')
+            log.debug(f'{circuit} scheduled to be activated.')

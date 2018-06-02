@@ -78,6 +78,10 @@ class EVC:
         # dict with the user original request (input)
         self._requested = kwargs
 
+    def __repr__(self):
+        """Repr method."""
+        return f"EVC({self._id}, {self.name})"
+
     def _validate(self, **kwargs):
         """Do Basic validations.
 
@@ -288,4 +292,4 @@ class EVC:
         self.send_flow_mods(self.uni_z.interface.switch, flows_z)
 
         self.active = True
-        log.info(f"The circuit {self.id} was deployed.")
+        log.info(f"{self} was deployed.")
