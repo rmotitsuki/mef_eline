@@ -162,6 +162,9 @@ class Main(KytosNApp):
         self.schedule.circuit_deploy(evc)
 
         # Notify users
+        event = KytosEvent(name='kytos.mef_eline.created',
+                           content=evc.as_dict())
+        self.controller.buffers.app.put(event)
 
         return jsonify({"circuit_id": evc.id}), 201
 
