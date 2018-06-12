@@ -152,6 +152,10 @@ class Main(KytosNApp):
         except ValueError as exception:
             return jsonify("Bad request: {}".format(exception)), 400
 
+        # verify duplicated evc
+        if self.is_duplicated_evc(evc):
+            return jsonify("Not Acceptable: This evc already exists."), 409
+
         # save circuit
         self.save_evc(evc)
 
@@ -168,6 +172,25 @@ class Main(KytosNApp):
 
         return jsonify({"circuit_id": evc.id}), 201
 
+    def is_duplicated_evc(self, evc):
+        """Verify if the circuit given is duplicated with the stored evcs.
+
+        Args:
+            evc (EVC): circuit to be analysed.
+
+        Returns:
+            boolean: True if the circuit is duplicated, otherwise False.
+        """
+        for circuit_dict in self.box.data.values():
+            try:
+                circuit = self.evc_from_dict(circuit_dict)
+            except ValueError as exception:
+                continue
+
+            if circuit == evc:
+                return True
+
+        return False
 
     # METHODS TO HANDLE STOREHOUSE
     def create_box(self):

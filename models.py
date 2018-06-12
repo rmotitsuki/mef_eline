@@ -110,6 +110,17 @@ class EVC:
                     message = f'VLAN tag {tag} is not available in {attribute}'
                     raise ValueError(message)
 
+    def __eq__(self, other):
+        """Override the default implementation."""
+        if not isinstance(other, EVC):
+            return False
+
+        attrs_to_compare = ['name', 'uni_a', 'uni_z', 'owner', 'bandwidth']
+        for attribute in attrs_to_compare:
+            if getattr(other, attribute) != getattr(self, attribute):
+                return False
+        return True
+
     def as_dict(self):
         """A dictionary representing an EVC object."""
         evc_dict = {"id": self.id, "name": self.name,
