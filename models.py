@@ -6,9 +6,8 @@ from datetime import datetime
 from kytos.core import log
 from kytos.core.helpers import now, get_time
 from kytos.core.interface import UNI
-from kytos.core.common import GenericEntity
+from kytos.core.common import GenericEntity, EntityStatus
 from napps.kytos.mef_eline import settings
-
 
 class EVC(GenericEntity):
     """Class that represents a E-Line Virtual Connection."""
@@ -28,7 +27,7 @@ class EVC(GenericEntity):
             bandwidth(int): Bandwidth used by EVC instance. Default is 0.
             primary_links(list): Primary links used by evc. Default is []
             backup_links(list): Backups links used by evc. Default is []
-            current_path(list):circuit being used at the moment if this is an
+            current_path(list): Circuit being used at the moment if this is an
                                 active circuit. Default is [].
             primary_path(list): primary circuit offered to user IF one or more
                                 links were provided. Default is [].
@@ -71,6 +70,10 @@ class EVC(GenericEntity):
         self.creation_time = get_time(kwargs.get('creation_time')) or  now()
         self.owner = kwargs.get('owner', None)
         self.priority = kwargs.get('priority', 0)
+
+        self.current_links_cache = set()
+        self.primary_links_cache = set()
+        self.backup_links_cache = set()
 
         if kwargs.get('active', False):
             self.activate()
@@ -181,14 +184,125 @@ class EVC(GenericEntity):
     def create(self):
         pass
 
-    def discover_new_path(self):
-        pass
+#    def discover_new_path(self):
+#        pass
 
-    def change_path(self, path):
-        pass
-    def reprovision(self):
-        """Force the EVC (re-)provisioning"""
-        pass
+#    def change_path(self, path):
+#        pass
+
+#    def reprovision(self):
+#        """Force the EVC (re-)provisioning"""
+#        if self.backup_path.is_set() and self.backup_path.is_up():
+#            # EVC has a backup_path set by user and it is up
+#            self.move_to_backup_path()
+#        elif self.dynamic_backup_path:
+#            # Search for a dynamic path
+#            self.discover_new_path()
+# TODO: Create a __hash__ on Link
+# TODO: Fix flapping links
+
+# EVENTS:
+#   LINK_DOWN: Network Problem (Operations)
+#   LINK_UNDER_MAINTENANCE: Administrative down (Administrative)
+#
+# Operations
+
+# link.activate()
+# link.deactivate()
+
+# Administative
+
+# link.enable()
+# link.disable()
+
+# Questions:
+# link.is_active()
+# link.is_enabled()
+# link.is_administrative_down()
+
+    # TODO: Double check if those events are correct
+    # TODO: We need to generate a new event to maintenance operations
+    @listen('kytos.*.link.down')
+    @listen('kytos.*.link.under_maintenance')
+    def handle_link_down(self, event):
+        if not self.is_affected_by_link(event.link):
+            return
+
+        success = False
+        if self.is_using_primary_path():
+            success = self.deploy_to_backup_path()
+        elif self.is_using_backup_path():
+            success = self.deploy_to_primary_path()
+
+        if success:
+            # TODO: LOG/EVENT: Circuit deployed after link down
+            return
+
+        if self.dynamic_backup_path:
+            success = self.deploy()
+            # TODO: LOG/EVENT: failed to re-deploy circuit after link down
+
+    def is_affected_by_link(self, link):
+        return link in self.current_path_cache
+
+    def is_backup_path_affected_by_link(self, link):
+        return link in self.backup_path_cache
+
+    def is_primary_path_affected_by_link(self, link):
+        return link in self.primary_path_cache
+
+    def is_using_primary_path(self):
+        """Verify if the current deployed path is self.primary_path."""
+        return self.current_path == self.primary_path
+
+    def is_using_backup_path(self):
+        """Verify if the current deployed path is self.backup_path."""
+        return self.current_path == self.backup_path
+
+    def deploy_to_backup_path(self):
+        """Deploy the backup path into the datapaths of this circuit.
+
+        If the backup_path attribute is valid and up, this method will try to
+        deploy this backup_path.
+        """
+        if self.is_using_backup_path:
+            # TODO: Log to say that cannot move backup to backup
+            return False
+
+        if self.get_path_status(self.backup_path) is EntityStatus.UP:
+            return self.deploy(self.backup_path)
+        return False
+
+    def deploy_to_primary_path(self):
+        """Deploy the primary path into the datapaths of this circuit.
+
+        If the primary_path attribute is valid and up, this method will try to
+        deploy this primary_path.
+        """
+        if self.is_using_primary_path:
+            # TODO: Log to say that cannot move primary to primary
+            return False
+
+        if self.get_path_status(self.primary_path) is EntityStatus.UP:
+            return self.deploy(self.primary_path)
+        return False
+
+    def get_path_status(self, path):
+        """Check for the current status of a path.
+
+        If any link in this path is down, the path is considered down.
+        """
+        if not path:
+            return EntityStatus.DISABLED
+
+        for link in path:
+            if link.status is not EntityStatus.UP:
+                return link.status
+        return EntityStatus.UP
+
+#    def discover_new_path(self):
+#        # TODO: discover a new path to satisfy this circuit and deploy
+#        pass
 
     def remove(self):
         pass
@@ -246,8 +360,18 @@ class EVC(GenericEntity):
         return zip(self.primary_links[:-1],
                    self.primary_links[1:])
 
-    def deploy(self):
+    def deploy(self, path=None):
         """Install the flows for this circuit."""
+        # TODO: Refact this in case path is None
+        #
+        # 1. Decide if will deploy "path" or discover a new path
+        # 2. Choose vlans
+        # 3. Install NNI flows
+        # 4. Install UNI flows
+        # 5. Activate
+        # 6. Update current_path
+        # 7. Update links caches (primary, current, backup)
+
         if self.primary_links is None:
             log.info("Primary links are empty.")
             return False
