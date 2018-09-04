@@ -187,7 +187,7 @@ class EVC(GenericEntity):
 
         evc_dict["request_time"] = self.request_time
         if isinstance(self.request_time, datetime):
-            evc_dict["end_date"] = self.request_time.strftime(time_fmt)
+            evc_dict["request_time"] = self.request_time.strftime(time_fmt)
 
         time = self.creation_time.strftime(time_fmt)
         evc_dict['creation_time'] = time
