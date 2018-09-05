@@ -248,7 +248,7 @@ class EVCDeploy(EVCBase):
         """Create a EVC."""
         pass
 
-    def discover_new_path(self):
+    def discover_new_path(self, path=None):
         """Discover a new path to satisfy this circuit and deploy."""
         pass
 
@@ -310,13 +310,20 @@ class EVCDeploy(EVCBase):
 
         """
         if not self.should_deploy(path):
-            return
+            return False
+
+        if path is None:
+            path = self.discover_new_path(path)
+
+        if not path:
+            return False
 
         self.choose_vlans(path)
         self.install_nni_flows(path)
         self.install_uni_flows(path)
         self.activate()
         log.info(f"{self} was deployed.")
+        return True
 
     def install_nni_flows(self, path=None):
         """Install NNI flows."""
@@ -454,7 +461,102 @@ class EVCDeploy(EVCBase):
         return flow_mod
 
 
-class EVC(EVCDeploy):
+class LinkProtection(EVCDeploy):
+    """Class to handle link protection."""
+
+    def is_affected_by_link(self, link=None):
+        """Verify if the current path is affected by link down event."""
+        return self.current_path.is_affected_by_link(link)
+
+    def is_using_primary_path(self):
+        """Verify if the current deployed path is self.primary_path."""
+        return self.current_path == self.primary_path
+
+    def is_using_backup_path(self):
+        """Verify if the current deployed path is self.backup_path."""
+        return self.current_path == self.backup_path
+
+    def is_using_dynamic_path(self):
+        """Verify if the current deployed path is dynamic."""
+        if not self.is_using_primary_path() and \
+           not self.is_using_backup_path() and \
+           self.current_path.status is EntityStatus.UP:
+            return True
+        return False
+
+    def deploy_to(self, path_name=None, path=None):
+        """Create a deploy to path."""
+        if self.current_path == path:
+            log.debug(f'{path_name} is equal to current_path.')
+            return True
+
+        if path.status is EntityStatus.UP:
+            return self.deploy(path)
+
+        return False
+
+    def handle_link_up(self, link):
+        """Handle circuit when link down.
+
+        Args:
+            link(Link): Link affected by link.down event.
+
+        """
+        if self.is_using_primary_path():
+            return True
+
+        success = False
+        if self.primary_path.is_affected_by_link(link):
+            success = self.deploy_to('primary_path', self.primary_path)
+
+        if success:
+            return True
+
+        # We tried to deploy(primary_path) without success.
+        # And in this case is up by some how. Nothing to do.
+        if self.is_using_backup_path() or self.is_using_dynamic_path():
+            return True
+
+        # In this case, probably the circuit is not being used and
+        # we can move to backup
+        if self.backup_path.is_affected_by_link(link):
+            success = self.deploy_to('backup_path', self.backup_path)
+
+        if success:
+            return True
+
+        # In this case, the circuit is not being used and we should
+        # try a dynamic path
+        if self.dynamic_backup_path:
+            return self.deploy()
+
+        return True
+
+    def handle_link_down(self):
+        """Handle circuit when link down.
+
+        Returns:
+            bool: True if the re-deploy was successly otherwise False.
+
+        """
+        success = False
+        if self.is_using_primary_path():
+            success = self.deploy_to('backup_path', self.backup_path)
+        elif self.is_using_backup_path():
+            success = self.deploy_to('primary_path', self.primary_path)
+
+        if not success and self.dynamic_backup_path:
+            success = self.deploy()
+
+        if success:
+            log.debug(f"{self} deployed after link down.")
+        else:
+            log.debug(f'Failed to re-deploy {self} after link down.')
+
+        return success
+
+
+class EVC(LinkProtection):
     """Class that represents a E-Line Virtual Connection."""
 
     pass

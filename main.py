@@ -216,13 +216,42 @@ class Main(KytosNApp):
 
         Schedule all Circuits with valid UNIs.
         """
-        stored_data = self.storehouse.get_data().values() or []
-        for data in stored_data:
+        for data in self.storehouse.get_data().values():
             try:
                 evc = self.evc_from_dict(data)
                 self.sched.add(evc)
             except ValueError as _exception:
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
+
+    @listen_to('kytos.*.link.up', 'kytos.*.link.end_maintenance')
+    def handle_link_up(self, event):
+        """Change circuit when link is up or end_maintenance."""
+        evc = None
+
+        for data in self.storehouse.get_data().values():
+            try:
+                evc = self.evc_from_dict(data)
+            except ValueError as _exception:
+                log.debug(f'{data.get("id")} can not be provisioning yet.')
+                continue
+
+            if not evc.is_affected_by_link(event.link):
+                evc.handle_link_up(event.link)
+
+    @listen_to('kytos.*.link.down', 'kytos.*.link.under_maintenance')
+    def handle_link_down(self, event):
+        """Change circuit when link is down or under_mantenance."""
+        evc = None
+
+        for data in self.storehouse.get_data().values():
+            try:
+                evc = self.evc_from_dict(data)
+            except ValueError as _exception:
+                log.debug(f'{data.get("id")} can not be provisioning yet.')
+                continue
+
+            if not evc.is_affected_by_link(event.link):
+                evc.handle_link_down()
 
     def evc_from_dict(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
