@@ -222,7 +222,7 @@ class Main(KytosNApp):
             if 'uni' in attribute:
                 data[attribute] = self.uni_from_dict(value)
 
-            if attribute == 'circuit_schedule':
+            if attribute == 'circuit_scheduler':
                 data[attribute] = []
                 for schedule in value:
                     data[attribute].append(CircuitSchedule.from_dict(schedule))
