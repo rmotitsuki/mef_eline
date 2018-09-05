@@ -8,8 +8,9 @@ from kytos.core.interface import UNI
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.models import EVC  # NOQA
-from napps.kytos.mef_eline.tests.helpers import get_uni_mocked  # NOQA
+from napps.kytos.mef_eline.models import EVC
+from napps.kytos.mef_eline.scheduler import CircuitSchedule
+from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
@@ -160,7 +161,12 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             'request_time': '2018-08-21T19:10:41',
             'creation_time': '2018-08-21T18:44:54',
             'owner': "my_name",
-            'circuit_scheduler': [],
+            'circuit_scheduler': [
+                CircuitSchedule.from_dict({"id":234243247, "action":"create",
+                                          "frequency":"1 * * * *"}),
+                CircuitSchedule.from_dict({"id":234243239, "action":"create",
+                                          "interval":{"hours": 2}})
+            ],
             'enabled': True,
             'priority': 2
         }
@@ -191,14 +197,40 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                            'request_time': '2018-08-21T19:10:41',
                            'creation_time': '2018-08-21T18:44:54',
                            'owner': "my_name",
-                           'circuit_scheduler': [],
+                           'circuit_scheduler': [
+                               {
+                                "id": 234243247,
+                                "action": "create",
+                                "frequency": "1 * * * *"
+                               },
+                               {
+                                "id": 234243239,
+                                "action": "create",
+                                "interval": {
+                                   "hours": 2
+                                }
+                               }
+                           ],
                            'enabled': True,
                            'priority': 2
             },
             'request_time': '2018-08-21T19:10:41',
             'creation_time': '2018-08-21T18:44:54',
             'owner': 'my_name',
-            'circuit_scheduler': [],
+            'circuit_scheduler': [
+               {
+                "id": 234243247,
+                "action": "create",
+                "frequency": "1 * * * *"
+               },
+               {
+                "id": 234243239,
+                "action": "create",
+                "interval": {
+                   "hours": 2
+                }
+               }
+            ],
             'active': False,
             'enabled': True,
             'priority': 2

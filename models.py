@@ -276,6 +276,8 @@ class EVCBase(GenericEntity):
             request_dict = self._requested.copy()
             request_dict['uni_a'] = request_dict['uni_a'].as_dict()
             request_dict['uni_z'] = request_dict['uni_z'].as_dict()
+            request_dict['circuit_scheduler'] = [sched.as_dict() for sched in
+                                                 self.circuit_scheduler]
             evc_dict['_requested'] = request_dict
 
         evc_dict["request_time"] = self.request_time
@@ -286,7 +288,9 @@ class EVCBase(GenericEntity):
         evc_dict['creation_time'] = time
 
         evc_dict['owner'] = self.owner
-        evc_dict['circuit_scheduler'] = self.circuit_scheduler
+        evc_dict['circuit_scheduler'] = [sched.as_dict() for sched in
+                                         self.circuit_scheduler]
+
         evc_dict['active'] = self.is_active()
         evc_dict['enabled'] = self.is_enabled()
         evc_dict['priority'] = self.priority
