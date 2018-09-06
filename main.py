@@ -99,6 +99,9 @@ class Main(KytosNApp):
         # Try to create the circuit object
         data = request.get_json()
 
+        if not data:
+            return jsonify("Bad request: The request do not have a json."), 400
+
         try:
             evc = self.evc_from_dict(data)
         except ValueError as exception:

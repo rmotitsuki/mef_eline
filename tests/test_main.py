@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 from kytos.core import Controller
 from kytos.core.config import KytosConfig
 
-from napps.kytos.mef_eline.main import Main  # NOQA
+from napps.kytos.mef_eline.main import Main
 
 
 class TestMain(TestCase):
@@ -101,7 +101,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
-    def test_create_a_circuit(self, *args):
+    def test_create_a_circuit_case_1(self, *args):
         """Test create a new circuit."""
         (validate_mock, evc_as_dict_mock, save_evc_mock,
          uni_from_dict_mock, sched_add_mock, storehouse_data_mock) = args
@@ -198,3 +198,15 @@ class TestMain(TestCase):
         """Return a flask api test client."""
         napp.controller.api_server.register_napp_endpoints(napp)
         return napp.controller.api_server.app.test_client()
+
+    def test_create_a_circuit_case_2(self):
+        """Test create a new circuit trying to send request without a json."""
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        response = api.post(url)
+        current_data = json.loads(response.data)
+        expected_data = 'Bad request: The request do not have a json.'
+
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(current_data, expected_data)
