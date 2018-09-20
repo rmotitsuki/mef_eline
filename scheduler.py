@@ -65,7 +65,7 @@ class Scheduler:
                 action = circuit.remove
 
             if circuit_scheduler.date:
-                data.update({'run_time': circuit_scheduler.date})
+                data.update({'run_date': circuit_scheduler.date})
                 self.scheduler.add_job(action, 'date', **data)
             else:
                 data.update({'start_date': circuit.start_date,
