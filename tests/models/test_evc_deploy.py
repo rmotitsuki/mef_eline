@@ -477,7 +477,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(send_flow_mods_mocked.call_count, 2)
         self.assertFalse(evc.is_active())
         flows = [{'cookie': evc.get_cookie()}]
-        switch1 = evc.primary_links[0].endpoint_a.switch
-        switch2 = evc.primary_links[0].endpoint_b.switch
-        send_flow_mods_mocked.assert_called_with(switch1, flows, 'delete')
-        send_flow_mods_mocked.assert_called_with(switch2, flows, 'delete')
+        switch_1 = evc.primary_links[0].endpoint_a.switch
+        switch_2 = evc.primary_links[0].endpoint_b.switch
+        send_flow_mods_mocked.assert_any_call(switch_1, flows, 'delete')
+        send_flow_mods_mocked.assert_any_call(switch_2, flows, 'delete')
