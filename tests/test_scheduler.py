@@ -104,10 +104,8 @@ class TestScheduler(TestCase):
         evc = EVC(**options)
         self.scheduler.add(evc)
         expected_parameters = {
-            "end_date": None,
             "id": circuit_scheduler.id,
             "run_time": circuit_scheduler.date,
-            "start_date": evc.start_date
             }
         scheduler_add_job_mock.assert_called_once_with(evc.remove, 'date',
                                                        **expected_parameters)
@@ -137,7 +135,7 @@ class TestScheduler(TestCase):
             "id": circuit_scheduler.id,
             "hours": 2,
             "minutes": 3,
-            "start_date": evc.start_date
+            "start_date": evc.start_date,
         }
         scheduler_add_job_mock.assert_called_once_with(evc.deploy, 'interval',
                                                        **expected_parameters)

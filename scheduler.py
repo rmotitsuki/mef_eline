@@ -56,9 +56,7 @@ class Scheduler:
     def add(self, circuit):
         """Add all circuit_scheduler from specific circuit."""
         for circuit_scheduler in circuit.circuit_scheduler:
-            data = {'id': circuit_scheduler.id,
-                    'start_date': circuit.start_date,
-                    'end_date': circuit.end_date}
+            data = {'id': circuit_scheduler.id}
             action = None
 
             if circuit_scheduler.action == 'create':
@@ -69,12 +67,15 @@ class Scheduler:
             if circuit_scheduler.date:
                 data.update({'run_time': circuit_scheduler.date})
                 self.scheduler.add_job(action, 'date', **data)
+            else:
+                data.update({'start_date': circuit.start_date,
+                             'end_date': circuit.end_date})
 
             if circuit_scheduler.interval:
                 data.update(circuit_scheduler.interval)
                 self.scheduler.add_job(action, 'interval', **data)
 
-            if circuit_scheduler.frequency:
+            elif circuit_scheduler.frequency:
                 cron = CronTrigger.from_crontab(circuit_scheduler.frequency,
                                                 timezone=utc)
                 self.scheduler.add_job(action, cron, **data)
