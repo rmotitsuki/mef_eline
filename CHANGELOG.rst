@@ -23,6 +23,14 @@ Fixed
 Security
 ========
 
+[2.2.2] - 2018-10-15
+********************
+
+Fixed
+=====
+ - Fixed error when creating a circuit with scheduling and without `start_date`
+   (#79 and #80)
+
 [2.2.1] - 2018-09-06
 ********************
 Added
