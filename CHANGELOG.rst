@@ -23,6 +23,51 @@ Fixed
 Security
 ========
 
+[2.2.2] - 2018-10-15
+********************
+
+Fixed
+=====
+ - Fixed error when creating a circuit with scheduling and without `start_date`
+   (#79 and #80)
+
+[2.2.1] - 2018-09-06
+********************
+Added
+=====
+- Added endpoint to allow update circuit informations.
+- Added structure to support ci integration: unittests, linter, tox and
+  scrutinizer.
+- Added some tests for the class already created.
+- Added some LinkProtection features:
+  - Added method to handle when links goes up or end_maintenance.
+  - Added method to handle when links goes down or under_maintenance.
+  - When primary_path and backup_path goes down or under_maintenance and
+    `dynamic_backup_path` is setted as True a dynamic path is choosed using the
+    PathFinder NApp when the primary and backup path is both down or not
+    setted.
+  - When the primary_path is down and backup_path exists and is UP the circuit
+    will change from primary_path to backup_path.
+  - When the primary_path change from DOWN to UP the circuits will change to
+    the primary_path.
+  - When the circuit is disabled the circuit will not be deployed.
+  - Added method to looking for links affected was created using the python
+    `set` class to be more fast to find the links affected.
+
+Changed
+=======
+- Change deploy to use primary_path, backup_path or a dynamic_path.
+- Improved the Schedule to use advanced python scheduler (APScheduler) library.
+Thanks @ajoaoff for recommends this library.
+- The attribute circuit_scheduler in the EVC class should have some instances
+of CircuitScheduler, this instances will have the information about the
+scheduler informations.
+
+Fixed
+=====
+- Fixed the create circuit method when sending a invalid request
+- Fixed some linter warnings.
+
 [2.2.0] - 2018-06-15
 ********************
 Added
