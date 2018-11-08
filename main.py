@@ -53,7 +53,7 @@ class Main(KytosNApp):
         """Endpoint to return all circuits stored."""
         circuits = self.storehouse.get_data()
         if not circuits:
-            return jsonify({"response": "No circuit stored."}), 200
+            return jsonify({}), 200
 
         return jsonify(circuits), 200
 

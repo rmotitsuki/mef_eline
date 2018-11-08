@@ -52,8 +52,20 @@ class TestMain(TestCase):
         url = f'{self.server_name_url}/v2/evc/'
         response = api.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.data.decode()),
-                         {"response": "No circuit stored."})
+        self.assertEqual(json.loads(response.data.decode()), {})
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_with_no_circuits_stored(self, storehouse_data_mock):
+        """Test if list circuits return all circuits stored."""
+        circuits = {}
+        storehouse_data_mock.return_value = circuits
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        response = api.get(url)
+        expected_result = circuits
+        self.assertEqual(json.loads(response.data), expected_result)
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     def test_list_with_circuits_stored(self, storehouse_data_mock):
