@@ -68,6 +68,30 @@ paths:
         '400':
           description: Circuit id not found.
 
+    patch:
+      summary: Update a circuit
+      description: Update a circuit based on payload
+      operationId: update
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Update a circuit based on the circuit_id and payload given
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Circuit'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Circuit id not found.
+        '400':
+          description: Bad request.
 
 components:
   schemas:
