@@ -8,6 +8,7 @@ servers:
     description: Local server (uses test data)
 paths:
   /v2/evc/:
+
     post:
       summary: Creates a new circuit
       operationId: create_circuit
@@ -19,24 +20,41 @@ paths:
             schema:
               $ref: '#/components/schemas/NewCircuit'
       responses:
-        '200':
-          description: OK
+        '201':
+          description: EVC created. The circuit ID is being returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circuit_id: # the unique circuit id
+                    type: string
+        '400':
+          description: Request do not have a JSON or JSON format do not match the EVC object or EVC already exists.
+        '409':
+          description: Not Acceptable. This evc already exists.
+
   /v2/evc/{circuit_id}:
     get:
       summary: Get details of a circuit
-      description: Show the details of a single circuit
-      produces:
-        - applications/json
+      description: Get the details of a single circuit
+      operationId: get_circuit
       parameters:
         - name: circuit_id
           in: path
           required: true
-          type: integer
-      tags:
-        - Future
+          schema:
+            type: string
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Circuit'
+        '400':
+          description: Circuit id not found.
+
 
 components:
   schemas:
