@@ -8,6 +8,19 @@ servers:
     description: Local server (uses test data)
 paths:
   /v2/evc/:
+    get:
+      summary: List all circuits stored.
+      description: List all circuits stored.
+      operationId: list_circuits
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Circuit'
 
     post:
       summary: Creates a new circuit
