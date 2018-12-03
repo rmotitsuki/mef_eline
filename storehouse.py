@@ -11,13 +11,13 @@ class StoreHouse:
         self.controller = controller
         self.namespace = 'kytos.mef_eline.circuits'
         self.box = None
-        self.create_box()
         self.list_stored_boxes()
 
     def get_data(self):
         """Return the box data."""
         if not self.box:
             return {}
+        self.get_stored_box(self.box.box_id)
         return self.box.data
 
     def create_box(self):
