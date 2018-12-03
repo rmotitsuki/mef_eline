@@ -6,10 +6,11 @@ import requests
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
-from kytos.core.helpers import get_time, now
+from kytos.core.helpers import get_time, now, listen_to
 from kytos.core.interface import UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):
@@ -113,7 +114,7 @@ class EVCBase(GenericEntity):
 
     unique_attributes = ['name', 'uni_a', 'uni_z']
 
-    def __init__(self, **kwargs):
+    def __init__(self, controller, **kwargs):
         """Create an EVC instance with the provided parameters.
 
         Args:
@@ -173,6 +174,12 @@ class EVCBase(GenericEntity):
         self.owner = kwargs.get('owner', None)
         self.priority = kwargs.get('priority', 0)
         self.circuit_scheduler = kwargs.get('circuit_scheduler', [])
+
+        self.current_links_cache = set()
+        self.primary_links_cache = set()
+        self.backup_links_cache = set()
+
+        self._storehouse = StoreHouse(controller)
 
         if kwargs.get('active', False):
             self.activate()
@@ -321,6 +328,144 @@ class EVCDeploy(EVCBase):
     def reprovision(self):
         """Force the EVC (re-)provisioning."""
         pass
+
+    # TODO: need refactoring
+    def handle_link_down(self, event):
+        log.info('Handling link down')
+        if not self.is_affected_by_link(event.content['interface']):
+            return
+
+        success = False
+        if self.is_using_primary_path():
+            success = self.deploy_to_backup_path()
+        elif self.is_using_backup_path():
+            success = self.deploy_to_primary_path()
+
+        if success:
+            # TODO: LOG/EVENT: Circuit deployed after link down
+            return
+
+        if self.dynamic_backup_path:
+            success = self.deploy()
+            # TODO: LOG/EVENT: failed to re-deploy circuit after link down
+
+    # TODO: need refactoring
+    def handle_link_up(self, event):
+        if self.is_using_primary_path():
+            return True
+
+        success = False
+        if self.is_primary_path_affected_by_link(event.link):
+            success = self.deploy(self.primary_path)
+
+        if success:
+            return True
+
+        # TODO: Question: If the current circuit is dynamic and backup is
+        # defined and working, should I try to deploy(backup)?
+
+        # We tried to deploy(primary_path) without success.
+        # And in this case is up by some how. Nothing to do.
+        if self.is_using_backup_path() or self.is_using_dynamic_path():
+            return True
+
+        # In this case, probably the circuit is not being used and
+        # we can move to backup
+        if self.is_backup_path_affected_by_link(event.link):
+            success = self.deploy(self.backup_path)
+
+        if success:
+            return True
+
+        # In this case, the circuit is not being used and we should
+        # try a dynamic path
+        if self.dynamic_backup_path:
+            return self.deploy()
+
+        return True
+
+    def is_affected_by_link(self, link):
+        return link in self.current_path_cache
+
+    def is_backup_path_affected_by_link(self, link):
+        return link in self.backup_path_cache
+
+    def is_primary_path_affected_by_link(self, link):
+        return link in self.primary_path_cache
+
+    def is_using_primary_path(self):
+        """Verify if the current deployed path is self.primary_path."""
+        return self.current_path == self.primary_path
+
+    def is_using_backup_path(self):
+        """Verify if the current deployed path is self.backup_path."""
+        return self.current_path == self.backup_path
+
+    def is_using_dynamic_path(self):
+        """Verify if the current deployed path is a dynamic path."""
+        if not self.is_using_primary_path() and \
+           not self.is_using_backup_path() and \
+           self.get_path_status(self.current_path) == EntityStatus.UP:
+               return True
+        return False
+
+    def deploy_to_backup_path(self):
+        """Deploy the backup path into the datapaths of this circuit.
+
+        If the backup_path attribute is valid and up, this method will try to
+        deploy this backup_path.
+
+        If everything fails and dynamic_backup_path is True, then tries to
+        deploy a dynamic path.
+        """
+        # TODO: Remove flows from current (cookies)
+        if self.is_using_backup_path:
+            # TODO: Log to say that cannot move backup to backup
+            return True
+
+        success = False
+        if self.get_path_status(self.backup_path) is EntityStatus.UP:
+            success = self.deploy(self.backup_path)
+
+        if success:
+            return True
+
+        if self.dynamic_backup_path:
+            return self.deploy()
+
+        return False
+
+    def deploy_to_primary_path(self):
+        """Deploy the primary path into the datapaths of this circuit.
+
+        If the primary_path attribute is valid and up, this method will try to
+        deploy this primary_path.
+        """
+        # TODO: Remove flows from current (cookies)
+        if self.is_using_primary_path:
+            # TODO: Log to say that cannot move primary to primary
+            return False
+
+        if self.get_path_status(self.primary_path) is EntityStatus.UP:
+            return self.deploy(self.primary_path)
+        return False
+
+    def get_path_status(self, path):
+        """Check for the current status of a path.
+
+        If any link in this path is down, the path is considered down.
+        """
+        if not path:
+            return EntityStatus.DISABLED
+
+        for link in path:
+            if link.status is not EntityStatus.UP:
+                return link.status
+        return EntityStatus.UP
+
+#    def discover_new_path(self):
+#        # TODO: discover a new path to satisfy this circuit and deploy
+#        pass
 
     def remove(self):
         """Remove EVC path."""
