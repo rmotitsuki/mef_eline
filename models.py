@@ -197,6 +197,10 @@ class EVCBase(GenericEntity):
         # dict with the user original request (input)
         self._requested = kwargs
 
+    def sync(self):
+        """Sync this EVC in the storehouse."""
+        self._storehouse.save_evc(self)
+
     def update(self, **kwargs):
         """Update evc attributes.
 
@@ -214,6 +218,7 @@ class EVCBase(GenericEntity):
                 setattr(self, attribute, value)
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
+        self.sync()
 
     def __repr__(self):
         """Repr method."""
@@ -547,6 +552,8 @@ class EVCDeploy(EVCBase):
         self.install_nni_flows(path)
         self.install_uni_flows(path)
         self.activate()
+        self.current_path = path
+        self.sync()
         log.info(f"{self} was deployed.")
         return True
 
