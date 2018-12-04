@@ -484,10 +484,11 @@ class EVCDeploy(EVCBase):
             switches.add(link.endpoint_a.switch)
             switches.add(link.endpoint_b.switch)
 
-        flows = [{'cookie': self.get_cookie()}]
+        match = {'cookie': self.get_cookie(),
+                 'cookie_mask': 18446744073709551615}
 
         for switch in switches:
-            self.send_flow_mods(switch, flows, 'delete')
+            self.send_flow_mods(switch, [match], 'delete')
 
         self.deactivate()
 
