@@ -149,6 +149,17 @@ class Main(KytosNApp):
 
         return jsonify(result), status
 
+    @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
+    def delete_circuit(self, circuit_id):
+        """Remove a circuit"""
+
+        circuits = self.storehouse.get_data()
+        log.info("Removing %s" % circuit_id)
+        evc = self.evc_from_dict(circuits.get(circuit_id))
+        evc.remove_current_flows()
+
+        return jsonify("Circuit removed"), 200
+
     def is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
 
