@@ -146,7 +146,8 @@ class TestMain(TestCase):
                    }
                  }
 
-        response = api.post(url, data=json.dumps(payload), content_type='application/json')
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
         current_data = json.loads(response.data)
 
         # verify expected result from request
