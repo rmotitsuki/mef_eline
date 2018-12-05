@@ -541,9 +541,6 @@ class EVCDeploy(EVCBase):
         self.remove_current_flows()
 
         if not self.should_deploy(path):
-            return False
-
-        if path is None:
             path = self.discover_new_path()
 
             if not path:
