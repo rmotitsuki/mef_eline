@@ -52,12 +52,24 @@ class TestMain(TestCase):
         url = f'{self.server_name_url}/v2/evc/'
         response = api.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(json.loads(response.data.decode()),
-                         {"response": "No circuit stored."})
+        self.assertEqual(json.loads(response.data.decode()), {})
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_with_no_circuits_stored(self, storehouse_data_mock):
+        """Test if list circuits return all circuits stored."""
+        circuits = {}
+        storehouse_data_mock.return_value = circuits
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        response = api.get(url)
+        expected_result = circuits
+        self.assertEqual(json.loads(response.data), expected_result)
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     def test_list_with_circuits_stored(self, storehouse_data_mock):
-        """Test if list circuits return all circuts stored."""
+        """Test if list circuits return all circuits stored."""
         circuits = {'1': {'name': 'circuit_1'},
                     '2': {'name': 'circuit_2'}}
         storehouse_data_mock.return_value = circuits
@@ -71,7 +83,7 @@ class TestMain(TestCase):
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     def test_circuit_with_valid_id(self, storehouse_data_mock):
-        """Test if get_cirguit return the ciruit attributes."""
+        """Test if get_circuit return the circuit attributes."""
         circuits = {'1': {'name': 'circuit_1'},
                     '2': {'name': 'circuit_2'}}
         storehouse_data_mock.return_value = circuits
@@ -134,11 +146,12 @@ class TestMain(TestCase):
                    }
                  }
 
-        response = api.post(url, json=payload)
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
         current_data = json.loads(response.data)
 
         # verify expected result from request
-        self.assertEqual(201, response.status_code)
+        self.assertEqual(201, response.status_code, response.data)
         self.assertIn('circuit_id', current_data)
 
         # verify uni called
