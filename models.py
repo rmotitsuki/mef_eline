@@ -3,14 +3,14 @@ from datetime import datetime
 from uuid import uuid4
 
 import requests
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):

@@ -3,15 +3,15 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager
-from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
+from napps.kytos.mef_eline.models import EVC, DynamicPathManager
+from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Main(KytosNApp):
