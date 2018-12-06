@@ -3,14 +3,14 @@ from datetime import datetime
 from uuid import uuid4
 
 import requests
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
-from kytos.core.helpers import get_time, now, listen_to
+from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):
@@ -315,6 +315,7 @@ class EVCBase(GenericEntity):
         return self._id
 
 
+# pylint: disable=fixme, too-many-public-methods
 class EVCDeploy(EVCBase):
     """Class to handle the deploy procedures."""
 
@@ -334,69 +335,18 @@ class EVCDeploy(EVCBase):
         """Force the EVC (re-)provisioning."""
         pass
 
-    # TODO: need refactoring
-    def handle_link_down(self, event):
-        log.info('Handling link down')
-        if not self.is_affected_by_link(event.content['interface']):
-            return
-
-        success = False
-        if self.is_using_primary_path():
-            success = self.deploy_to_backup_path()
-        elif self.is_using_backup_path():
-            success = self.deploy_to_primary_path()
-
-        if success:
-            # TODO: LOG/EVENT: Circuit deployed after link down
-            return
-
-        if self.dynamic_backup_path:
-            success = self.deploy()
-            # TODO: LOG/EVENT: failed to re-deploy circuit after link down
-
-    # TODO: need refactoring
-    def handle_link_up(self, event):
-        if self.is_using_primary_path():
-            return True
-
-        success = False
-        if self.is_primary_path_affected_by_link(event.link):
-            success = self.deploy(self.primary_path)
-
-        if success:
-            return True
-
-        # TODO: Question: If the current circuit is dynamic and backup is
-        # defined and working, should I try to deploy(backup)?
-
-        # We tried to deploy(primary_path) without success.
-        # And in this case is up by some how. Nothing to do.
-        if self.is_using_backup_path() or self.is_using_dynamic_path():
-            return True
-
-        # In this case, probably the circuit is not being used and
-        # we can move to backup
-        if self.is_backup_path_affected_by_link(event.link):
-            success = self.deploy(self.backup_path)
-
-        if success:
-            return True
-
-        # In this case, the circuit is not being used and we should
-        # try a dynamic path
-        if self.dynamic_backup_path:
-            return self.deploy()
-
-        return True
-
     def is_affected_by_link(self, link):
-        return link in self.current_path_cache
+        """Return True if this EVC has the given link on its current path."""
+        return link in self.current_path
 
     def is_backup_path_affected_by_link(self, link):
-        return link in self.backup_path_cache
+        """Return True if the backup path of this EVC uses the given link."""
+        return link in self.backup_path
 
+    # pylint: disable=invalid-name
     def is_primary_path_affected_by_link(self, link):
-        return link in self.primary_path_cache
+        """Return True if the primary path of this EVC uses the given link."""
+        return link in self.primary_path
 
     def is_using_primary_path(self):
         """Verify if the current deployed path is self.primary_path."""
@@ -411,7 +361,7 @@ class EVCDeploy(EVCBase):
         if not self.is_using_primary_path() and \
            not self.is_using_backup_path() and \
            self.get_path_status(self.current_path) == EntityStatus.UP:
-               return True
+            return True
         return False
 
     def deploy_to_backup_path(self):
@@ -455,7 +405,8 @@ class EVCDeploy(EVCBase):
             return self.deploy(self.primary_path)
         return False
 
-    def get_path_status(self, path):
+    @staticmethod
+    def get_path_status(path):
         """Check for the current status of a path.
 
         If any link in this path is down, the path is considered down.
