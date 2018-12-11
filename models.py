@@ -10,6 +10,7 @@ from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):
@@ -113,7 +114,7 @@ class EVCBase(GenericEntity):
 
     unique_attributes = ['name', 'uni_a', 'uni_z']
 
-    def __init__(self, **kwargs):
+    def __init__(self, controller, **kwargs):
         """Create an EVC instance with the provided parameters.
 
         Args:
@@ -174,6 +175,12 @@ class EVCBase(GenericEntity):
         self.priority = kwargs.get('priority', 0)
         self.circuit_scheduler = kwargs.get('circuit_scheduler', [])
 
+        self.current_links_cache = set()
+        self.primary_links_cache = set()
+        self.backup_links_cache = set()
+
+        self._storehouse = StoreHouse(controller)
+
         if kwargs.get('active', False):
             self.activate()
         else:
@@ -189,6 +196,10 @@ class EVCBase(GenericEntity):
         self.request_time = kwargs.get('request_time', now())
         # dict with the user original request (input)
         self._requested = kwargs
+
+    def sync(self):
+        """Sync this EVC in the storehouse."""
+        self._storehouse.save_evc(self)
 
     def update(self, **kwargs):
         """Update evc attributes.
@@ -207,6 +218,7 @@ class EVCBase(GenericEntity):
                 setattr(self, attribute, value)
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
+        self.sync()
 
     def __repr__(self):
         """Repr method."""
@@ -303,6 +315,7 @@ class EVCBase(GenericEntity):
         return self._id
 
 
+# pylint: disable=fixme, too-many-public-methods
 class EVCDeploy(EVCBase):
     """Class to handle the deploy procedures."""
 
@@ -322,6 +335,94 @@ class EVCDeploy(EVCBase):
         """Force the EVC (re-)provisioning."""
         pass
 
+    def is_affected_by_link(self, link):
+        """Return True if this EVC has the given link on its current path."""
+        return link in self.current_path
+
+    def is_backup_path_affected_by_link(self, link):
+        """Return True if the backup path of this EVC uses the given link."""
+        return link in self.backup_path
+
+    # pylint: disable=invalid-name
+    def is_primary_path_affected_by_link(self, link):
+        """Return True if the primary path of this EVC uses the given link."""
+        return link in self.primary_path
+
+    def is_using_primary_path(self):
+        """Verify if the current deployed path is self.primary_path."""
+        return self.current_path == self.primary_path
+
+    def is_using_backup_path(self):
+        """Verify if the current deployed path is self.backup_path."""
+        return self.current_path == self.backup_path
+
+    def is_using_dynamic_path(self):
+        """Verify if the current deployed path is a dynamic path."""
+        if not self.is_using_primary_path() and \
+           not self.is_using_backup_path() and \
+           self.get_path_status(self.current_path) == EntityStatus.UP:
+            return True
+        return False
+
+    def deploy_to_backup_path(self):
+        """Deploy the backup path into the datapaths of this circuit.
+
+        If the backup_path attribute is valid and up, this method will try to
+        deploy this backup_path.
+
+        If everything fails and dynamic_backup_path is True, then tries to
+        deploy a dynamic path.
+        """
+        # TODO: Remove flows from current (cookies)
+        if self.is_using_backup_path:
+            # TODO: Log to say that cannot move backup to backup
+            return True
+
+        success = False
+        if self.get_path_status(self.backup_path) is EntityStatus.UP:
+            success = self.deploy(self.backup_path)
+
+        if success:
+            return True
+
+        if self.dynamic_backup_path:
+            return self.deploy()
+
+        return False
+
+    def deploy_to_primary_path(self):
+        """Deploy the primary path into the datapaths of this circuit.
+
+        If the primary_path attribute is valid and up, this method will try to
+        deploy this primary_path.
+        """
+        # TODO: Remove flows from current (cookies)
+        if self.is_using_primary_path:
+            # TODO: Log to say that cannot move primary to primary
+            return False
+
+        if self.get_path_status(self.primary_path) is EntityStatus.UP:
+            return self.deploy(self.primary_path)
+        return False
+
+    @staticmethod
+    def get_path_status(path):
+        """Check for the current status of a path.
+
+        If any link in this path is down, the path is considered down.
+        """
+        if not path:
+            return EntityStatus.DISABLED
+
+        for link in path:
+            if link.status is not EntityStatus.UP:
+                return link.status
+        return EntityStatus.UP
+
+#    def discover_new_path(self):
+#        # TODO: discover a new path to satisfy this circuit and deploy
+#        pass
+
     def remove(self):
         """Remove EVC path."""
         pass
@@ -334,10 +435,11 @@ class EVCDeploy(EVCBase):
             switches.add(link.endpoint_a.switch)
             switches.add(link.endpoint_b.switch)
 
-        flows = [{'cookie': self.get_cookie()}]
+        match = {'cookie': self.get_cookie(),
+                 'cookie_mask': 18446744073709551615}
 
         for switch in switches:
-            self.send_flow_mods(switch, flows, 'delete')
+            self.send_flow_mods(switch, [match], 'delete')
 
         self.deactivate()
 
@@ -390,9 +492,6 @@ class EVCDeploy(EVCBase):
         self.remove_current_flows()
 
         if not self.should_deploy(path):
-            return False
-
-        if path is None:
             path = self.discover_new_path()
 
             if not path:
@@ -402,6 +501,8 @@ class EVCDeploy(EVCBase):
         self.install_nni_flows(path)
         self.install_uni_flows(path)
         self.activate()
+        self.current_path = path
+        self.sync()
         log.info(f"{self} was deployed.")
         return True
 

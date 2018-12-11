@@ -149,6 +149,16 @@ class Main(KytosNApp):
 
         return jsonify(result), status
 
+    @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
+    def delete_circuit(self, circuit_id):
+        """Remove a circuit."""
+        circuits = self.storehouse.get_data()
+        log.info("Removing %s" % circuit_id)
+        evc = self.evc_from_dict(circuits.get(circuit_id))
+        evc.remove_current_flows()
+
+        return jsonify("Circuit removed"), 200
+
     def is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
 
@@ -195,8 +205,8 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            if not evc.is_affected_by_link(event.link):
-                evc.handle_link_up(event.link)
+            if not evc.is_affected_by_link(event.content['interface']):
+                evc.handle_link_up(event.content['interface'])
 
     @listen_to('kytos.*.link.down', 'kytos.*.link.under_maintenance')
     def handle_link_down(self, event):
@@ -210,7 +220,7 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            if not evc.is_affected_by_link(event.link):
+            if not evc.is_affected_by_link(event.content['interface']):
                 evc.handle_link_down()
 
     def evc_from_dict(self, evc_dict):
@@ -230,12 +240,16 @@ class Main(KytosNApp):
                 for schedule in value:
                     data[attribute].append(CircuitSchedule.from_dict(schedule))
 
-            if ('path' in attribute or 'link' in attribute) and \
-               (attribute != 'dynamic_backup_path'):
+            if 'link' in attribute:
                 if value:
                     data[attribute] = self.link_from_dict(value)
 
-        return EVC(**data)
+            if 'path' in attribute and attribute != 'dynamic_backup_path':
+                if value:
+                    data[attribute] = [self.link_from_dict(link)
+                                       for link in value]
+
+        return EVC(self.controller, **data)
 
     def uni_from_dict(self, uni_dict):
         """Return a UNI object from python dict."""
@@ -261,8 +275,8 @@ class Main(KytosNApp):
 
     def link_from_dict(self, link_dict):
         """Return a Link object from python dict."""
-        id_a = link_dict.get('endpoint_a')
-        id_b = link_dict.get('endpoint_b')
+        id_a = link_dict.get('endpoint_a').get('id')
+        id_b = link_dict.get('endpoint_b').get('id')
 
         endpoint_a = self.controller.get_interface_by_id(id_b)
         endpoint_b = self.controller.get_interface_by_id(id_a)

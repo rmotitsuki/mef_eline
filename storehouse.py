@@ -11,13 +11,13 @@ class StoreHouse:
         self.controller = controller
         self.namespace = 'kytos.mef_eline.circuits'
         self.box = None
-        self.create_box()
         self.list_stored_boxes()
 
     def get_data(self):
         """Return the box data."""
         if not self.box:
             return {}
+        self.get_stored_box(self.box.box_id)
         return self.box.data
 
     def create_box(self):
@@ -45,7 +45,7 @@ class StoreHouse:
 
         event = KytosEvent(name=name, content=content)
         self.controller.buffers.app.put(event)
-        log.info(f'Bootstraping storehouse box for {self.namespace}.')
+        log.debug(f'Bootstraping storehouse box for {self.namespace}.')
 
     def _get_or_create_a_box_from_list_of_boxes(self, _event, data, _error):
         """Create a new box or retrieve the stored box."""
@@ -63,7 +63,7 @@ class StoreHouse:
         name = 'kytos.storehouse.retrieve'
         event = KytosEvent(name=name, content=content)
         self.controller.buffers.app.put(event)
-        log.info(f'Retrieve box with {box_id} from {self.namespace}.')
+        log.debug(f'Retrieve box with {box_id} from {self.namespace}.')
 
     def _get_box_callback(self, _event, data, error):
         """Handle get_box method saving the box or logging with the error."""
@@ -71,7 +71,7 @@ class StoreHouse:
             log.error(f'Box {data.box_id} not found in {self.namespace}.')
 
         self.box = data
-        log.info(f'Box {self.box.box_id} was load from storehouse.')
+        log.debug(f'Box {self.box.box_id} was load from storehouse.')
 
     def save_evc(self, evc):
         """Save a EVC using the storehouse."""
