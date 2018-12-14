@@ -234,7 +234,10 @@ class Main(KytosNApp):
         for attribute, value in data.items():
 
             if 'uni' in attribute:
-                data[attribute] = self.uni_from_dict(value)
+                try:
+                    data[attribute] = self.uni_from_dict(value)
+                except ValueError as exc:
+                    raise ValueError(f'Error creating UNI: {exc}')
 
             if attribute == 'circuit_scheduler':
                 data[attribute] = []
@@ -260,17 +263,14 @@ class Main(KytosNApp):
         interface_id = uni_dict.get("interface_id")
         interface = self.controller.get_interface_by_id(interface_id)
         if interface is None:
-            return False
+            raise ValueError(f'Could not instantiate interface {interface_id}')
 
-        tag = TAG.from_dict(uni_dict.get("tag"))
-
+        tag_dict = uni_dict.get("tag")
+        tag = TAG.from_dict(tag_dict)
         if tag is False:
-            return False
+            raise ValueError(f'Could not instantiate tag from dict {tag_dict}')
 
-        try:
-            uni = UNI(interface, tag)
-        except TypeError:
-            return False
+        uni = UNI(interface, tag)
 
         return uni
 
