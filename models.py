@@ -33,6 +33,14 @@ class Path(list, GenericEntity):
             return False
         return link in self.links_cache
 
+    def link_affected_by_interface(self, interface=None):
+        """Return the link using this interface, if any, or None otherwise."""
+        if not interface:
+            return None
+        for link in self.links_cache:
+            if interface in (link.endpoint_a, link.endpoint_b):
+                return link
+
     @property
     def status(self):
         """Check for the  status of a path.
@@ -338,6 +346,10 @@ class EVCDeploy(EVCBase):
     def is_affected_by_link(self, link):
         """Return True if this EVC has the given link on its current path."""
         return link in self.current_path
+
+    def link_affected_by_interface(self, interface):
+        """Return True if this EVC has the given link on its current path."""
+        return self.current_path.link_affected_by_interface(interface)
 
     def is_backup_path_affected_by_link(self, link):
         """Return True if the backup path of this EVC uses the given link."""
