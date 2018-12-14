@@ -33,6 +33,15 @@ class Path(list, GenericEntity):
             return False
         return link in self.links_cache
 
+    def link_affected_by_interface(self, interface=None):
+        """Return the link using this interface, if any, or None otherwise."""
+        if not interface:
+            return None
+        for link in self.links_cache:
+            if interface in (link.endpoint_a, link.endpoint_b):
+                return link
+        return None
+
     @property
     def status(self):
         """Check for the  status of a path.
@@ -284,13 +293,13 @@ class EVCBase(GenericEntity):
         evc_dict['backup_path'] = self.backup_path.as_dict()
         evc_dict['dynamic_backup_path'] = self.dynamic_backup_path
 
-        if self._requested:
-            request_dict = self._requested.copy()
-            request_dict['uni_a'] = request_dict['uni_a'].as_dict()
-            request_dict['uni_z'] = request_dict['uni_z'].as_dict()
-            request_dict['circuit_scheduler'] = [sched.as_dict() for sched in
-                                                 self.circuit_scheduler]
-            evc_dict['_requested'] = request_dict
+        # if self._requested:
+        #     request_dict = self._requested.copy()
+        #     request_dict['uni_a'] = request_dict['uni_a'].as_dict()
+        #     request_dict['uni_z'] = request_dict['uni_z'].as_dict()
+        #     request_dict['circuit_scheduler'] = [sched.as_dict() for sched in
+        #                                          self.circuit_scheduler]
+        #     evc_dict['_requested'] = request_dict
 
         evc_dict["request_time"] = self.request_time
         if isinstance(self.request_time, datetime):
@@ -338,6 +347,10 @@ class EVCDeploy(EVCBase):
     def is_affected_by_link(self, link):
         """Return True if this EVC has the given link on its current path."""
         return link in self.current_path
+
+    def link_affected_by_interface(self, interface):
+        """Return True if this EVC has the given link on its current path."""
+        return self.current_path.link_affected_by_interface(interface)
 
     def is_backup_path_affected_by_link(self, link):
         """Return True if the backup path of this EVC uses the given link."""
@@ -688,18 +701,19 @@ class LinkProtection(EVCDeploy):
 
         return False
 
-    def handle_link_up(self, link):
+    def handle_link_up(self, interface):
         """Handle circuit when link down.
 
         Args:
             link(Link): Link affected by link.down event.
 
         """
+        log.info('Handling link up')
         if self.is_using_primary_path():
             return True
 
         success = False
-        if self.primary_path.is_affected_by_link(link):
+        if self.primary_path.link_affected_by_interface(interface):
             success = self.deploy_to('primary_path', self.primary_path)
 
         if success:
@@ -712,7 +726,7 @@ class LinkProtection(EVCDeploy):
 
         # In this case, probably the circuit is not being used and
         # we can move to backup
-        if self.backup_path.is_affected_by_link(link):
+        if self.backup_path.link_affected_by_interface(interface):
             success = self.deploy_to('backup_path', self.backup_path)
 
         if success:
