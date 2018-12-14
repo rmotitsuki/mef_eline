@@ -206,8 +206,7 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            if not evc.is_affected_by_link(event.content['interface']):
-                evc.handle_link_up(event.content['interface'])
+            evc.handle_link_up(event.content['interface'])
 
     @listen_to('.*.switch.interface.link_down')
     def handle_link_down(self, event):

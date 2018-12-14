@@ -700,18 +700,19 @@ class LinkProtection(EVCDeploy):
 
         return False
 
-    def handle_link_up(self, link):
+    def handle_link_up(self, interface):
         """Handle circuit when link down.
 
         Args:
             link(Link): Link affected by link.down event.
 
         """
+        log.info('Handling link up')
         if self.is_using_primary_path():
             return True
 
         success = False
-        if self.primary_path.is_affected_by_link(link):
+        if self.primary_path.link_affected_by_interface(interface):
             success = self.deploy_to('primary_path', self.primary_path)
 
         if success:
@@ -724,7 +725,7 @@ class LinkProtection(EVCDeploy):
 
         # In this case, probably the circuit is not being used and
         # we can move to backup
-        if self.backup_path.is_affected_by_link(link):
+        if self.backup_path.link_affected_by_interface(interface):
             success = self.deploy_to('backup_path', self.backup_path)
 
         if success:
