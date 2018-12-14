@@ -284,13 +284,13 @@ class EVCBase(GenericEntity):
         evc_dict['backup_path'] = self.backup_path.as_dict()
         evc_dict['dynamic_backup_path'] = self.dynamic_backup_path
 
-        if self._requested:
-            request_dict = self._requested.copy()
-            request_dict['uni_a'] = request_dict['uni_a'].as_dict()
-            request_dict['uni_z'] = request_dict['uni_z'].as_dict()
-            request_dict['circuit_scheduler'] = [sched.as_dict() for sched in
-                                                 self.circuit_scheduler]
-            evc_dict['_requested'] = request_dict
+        #if self._requested:
+        #   request_dict = self._requested.copy()
+        #    request_dict['uni_a'] = request_dict['uni_a'].as_dict()
+        #    request_dict['uni_z'] = request_dict['uni_z'].as_dict()
+        #    request_dict['circuit_scheduler'] = [sched.as_dict() for sched in
+        #                                         self.circuit_scheduler]
+        #    evc_dict['_requested'] = request_dict
 
         evc_dict["request_time"] = self.request_time
         if isinstance(self.request_time, datetime):
