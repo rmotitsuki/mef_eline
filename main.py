@@ -220,7 +220,7 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioned yet.')
                 continue
 
-            link =  evc.link_affected_by_interface(event.content['interface'])
+            link = evc.link_affected_by_interface(event.content['interface'])
             if link:
                 evc.handle_link_down()
 
