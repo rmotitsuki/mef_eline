@@ -23,6 +23,22 @@ Fixed
 Security
 ========
 
+[2.3.0] - 2018-12-14
+********************
+
+Added
+=====
+ - Added more API documentation.
+ - Added EVC flow removal based on cookies.
+ - Added EVC deletion API method.
+
+Fixed
+=====
+ - Fixed circuit not being deployed.
+ - Fixed `current_path` changes not being saved on storehouse (#85).
+ - Fixed storehouse always creating a new box (#91).
+ - Fixed handling of link up/down events.
+
 [2.2.2] - 2018-10-15
 ********************
 
