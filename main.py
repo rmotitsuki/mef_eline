@@ -279,10 +279,11 @@ class Main(KytosNApp):
         id_a = link_dict.get('endpoint_a').get('id')
         id_b = link_dict.get('endpoint_b').get('id')
 
-        endpoint_a = self.controller.get_interface_by_id(id_b)
-        endpoint_b = self.controller.get_interface_by_id(id_a)
+        endpoint_a = self.controller.get_interface_by_id(id_a)
+        endpoint_b = self.controller.get_interface_by_id(id_b)
 
         link = Link(endpoint_a, endpoint_b)
-        link.extend_metadata(link_dict.get('metadata'))
+        if 'metadata' in link_dict:
+            link.extend_metadata(link_dict.get('metadata'))
 
         return link
