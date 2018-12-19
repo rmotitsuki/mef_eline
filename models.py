@@ -385,7 +385,7 @@ class EVCDeploy(EVCBase):
         deploy a dynamic path.
         """
         # TODO: Remove flows from current (cookies)
-        if self.is_using_backup_path:
+        if self.is_using_backup_path():
             # TODO: Log to say that cannot move backup to backup
             return True
 
@@ -408,7 +408,7 @@ class EVCDeploy(EVCBase):
         deploy this primary_path.
         """
         # TODO: Remove flows from current (cookies)
-        if self.is_using_primary_path:
+        if self.is_using_primary_path():
             # TODO: Log to say that cannot move primary to primary
             return False
 
