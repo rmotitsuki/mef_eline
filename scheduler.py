@@ -60,7 +60,7 @@ class Scheduler:
             action = None
 
             if circuit_scheduler.action == 'create':
-                action = circuit.deploy
+                action = circuit.deploy_to_best_path
             elif circuit_scheduler.action == 'remove':
                 action = circuit.remove
 

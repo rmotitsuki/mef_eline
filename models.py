@@ -410,11 +410,23 @@ class EVCDeploy(EVCBase):
         # TODO: Remove flows from current (cookies)
         if self.is_using_primary_path():
             # TODO: Log to say that cannot move primary to primary
-            return False
+            return True
 
         if self.get_path_status(self.primary_path) is EntityStatus.UP:
             return self.deploy(self.primary_path)
         return False
+
+    def deploy_to_best_path(self):
+        """Deploy EVC to best path.
+
+        Best path can be the primary path, if available. If not, the backup
+        path, and, if it is also not available, a dynamic path.
+        """
+        success = self.deploy_to_primary_path()
+        if not success:
+            success = self.deploy_to_backup_path()
+
+        return success
 
     @staticmethod
     def get_path_status(path):
@@ -501,10 +513,8 @@ class EVCDeploy(EVCBase):
 
         """
         self.remove_current_flows()
-
         if not self.should_deploy(path):
             path = self.discover_new_path()
-
             if not path:
                 return False
 
@@ -706,7 +716,6 @@ class LinkProtection(EVCDeploy):
             link(Link): Link affected by link.down event.
 
         """
-        log.info('Handling link up')
         if self.is_using_primary_path():
             return True
 

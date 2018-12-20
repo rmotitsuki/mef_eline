@@ -116,7 +116,7 @@ class Main(KytosNApp):
 
         # Schedule the circuit deploy
         self.sched.add(evc)
-        evc.deploy()
+        evc.deploy_to_best_path()
 
         # Notify users
         event = KytosEvent(name='kytos.mef_eline.created',
