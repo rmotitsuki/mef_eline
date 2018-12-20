@@ -351,7 +351,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
-        deployed = evc.deploy(attributes['primary_links'])
+        deployed = evc.deploy_to_path(attributes['primary_links'])
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 1)
@@ -391,7 +391,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
-        deployed = evc.deploy()
+        deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 0)
@@ -437,7 +437,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         discover_new_path_mocked.return_value = dynamic_backup_path
-        deployed = evc.deploy()
+        deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(discover_new_path_mocked.call_count, 1)

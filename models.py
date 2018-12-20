@@ -391,13 +391,13 @@ class EVCDeploy(EVCBase):
 
         success = False
         if self.get_path_status(self.backup_path) is EntityStatus.UP:
-            success = self.deploy(self.backup_path)
+            success = self.deploy_to_path(self.backup_path)
 
         if success:
             return True
 
         if self.dynamic_backup_path:
-            return self.deploy()
+            return self.deploy_to_path()
 
         return False
 
@@ -413,10 +413,10 @@ class EVCDeploy(EVCBase):
             return True
 
         if self.get_path_status(self.primary_path) is EntityStatus.UP:
-            return self.deploy(self.primary_path)
+            return self.deploy_to_path(self.primary_path)
         return False
 
-    def deploy_to_best_path(self):
+    def deploy(self):
         """Deploy EVC to best path.
 
         Best path can be the primary path, if available. If not, the backup
@@ -497,7 +497,7 @@ class EVCDeploy(EVCBase):
 
         return False
 
-    def deploy(self, path=None):
+    def deploy_to_path(self, path=None):
         """Install the flows for this circuit.
 
         Procedures to deploy:
@@ -705,7 +705,7 @@ class LinkProtection(EVCDeploy):
             return True
 
         if path.status is EntityStatus.UP:
-            return self.deploy(path)
+            return self.deploy_to_path(path)
 
         return False
 
@@ -742,7 +742,7 @@ class LinkProtection(EVCDeploy):
         # In this case, the circuit is not being used and we should
         # try a dynamic path
         if self.dynamic_backup_path:
-            return self.deploy()
+            return self.deploy_to_path()
 
         return True
 
@@ -760,7 +760,7 @@ class LinkProtection(EVCDeploy):
             success = self.deploy_to('primary_path', self.primary_path)
 
         if not success and self.dynamic_backup_path:
-            success = self.deploy()
+            success = self.deploy_to_path()
 
         if success:
             log.debug(f"{self} deployed after link down.")
