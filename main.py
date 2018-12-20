@@ -157,6 +157,8 @@ class Main(KytosNApp):
         log.info("Removing %s" % circuit_id)
         evc = self.evc_from_dict(circuits.get(circuit_id))
         evc.remove_current_flows()
+        evc.disable()
+        self.storehouse.save_evc(evc)
 
         return jsonify("Circuit removed"), 200
 
