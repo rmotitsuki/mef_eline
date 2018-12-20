@@ -462,12 +462,12 @@ class EVCDeploy(EVCBase):
                  'cookie_mask': 18446744073709551615}
 
         for switch in switches:
-            self.send_flow_mods(switch, [match], 'delete')
+            self._send_flow_mods(switch, [match], 'delete')
 
         self.deactivate()
 
     @staticmethod
-    def choose_vlans(path=None):
+    def _choose_vlans(path=None):
         """Choose the VLANs to be used for the circuit."""
         for link in path:
             tag = link.get_next_available_tag()
@@ -518,16 +518,16 @@ class EVCDeploy(EVCBase):
             if not path:
                 return False
 
-        self.choose_vlans(path)
-        self.install_nni_flows(path)
-        self.install_uni_flows(path)
+        self._choose_vlans(path)
+        self._install_nni_flows(path)
+        self._install_uni_flows(path)
         self.activate()
         self.current_path = path
         self.sync()
         log.info(f"{self} was deployed.")
         return True
 
-    def install_nni_flows(self, path=None):
+    def _install_nni_flows(self, path=None):
         """Install NNI flows."""
         for incoming, outcoming in self.links_zipped(path):
             in_vlan = incoming.get_metadata('s_vlan').value
@@ -535,17 +535,17 @@ class EVCDeploy(EVCBase):
 
             flows = []
             # Flow for one direction
-            flows.append(self.prepare_nni_flow(incoming.endpoint_b,
-                                               outcoming.endpoint_a,
-                                               in_vlan, out_vlan))
+            flows.append(self._prepare_nni_flow(incoming.endpoint_b,
+                                                outcoming.endpoint_a,
+                                                in_vlan, out_vlan))
 
             # Flow for the other direction
-            flows.append(self.prepare_nni_flow(outcoming.endpoint_a,
-                                               incoming.endpoint_b,
-                                               out_vlan, in_vlan))
-            self.send_flow_mods(incoming.endpoint_b.switch, flows)
+            flows.append(self._prepare_nni_flow(outcoming.endpoint_a,
+                                                incoming.endpoint_b,
+                                                out_vlan, in_vlan))
+            self._send_flow_mods(incoming.endpoint_b.switch, flows)
 
-    def install_uni_flows(self, path=None):
+    def _install_uni_flows(self, path=None):
         """Install UNI flows."""
         if not path:
             log.info('install uni flows without path.')
@@ -562,36 +562,36 @@ class EVCDeploy(EVCBase):
         flows_a = []
 
         # Flow for one direction, pushing the service tag
-        push_flow = self.prepare_push_flow(self.uni_a.interface,
-                                           path[0].endpoint_a,
-                                           in_vlan_a, out_vlan_a, in_vlan_z)
+        push_flow = self._prepare_push_flow(self.uni_a.interface,
+                                            path[0].endpoint_a,
+                                            in_vlan_a, out_vlan_a, in_vlan_z)
         flows_a.append(push_flow)
 
         # Flow for the other direction, popping the service tag
-        pop_flow = self.prepare_pop_flow(path[0].endpoint_a,
-                                         self.uni_a.interface, out_vlan_a)
+        pop_flow = self._prepare_pop_flow(path[0].endpoint_a,
+                                          self.uni_a.interface, out_vlan_a)
         flows_a.append(pop_flow)
 
-        self.send_flow_mods(self.uni_a.interface.switch, flows_a)
+        self._send_flow_mods(self.uni_a.interface.switch, flows_a)
 
         # Flows for the second UNI
         flows_z = []
 
         # Flow for one direction, pushing the service tag
-        push_flow = self.prepare_push_flow(self.uni_z.interface,
-                                           path[-1].endpoint_b,
-                                           in_vlan_z, out_vlan_z, in_vlan_a)
+        push_flow = self._prepare_push_flow(self.uni_z.interface,
+                                            path[-1].endpoint_b,
+                                            in_vlan_z, out_vlan_z, in_vlan_a)
         flows_z.append(push_flow)
 
         # Flow for the other direction, popping the service tag
-        pop_flow = self.prepare_pop_flow(path[-1].endpoint_b,
-                                         self.uni_z.interface, out_vlan_z)
+        pop_flow = self._prepare_pop_flow(path[-1].endpoint_b,
+                                          self.uni_z.interface, out_vlan_z)
         flows_z.append(pop_flow)
 
-        self.send_flow_mods(self.uni_z.interface.switch, flows_z)
+        self._send_flow_mods(self.uni_z.interface.switch, flows_z)
 
     @staticmethod
-    def send_flow_mods(switch, flow_mods, command='flows'):
+    def _send_flow_mods(switch, flow_mods, command='flows'):
         """Send a flow_mod list to a specific switch.
 
         Args:
@@ -610,7 +610,7 @@ class EVCDeploy(EVCBase):
         value = self.id[len(self.id)//2:]
         return int(value, 16)
 
-    def prepare_flow_mod(self, in_interface, out_interface):
+    def _prepare_flow_mod(self, in_interface, out_interface):
         """Prepare a common flow mod."""
         default_action = {"action_type": "output",
                           "port": out_interface.port_number}
@@ -621,9 +621,9 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    def prepare_nni_flow(self, in_interface, out_interface, in_vlan, out_vlan):
+    def _prepare_nni_flow(self, in_interface, out_interface, in_vlan, out_vlan):
         """Create NNI flows."""
-        flow_mod = self.prepare_flow_mod(in_interface, out_interface)
+        flow_mod = self._prepare_flow_mod(in_interface, out_interface)
         flow_mod['match']['dl_vlan'] = in_vlan
 
         new_action = {"action_type": "set_vlan",
@@ -632,7 +632,7 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    def prepare_push_flow(self, *args):
+    def _prepare_push_flow(self, *args):
         """Prepare push flow.
 
         Arguments:
@@ -649,7 +649,7 @@ class EVCDeploy(EVCBase):
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_in_vlan = args
 
-        flow_mod = self.prepare_flow_mod(in_interface, out_interface)
+        flow_mod = self._prepare_flow_mod(in_interface, out_interface)
         flow_mod['match']['dl_vlan'] = in_vlan
 
         new_action = {"action_type": "set_vlan",
@@ -666,9 +666,9 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    def prepare_pop_flow(self, in_interface, out_interface, in_vlan):
+    def _prepare_pop_flow(self, in_interface, out_interface, in_vlan):
         """Prepare pop flow."""
-        flow_mod = self.prepare_flow_mod(in_interface, out_interface)
+        flow_mod = self._prepare_flow_mod(in_interface, out_interface)
         flow_mod['match']['dl_vlan'] = in_vlan
         new_action = {"action_type": "pop_vlan"}
         flow_mod["actions"].insert(0, new_action)
