@@ -88,7 +88,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test if you are sending flow_mods."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
-        EVC.send_flow_mods(switch, flow_mods)
+        EVC._send_flow_mods(switch, flow_mods)
         expected_endpoint = f"{MANAGER_URL}/flows/{switch.id}"
         expected_data = {"flows": flow_mods}
         self.assertEqual(requests_mock.post.call_count, 1)
@@ -100,7 +100,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test if you are sending flow_mods."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
-        EVC.send_flow_mods(switch, flow_mods, command='delete')
+        EVC._send_flow_mods(switch, flow_mods, command='delete')
         expected_endpoint = f"{MANAGER_URL}/delete/{switch.id}"
         expected_data = {"flows": flow_mods}
         self.assertEqual(requests_mock.post.call_count, 1)
@@ -120,7 +120,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "active": True
         }
         evc = EVC(**attributes)
-        flow_mod = evc.prepare_flow_mod(interface_a, interface_z)
+        flow_mod = evc._prepare_flow_mod(interface_a, interface_z)
         expected_flow_mod = {
                            'match': {'in_port': interface_a.port_number},
                            'cookie': evc.get_cookie(),
@@ -142,7 +142,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         interface_a = evc.uni_a.interface
         interface_z = evc.uni_z.interface
         in_vlan = 10
-        flow_mod = evc.prepare_pop_flow(interface_a, interface_z, in_vlan)
+        flow_mod = evc._prepare_pop_flow(interface_a, interface_z, in_vlan)
         expected_flow_mod = {
             'match': {'in_port': interface_a.port_number, 'dl_vlan': in_vlan},
             'cookie': evc.get_cookie(),
@@ -168,8 +168,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         in_vlan_a = 10
         out_vlan_a = 20
         in_vlan_z = 3
-        flow_mod = evc.prepare_push_flow(interface_a, interface_z,
-                                         in_vlan_a, out_vlan_a, in_vlan_z)
+        flow_mod = evc._prepare_push_flow(interface_a, interface_z,
+                                          in_vlan_a, out_vlan_a, in_vlan_z)
         expected_flow_mod = {
             'match': {'in_port': interface_a.port_number,
                       'dl_vlan': in_vlan_a
@@ -210,7 +210,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             ]
         }
         evc = EVC(**attributes)
-        evc.install_uni_flows(attributes['primary_links'])
+        evc._install_uni_flows(attributes['primary_links'])
 
         expected_flow_mod_a = [
             {'match': {'in_port': uni_a.interface.port_number,
@@ -291,7 +291,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             ]
         }
         evc = EVC(**attributes)
-        evc.install_nni_flows(attributes['primary_links'])
+        evc._install_nni_flows(attributes['primary_links'])
 
         in_vlan = evc.primary_links[0].get_metadata('s_vlan').value
         out_vlan = evc.primary_links[-1].get_metadata('s_vlan').value
@@ -351,7 +351,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
-        deployed = evc.deploy(attributes['primary_links'])
+        deployed = evc.deploy_to_path(attributes['primary_links'])
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 1)
@@ -391,7 +391,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
-        deployed = evc.deploy()
+        deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 0)
@@ -437,7 +437,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         discover_new_path_mocked.return_value = dynamic_backup_path
-        deployed = evc.deploy()
+        deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(discover_new_path_mocked.call_count, 1)

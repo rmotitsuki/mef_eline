@@ -116,6 +116,7 @@ class Main(KytosNApp):
 
         # Schedule the circuit deploy
         self.sched.add(evc)
+        evc.deploy()
 
         # Notify users
         event = KytosEvent(name='kytos.mef_eline.created',
@@ -148,6 +149,18 @@ class Main(KytosNApp):
             status = 400
 
         return jsonify(result), status
+
+    @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
+    def delete_circuit(self, circuit_id):
+        """Remove a circuit."""
+        circuits = self.storehouse.get_data()
+        log.info("Removing %s" % circuit_id)
+        evc = self.evc_from_dict(circuits.get(circuit_id))
+        evc.remove_current_flows()
+        evc.disable()
+        self.storehouse.save_evc(evc)
+
+        return jsonify("Circuit removed"), 200
 
     def is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
@@ -195,10 +208,9 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            if not evc.is_affected_by_link(event.link):
-                evc.handle_link_up(event.link)
+            evc.handle_link_up(event.content['interface'])
 
-    @listen_to('kytos.*.link.down', 'kytos.*.link.under_maintenance')
+    @listen_to('.*.switch.interface.link_down')
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         evc = None
@@ -207,10 +219,11 @@ class Main(KytosNApp):
             try:
                 evc = self.evc_from_dict(data)
             except ValueError as _exception:
-                log.debug(f'{data.get("id")} can not be provisioning yet.')
+                log.debug(f'{data.get("id")} can not be provisioned yet.')
                 continue
 
-            if not evc.is_affected_by_link(event.link):
+            link = evc.link_affected_by_interface(event.content['interface'])
+            if link:
                 evc.handle_link_down()
 
     def evc_from_dict(self, evc_dict):
@@ -223,19 +236,26 @@ class Main(KytosNApp):
         for attribute, value in data.items():
 
             if 'uni' in attribute:
-                data[attribute] = self.uni_from_dict(value)
+                try:
+                    data[attribute] = self.uni_from_dict(value)
+                except ValueError as exc:
+                    raise ValueError(f'Error creating UNI: {exc}')
 
             if attribute == 'circuit_scheduler':
                 data[attribute] = []
                 for schedule in value:
                     data[attribute].append(CircuitSchedule.from_dict(schedule))
 
-            if ('path' in attribute or 'link' in attribute) and \
-               (attribute != 'dynamic_backup_path'):
+            if 'link' in attribute:
                 if value:
                     data[attribute] = self.link_from_dict(value)
 
-        return EVC(**data)
+            if 'path' in attribute and attribute != 'dynamic_backup_path':
+                if value:
+                    data[attribute] = [self.link_from_dict(link)
+                                       for link in value]
+
+        return EVC(self.controller, **data)
 
     def uni_from_dict(self, uni_dict):
         """Return a UNI object from python dict."""
@@ -245,29 +265,27 @@ class Main(KytosNApp):
         interface_id = uni_dict.get("interface_id")
         interface = self.controller.get_interface_by_id(interface_id)
         if interface is None:
-            return False
+            raise ValueError(f'Could not instantiate interface {interface_id}')
 
-        tag = TAG.from_dict(uni_dict.get("tag"))
-
+        tag_dict = uni_dict.get("tag")
+        tag = TAG.from_dict(tag_dict)
         if tag is False:
-            return False
+            raise ValueError(f'Could not instantiate tag from dict {tag_dict}')
 
-        try:
-            uni = UNI(interface, tag)
-        except TypeError:
-            return False
+        uni = UNI(interface, tag)
 
         return uni
 
     def link_from_dict(self, link_dict):
         """Return a Link object from python dict."""
-        id_a = link_dict.get('endpoint_a')
-        id_b = link_dict.get('endpoint_b')
+        id_a = link_dict.get('endpoint_a').get('id')
+        id_b = link_dict.get('endpoint_b').get('id')
 
-        endpoint_a = self.controller.get_interface_by_id(id_b)
-        endpoint_b = self.controller.get_interface_by_id(id_a)
+        endpoint_a = self.controller.get_interface_by_id(id_a)
+        endpoint_b = self.controller.get_interface_by_id(id_b)
 
         link = Link(endpoint_a, endpoint_b)
-        link.extend_metadata(link_dict.get('metadata'))
+        if 'metadata' in link_dict:
+            link.extend_metadata(link_dict.get('metadata'))
 
         return link

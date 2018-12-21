@@ -190,7 +190,7 @@ class DevelopMode(develop):
 
 
 setup(name='kytos_mef_eline',
-      version='2.2.2',
+      version='2.3.0',
       description='Core Napps developed by Kytos Team',
       url='http://github.com/kytos/mef_eline',
       author='Kytos Team',
