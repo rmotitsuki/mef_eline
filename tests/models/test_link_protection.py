@@ -2,6 +2,7 @@
 import sys
 from unittest import TestCase
 from unittest.mock import patch
+from unittest.mock import Mock
 
 from kytos.core.common import EntityStatus
 
@@ -10,7 +11,9 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
 
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA
-from napps.kytos.mef_eline.tests.helpers import get_link_mocked, get_uni_mocked  # NOQA
+from tests.helpers import get_link_mocked,\
+    get_uni_mocked, get_controller_mock  # NOQA
+
 
 
 class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
@@ -26,6 +29,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         ]
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -47,6 +51,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         ]
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -68,6 +73,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 metadata={"s_vlan": 6})
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -91,6 +97,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                  get_link_mocked(status=EntityStatus.UP)
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -109,6 +116,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                  get_link_mocked(status=EntityStatus.UP)
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -144,6 +152,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -187,6 +196,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -230,6 +240,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -274,6 +285,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -317,6 +329,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -356,6 +369,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -397,6 +411,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -438,6 +453,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),

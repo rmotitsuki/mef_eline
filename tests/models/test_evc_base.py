@@ -10,7 +10,7 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.scheduler import CircuitSchedule
-from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
+from tests.helpers import get_uni_mocked, get_controller_mock
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
@@ -18,7 +18,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_attributes_empty(self):
         """Test if the EVC raises an error with name is required."""
-        attributes = {}
+        attributes = {"controller": get_controller_mock()}
         error_message = "name is required."
         with self.assertRaises(ValueError) as handle_error:
             EVC(**attributes)
@@ -26,7 +26,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_without_uni_a(self):
         """Test if the EVC raises and error with UNI A is required."""
-        attributes = {"name": "circuit_name"}
+        attributes = {"controller": get_controller_mock(),
+                      "name": "circuit_name"}
         error_message = "uni_a is required."
         with self.assertRaises(ValueError) as handle_error:
             EVC(**attributes)
@@ -35,6 +36,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_with_invalid_uni_a(self):
         """Test if the EVC raises and error with invalid UNI A."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(tag_value=82)
         }
@@ -46,6 +48,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_without_uni_z(self):
         """Test if the EVC raises and error with UNI Z is required."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True)
         }
@@ -57,6 +60,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_with_invalid_uni_z(self):
         """Test if the EVC raises and error with UNI Z is required."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(tag_value=83)
@@ -69,6 +73,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_update_name(self):
         """Test if raises and error when trying to update the name."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -85,6 +90,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_update_uni_a(self):
         """Test if raises and error when trying to update the uni_a."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -101,6 +107,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_update_uni_z(self):
         """Test if raises and error when trying to update the uni_z."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -117,6 +124,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_circuit_representation(self):
         """Test the method __repr__."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -128,6 +136,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_comparison_method(self):
         """Test the method __eq__."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -136,6 +145,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         evc2 = EVC(**attributes)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "circuit_name_2",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -151,6 +161,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_as_dict(self):
         """Test the method as_dict."""
         attributes = {
+            "controller": get_controller_mock(),
             "id": "custom_id",
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),

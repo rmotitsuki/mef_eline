@@ -13,7 +13,8 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA
 from napps.kytos.mef_eline.settings import MANAGER_URL  # NOQA
-from napps.kytos.mef_eline.tests.helpers import get_link_mocked, get_uni_mocked  # NOQA
+from tests.helpers import get_link_mocked,\
+    get_uni_mocked, get_controller_mock  # NOQA
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
@@ -29,6 +30,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method without primary links."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -43,6 +45,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with disable circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -58,6 +61,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with enabled and not active circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -73,6 +77,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with enabled and active circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -112,6 +117,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         interface_a = Interface('eth0', 1, Mock(spec=Switch))
         interface_z = Interface('eth1', 3, Mock(spec=Switch))
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -134,6 +140,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_prepare_pop_flow(self):
         """Test prepare pop flow  method."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
             "uni_z": get_uni_mocked(interface_port=2, is_valid=True),
@@ -158,6 +165,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_prepare_push_flow(self):
         """Test prepare push flow method."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
             "uni_z": get_uni_mocked(interface_port=2, is_valid=True),
@@ -199,6 +207,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -280,6 +289,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -339,6 +349,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -379,6 +390,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -421,6 +433,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -457,6 +470,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
