@@ -36,6 +36,8 @@ class TestMain(TestCase):
              '/api/kytos/mef_eline/v2/evc/'),
             ({}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/'),
+            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'DELETE'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
