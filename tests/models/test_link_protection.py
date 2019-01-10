@@ -109,8 +109,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             "enabled": True
         }
         evc = EVC(**attributes)
+
+        #storehouse mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
         deployed = evc.deploy_to('primary_path', evc.primary_path)
-        deploy_mocked.assert_called_with(evc.primary_path)
+        install_uni_flows_mocked.assert_called_with(evc.primary_path)
+        install_nni_flows_mocked.assert_called_with(evc.primary_path)
         self.assertTrue(deployed)
 
     def test_deploy_to_case_3(self):
@@ -306,14 +312,19 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         evc.current_path = evc.backup_path
+
+        #storehouse mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
         current_handle_link_down = evc.handle_link_down()
-        self.assertEqual(deploy_mocked.call_count, 1)
+        #self.assertEqual(deploy_mocked.call_count, 1)
         self.assertEqual(deploy_to_mocked.call_count, 1)
         deploy_to_mocked.assert_called_once_with('primary_path',
                                                  evc.primary_path)
         self.assertTrue(current_handle_link_down)
         msg = f"{evc} deployed after link down."
-        log_mocked.debug.assert_called_once_with(msg)
+        log_mocked.debug.assert_called_with(msg)
 
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.models.LinkProtection.deploy_to')
@@ -412,7 +423,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                get_link_mocked(endpoint_a_port=13, endpoint_b_port=14,
                                 metadata={"s_vlan": 5},
                                 status=EntityStatus.DOWN),
                 get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
@@ -451,6 +462,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         """Test if it is deployed after the dynamic_backup_path deploy."""
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = False
+
         primary_path = [
                 get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
                                 metadata={"s_vlan": 5},
@@ -467,6 +479,13 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                 metadata={"s_vlan": 6},
                                 status=EntityStatus.UP),
         ]
+
+        # Setup best_path mock
+        best_path = Path()
+        best_path.append(primary_path[0])
+        #best_path.append(primary_path[1])
+        get_best_path_mocked.return_value = best_path
+
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
@@ -480,7 +499,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         evc.current_path = Path([])
+
+        #storehouse mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
         current_handle_link_up = evc.handle_link_up(backup_path[0])
+
+        self.assertEqual(get_best_path_mocked.call_count, 1)
         self.assertEqual(deploy_mocked.call_count, 1)
         self.assertEqual(deploy_to_mocked.call_count, 1)
         deploy_to_mocked.assert_called_once_with('backup_path',

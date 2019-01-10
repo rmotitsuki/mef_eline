@@ -71,3 +71,9 @@ def get_uni_mocked(**kwargs):
         "tag": tag.as_dict()
     }
     return uni
+
+def get_paths_mock(circuit):
+    """Get a valid path for the circuit from the Pathfinder."""
+    return """{"paths": [{"hops": ["00:00:00:00:00:00:00:01",
+           "00:00:00:00:00:00:00:01:2", "00:00:00:00:00:00:00:02:2", 
+           "00:00:00:00:00:00:00:02"]}]}"""
