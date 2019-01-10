@@ -349,21 +349,32 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
                                switch_id="switch_uni_z", is_valid=True)
 
+        primary_links = [
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
+        ]
+
         attributes = {
             "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
-            "primary_links": [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6})
-            ]
+            "primary_links": primary_links
         }
+        # Setup path to deploy
+        path = Path()
+        path.append(primary_links[0])
+        path.append(primary_links[1])
 
         evc = EVC(**attributes)
-        deployed = evc.deploy_to_path(attributes['primary_links'])
+
+        #storehouse mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
+        deployed = evc.deploy_to_path(path)
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 1)
@@ -387,11 +398,14 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
          install_nni_flows, chose_vlans_mock,
          discover_new_path, log_mock) = args
 
-        should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
-                               switch_id="switch_uni_a", is_valid=True)
+                               switch_id="switch_uni_a",
+                               switch_dpid="switch_dpid_uni_a",
+                               is_valid=True)
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
-                               switch_id="switch_uni_z", is_valid=True)
+                               switch_id="switch_uni_z",
+                               switch_dpid="switch_dpid_uni_a",
+                               is_valid=True)
 
         attributes = {
             "controller": get_controller_mock(),
@@ -415,7 +429,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(install_nni_flows.call_count, 0)
         self.assertEqual(chose_vlans_mock.call_count, 0)
         self.assertEqual(log_mock.info.call_count, 0)
+        self.assertEqual(sync_mock.call_count, 0)
         self.assertFalse(deployed)
+
 
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
@@ -430,7 +446,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
          log_mock) = args
 
-        should_deploy_mock.return_value = True
+        should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
                                switch_id="switch_uni_a", is_valid=True)
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
@@ -454,6 +470,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         discover_new_path_mocked.return_value = dynamic_backup_path
+
+        # storehouse initialization mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
         deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
@@ -494,7 +515,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         self.assertEqual(send_flow_mods_mocked.call_count, 2)
         self.assertFalse(evc.is_active())
-        flows = [{'cookie': evc.get_cookie()}]
+        flows = [{'cookie': evc.get_cookie(),
+                 'cookie_mask': 18446744073709551615}]
         switch_1 = evc.primary_links[0].endpoint_a.switch
         switch_2 = evc.primary_links[0].endpoint_b.switch
         send_flow_mods_mocked.assert_any_call(switch_1, flows, 'delete')
