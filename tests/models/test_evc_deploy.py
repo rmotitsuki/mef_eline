@@ -195,7 +195,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(expected_flow_mod, flow_mod)
 
     @staticmethod
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_install_uni_flows(send_flow_mods_mock):
         """Test install uni flows method.
 
@@ -277,7 +277,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                             expected_flow_mod_z)
 
     @staticmethod
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_install_nni_flows(send_flow_mods_mock):
         """Test install nni flows method.
 
@@ -332,15 +332,16 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         send_flow_mods_mock.assert_called_once_with(switch, expected_flow_mods)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
     @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
     def test_deploy_successfully(self, *args):
         """Test if all methods to deploy are called."""
-        (should_deploy_mock, activate_mock, install_uni_flows_mock,
-         install_nni_flows, chose_vlans_mock, log_mock) = args
+        (should_deploy_mock, activate_mock,
+         install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
+         log_mock) = args
 
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -373,15 +374,18 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(deployed)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC.discover_new_path', return_value=None)
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
-    @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
+    @patch('napps.kytos.mef_eline.models.EVC.should_deploy', return_value = False)
+    @patch('napps.kytos.mef_eline.models.EVC.sync')
     def test_deploy_fail(self, *args):
         """Test if all methods is ignored when the should_deploy is false."""
-        (should_deploy_mock, activate_mock, install_uni_flows_mock,
-         install_nni_flows, chose_vlans_mock, log_mock) = args
+        (sync_mock, should_deploy_mock, activate_mock, install_uni_flows_mock,
+         install_nni_flows, chose_vlans_mock,
+         discover_new_path, log_mock) = args
 
         should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -414,9 +418,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(deployed)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
     @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
     @patch('napps.kytos.mef_eline.models.EVC.discover_new_path')
@@ -461,7 +465,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(log_mock.info.call_count, 1)
         self.assertTrue(deployed)
 
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_remove_current_flows(self, send_flow_mods_mocked):
         """Test remove current flows."""
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,

@@ -88,7 +88,11 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(expected_deployed)
 
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
-    def test_deploy_to_case_2(self, deploy_mocked):
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
+    def test_deploy_to_case_2(self, install_uni_flows_mocked,
+                              install_nni_flows_mocked,
+                              deploy_mocked):
         """Test deploy with all links up."""
         deploy_mocked.return_value = True
 
@@ -262,10 +266,15 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
+    @patch('napps.kytos.mef_eline.models.EVCDeploy._send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.DynamicPathManager.get_best_path')
     @patch('napps.kytos.mef_eline.models.LinkProtection.deploy_to')
-    def test_handle_link_down_case_4(self, deploy_to_mocked, deploy_mocked,
+    def test_handle_link_down_case_4(self, deploy_to_mocked,
+                                     _send_flow_mods_mocked,
+                                     get_best_path_mocked,
+                                     deploy_mocked,
                                      log_mocked):
-        """Test if circuit without dynamic path is return failed."""
+        """Test if circuit with dynamic path is return success."""
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = False
         primary_path = [
@@ -432,7 +441,13 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.models.LinkProtection.deploy_to')
-    def test_handle_link_up_case_4(self, deploy_to_mocked, deploy_mocked):
+    @patch('napps.kytos.mef_eline.models.DynamicPathManager.get_best_path')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
+    def test_handle_link_up_case_4(self, *args):
+        """Test if not path is found a dynamic path is used."""
+        (_install_uni_flows_mocked, _install_nni_flows_mocked,
+        get_best_path_mocked, deploy_to_mocked, deploy_mocked) = args
         """Test if it is deployed after the dynamic_backup_path deploy."""
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = False
