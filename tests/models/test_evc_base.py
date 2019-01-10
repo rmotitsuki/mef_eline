@@ -197,44 +197,15 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             'primary_path': [],
             'backup_path': [],
             'dynamic_backup_path': False,
-            '_requested': {
-                           "id": "custom_id",
-                           "name": "custom_name",
-                           "uni_a": attributes['uni_a'].as_dict(),
-                           "uni_z": attributes['uni_z'].as_dict(),
-                           "start_date": '2018-08-21T18:44:54',
-                           "end_date": '2018-08-21T18:44:55',
-                           'primary_links': [],
-                           'request_time': '2018-08-21T19:10:41',
-                           'creation_time': '2018-08-21T18:44:54',
-                           'owner': "my_name",
-                           'circuit_scheduler': [
-                               {
-                                "id": 234243247,
-                                "action": "create",
-                                "frequency": "1 * * * *"
-                               },
-                               {
-                                "id": 234243239,
-                                "action": "create",
-                                "interval": {
-                                   "hours": 2
-                                }
-                               }
-                           ],
-                           'enabled': True,
-                           'priority': 2
-            },
             'request_time': '2018-08-21T19:10:41',
             'creation_time': '2018-08-21T18:44:54',
-            'owner': 'my_name',
             'circuit_scheduler': [
-               {
-                "id": 234243247,
-                "action": "create",
-                "frequency": "1 * * * *"
-               },
-               {
+                {
+                    "id": 234243247,
+                    "action": "create",
+                    "frequency": "1 * * * *"
+                },
+                {
                 "id": 234243239,
                 "action": "create",
                 "interval": {
@@ -249,8 +220,20 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         actual_dict = evc.as_dict()
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
-            if name == '_requested':
-                for requested_name, requested_value in value.items():
-                    if isinstance(requested_value, UNI):
-                        value[requested_name] = requested_value.as_dict()
-            self.assertEqual(value, actual)
+            if name == 'circuit_scheduler':
+                obj_value = {}
+                obj_actual = {}
+
+                for index, actual_item in enumerate(actual):
+                    actual_item = actual_item.as_dict()
+                    for actual_name, actual_value in actual_item.items():
+                        obj_actual[actual_name] = actual_value
+
+                    # Check the scheduled expected items
+                    circuit_schedule = value[index]
+                    for schedule_name, schedule_value in circuit_schedule.items():
+                        obj_value[schedule_name] = schedule_value
+                        self.assertEqual(obj_value[schedule_name], obj_actual[schedule_name])
+            else:
+                print("%s === %s" % (value, actual))
+                self.assertEqual(value, actual)
