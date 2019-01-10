@@ -22,13 +22,12 @@ class TestMain(TestCase):
         """Verify all event listeners registered."""
         expected_events = ['kytos/core.shutdown',
                            'kytos/core.shutdown.kytos/mef_eline',
-                           'kytos.*.link.down',
-                           'kytos.*.link.under_maintenance',
+                           '.*.switch.interface.link_down',
                            'kytos.*.link.up',
                            'kytos.*.link.end_maintenance',
                            'kytos/topology.updated']
         actual_events = self.napp.listeners()
-        self.assertEqual(expected_events, actual_events)
+        self.assertEqual(expected_events, actual_events, '%s'%actual_events)
 
     def test_verify_api_urls(self):
         """Verify all APIs registered."""
