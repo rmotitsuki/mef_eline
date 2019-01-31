@@ -709,7 +709,7 @@ class LinkProtection(EVCDeploy):
 
         return False
 
-    def handle_link_up(self, interface):
+    def handle_link_up(self, link):
         """Handle circuit when link down.
 
         Args:
@@ -720,7 +720,7 @@ class LinkProtection(EVCDeploy):
             return True
 
         success = False
-        if self.primary_path.link_affected_by_interface(interface):
+        if self.primary_path.is_affected_by_link(link):
             success = self.deploy_to('primary_path', self.primary_path)
 
         if success:

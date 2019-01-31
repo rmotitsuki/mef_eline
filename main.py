@@ -196,7 +196,7 @@ class Main(KytosNApp):
             except ValueError as _exception:
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
 
-    @listen_to('kytos.*.link.up', 'kytos.*.link.end_maintenance')
+    @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         evc = None
@@ -208,9 +208,9 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            evc.handle_link_up(event.content['interface'])
+            evc.handle_link_up(event.content['link'])
 
-    @listen_to('.*.switch.interface.link_down')
+    @listen_to('kytos/topology.link_down')
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         evc = None
@@ -222,8 +222,8 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioned yet.')
                 continue
 
-            link = evc.link_affected_by_interface(event.content['interface'])
-            if link:
+            if evc.is_affected_by_link(event.content['link']):
+                log.info('handling evc %s' % evc)
                 evc.handle_link_down()
 
     def evc_from_dict(self, evc_dict):
