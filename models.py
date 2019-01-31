@@ -16,11 +16,6 @@ from napps.kytos.mef_eline.storehouse import StoreHouse
 class Path(list, GenericEntity):
     """Class to represent a Path."""
 
-    def __init__(self, *args, **kwargs):
-        """Create a path instance using links."""
-        super().__init__(*args, **kwargs)
-        self.links_cache = set(self)
-
     def __eq__(self, other=None):
         """Compare paths."""
         if not other or not isinstance(other, Path):
@@ -31,13 +26,13 @@ class Path(list, GenericEntity):
         """Verify if the current path is affected by link."""
         if not link:
             return False
-        return link in self.links_cache
+        return link in self
 
     def link_affected_by_interface(self, interface=None):
         """Return the link using this interface, if any, or None otherwise."""
         if not interface:
             return None
-        for link in self.links_cache:
+        for link in self:
             if interface in (link.endpoint_a, link.endpoint_b):
                 return link
         return None
