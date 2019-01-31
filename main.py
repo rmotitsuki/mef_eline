@@ -288,4 +288,10 @@ class Main(KytosNApp):
         if 'metadata' in link_dict:
             link.extend_metadata(link_dict.get('metadata'))
 
+        s_vlan = link.get_metadata('s_vlan')
+        if s_vlan:
+            tag = TAG.from_dict(s_vlan)
+            if tag is False:
+                raise ValueError(f'Could not instantiate tag from dict {s_vlan}')
+            link.update_metadata('s_vlan', tag)
         return link
