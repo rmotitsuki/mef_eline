@@ -235,5 +235,4 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                         obj_value[schedule_name] = schedule_value
                         self.assertEqual(obj_value[schedule_name], obj_actual[schedule_name])
             else:
-                print("%s === %s" % (value, actual))
                 self.assertEqual(value, actual)
