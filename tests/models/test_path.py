@@ -9,7 +9,7 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
 
 from napps.kytos.mef_eline.models import Path  # NOQA
-from napps.kytos.mef_eline.tests.helpers import get_link_mocked  # NOQA
+from tests.helpers import get_link_mocked  # NOQA
 
 
 class TestPath(TestCase):
