@@ -27,4 +27,5 @@ tox==3.2.1
 typed-ast==1.1.0          # via astroid
 virtualenv==16.0.0        # via tox
 wrapt==1.10.11            # via astroid
+requests==2.19.1
 yala==1.7.0
