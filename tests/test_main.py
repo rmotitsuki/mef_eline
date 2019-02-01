@@ -27,7 +27,7 @@ class TestMain(TestCase):
                            'kytos.*.link.end_maintenance',
                            'kytos/topology.updated']
         actual_events = self.napp.listeners()
-        self.assertEqual(expected_events, actual_events, '%s'%actual_events)
+        self.assertEqual(expected_events, actual_events, '%s' % actual_events)
 
     def test_verify_api_urls(self):
         """Verify all APIs registered."""
