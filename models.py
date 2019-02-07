@@ -46,10 +46,15 @@ class Path(list, GenericEntity):
         if not self:
             return EntityStatus.DISABLED
 
-        for link in self:
-            if link.status is not EntityStatus.UP:
-                return link.status
-        return EntityStatus.UP
+        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'path_status')
+        request_data = {'path': self.as_dict()}
+        api_reply = requests.get(endpoint, json=request_data)
+        if api_reply.status_code != getattr(requests.codes, 'ok'):
+            log.error('Failed to get path status at %s. Returned %s',
+                      endpoint, api_reply.status_code)
+            return None
+        log.info('Path status %s', api_reply.json())
+        return EntityStatus.UP if api_reply.json() else EntityStatus.DOWN
 
     def as_dict(self):
         """Return list comprehension of links as_dict."""
