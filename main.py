@@ -3,15 +3,15 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
+from napps.kytos.mef_eline.models import EVC, DynamicPathManager
+from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager
-from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Main(KytosNApp):
@@ -152,7 +152,11 @@ class Main(KytosNApp):
 
     @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
     def delete_circuit(self, circuit_id):
-        """Remove a circuit."""
+        """Remove a circuit.
+
+        First, flows are removed from the switches, then the EVC is
+        disabled.
+        """
         circuits = self.storehouse.get_data()
         log.info("Removing %s" % circuit_id)
         evc = self.evc_from_dict(circuits.get(circuit_id))
@@ -292,6 +296,7 @@ class Main(KytosNApp):
         if s_vlan:
             tag = TAG.from_dict(s_vlan)
             if tag is False:
-                raise ValueError(f'Could not instantiate tag from dict {s_vlan}')
+                error_msg = f'Could not instantiate tag from dict {s_vlan}'
+                raise ValueError(error_msg)
             link.update_metadata('s_vlan', tag)
         return link

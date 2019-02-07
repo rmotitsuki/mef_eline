@@ -3,14 +3,14 @@ from datetime import datetime
 from uuid import uuid4
 
 import requests
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):
@@ -616,7 +616,8 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    def _prepare_nni_flow(self, in_interface, out_interface, in_vlan, out_vlan):
+    def _prepare_nni_flow(self,
+                          in_interface, out_interface, in_vlan, out_vlan):
         """Create NNI flows."""
         flow_mod = self._prepare_flow_mod(in_interface, out_interface)
         flow_mod['match']['dl_vlan'] = in_vlan
@@ -728,7 +729,7 @@ class LinkProtection(EVCDeploy):
 
         # In this case, probably the circuit is not being used and
         # we can move to backup
-        if self.backup_path.link_affected_by_interface(interface):
+        if self.backup_path.is_affected_by_link(link):
             success = self.deploy_to('backup_path', self.backup_path)
 
         if success:
