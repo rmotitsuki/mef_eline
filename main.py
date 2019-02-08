@@ -3,15 +3,15 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
+from napps.kytos.mef_eline.models import EVC, DynamicPathManager
+from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager
-from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Main(KytosNApp):
@@ -152,7 +152,11 @@ class Main(KytosNApp):
 
     @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
     def delete_circuit(self, circuit_id):
-        """Remove a circuit."""
+        """Remove a circuit.
+
+        First, flows are removed from the switches, then the EVC is
+        disabled.
+        """
         circuits = self.storehouse.get_data()
         log.info("Removing %s" % circuit_id)
         evc = self.evc_from_dict(circuits.get(circuit_id))
@@ -196,7 +200,7 @@ class Main(KytosNApp):
             except ValueError as _exception:
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
 
-    @listen_to('kytos.*.link.up', 'kytos.*.link.end_maintenance')
+    @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         evc = None
@@ -208,9 +212,9 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            evc.handle_link_up(event.content['interface'])
+            evc.handle_link_up(event.content['link'])
 
-    @listen_to('.*.switch.interface.link_down')
+    @listen_to('kytos/topology.link_down')
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         evc = None
@@ -222,8 +226,8 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioned yet.')
                 continue
 
-            link = evc.link_affected_by_interface(event.content['interface'])
-            if link:
+            if evc.is_affected_by_link(event.content['link']):
+                log.info('handling evc %s' % evc)
                 evc.handle_link_down()
 
     def evc_from_dict(self, evc_dict):
@@ -288,4 +292,11 @@ class Main(KytosNApp):
         if 'metadata' in link_dict:
             link.extend_metadata(link_dict.get('metadata'))
 
+        s_vlan = link.get_metadata('s_vlan')
+        if s_vlan:
+            tag = TAG.from_dict(s_vlan)
+            if tag is False:
+                error_msg = f'Could not instantiate tag from dict {s_vlan}'
+                raise ValueError(error_msg)
+            link.update_metadata('s_vlan', tag)
         return link

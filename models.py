@@ -3,23 +3,18 @@ from datetime import datetime
 from uuid import uuid4
 
 import requests
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.storehouse import StoreHouse
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.storehouse import StoreHouse
 
 
 class Path(list, GenericEntity):
     """Class to represent a Path."""
-
-    def __init__(self, *args, **kwargs):
-        """Create a path instance using links."""
-        super().__init__(*args, **kwargs)
-        self.links_cache = set(self)
 
     def __eq__(self, other=None):
         """Compare paths."""
@@ -31,13 +26,13 @@ class Path(list, GenericEntity):
         """Verify if the current path is affected by link."""
         if not link:
             return False
-        return link in self.links_cache
+        return link in self
 
     def link_affected_by_interface(self, interface=None):
         """Return the link using this interface, if any, or None otherwise."""
         if not interface:
             return None
-        for link in self.links_cache:
+        for link in self:
             if interface in (link.endpoint_a, link.endpoint_b):
                 return link
         return None
@@ -51,10 +46,15 @@ class Path(list, GenericEntity):
         if not self:
             return EntityStatus.DISABLED
 
-        for link in self:
-            if link.status is not EntityStatus.UP:
-                return link.status
-        return EntityStatus.UP
+        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'path_status')
+        request_data = {'path': self.as_dict()}
+        api_reply = requests.get(endpoint, json=request_data)
+        if api_reply.status_code != getattr(requests.codes, 'ok'):
+            log.error('Failed to get path status at %s. Returned %s',
+                      endpoint, api_reply.status_code)
+            return None
+        log.info('Path status %s', api_reply.json())
+        return EntityStatus.UP if api_reply.json() else EntityStatus.DOWN
 
     def as_dict(self):
         """Return list comprehension of links as_dict."""
@@ -621,7 +621,8 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    def _prepare_nni_flow(self, in_interface, out_interface, in_vlan, out_vlan):
+    def _prepare_nni_flow(self,
+                          in_interface, out_interface, in_vlan, out_vlan):
         """Create NNI flows."""
         flow_mod = self._prepare_flow_mod(in_interface, out_interface)
         flow_mod['match']['dl_vlan'] = in_vlan
@@ -709,7 +710,7 @@ class LinkProtection(EVCDeploy):
 
         return False
 
-    def handle_link_up(self, interface):
+    def handle_link_up(self, link):
         """Handle circuit when link down.
 
         Args:
@@ -720,7 +721,7 @@ class LinkProtection(EVCDeploy):
             return True
 
         success = False
-        if self.primary_path.link_affected_by_interface(interface):
+        if self.primary_path.is_affected_by_link(link):
             success = self.deploy_to('primary_path', self.primary_path)
 
         if success:
@@ -733,7 +734,7 @@ class LinkProtection(EVCDeploy):
 
         # In this case, probably the circuit is not being used and
         # we can move to backup
-        if self.backup_path.link_affected_by_interface(interface):
+        if self.backup_path.is_affected_by_link(link):
             success = self.deploy_to('backup_path', self.backup_path)
 
         if success:
