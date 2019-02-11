@@ -443,7 +443,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         evc.current_path = Path([])
-        current_handle_link_up = evc.handle_link_up(backup_path[0].endpoint_a)
+        current_handle_link_up = evc.handle_link_up(backup_path[0])
         self.assertEqual(deploy_mocked.call_count, 0)
         self.assertEqual(deploy_to_mocked.call_count, 1)
         deploy_to_mocked.assert_called_once_with('backup_path',
