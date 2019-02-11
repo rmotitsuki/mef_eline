@@ -1,12 +1,10 @@
 """Module to test the main napp file."""
 import json
 from unittest import TestCase
-from unittest.mock import Mock, patch
-
-from kytos.core import Controller
-from kytos.core.config import KytosConfig
+from unittest.mock import patch
 
 from napps.kytos.mef_eline.main import Main
+from tests.helpers import get_controller_mock
 
 
 class TestMain(TestCase):
@@ -18,19 +16,18 @@ class TestMain(TestCase):
         Set the server_name_url_url from kytos/mef_eline
         """
         self.server_name_url = 'http://localhost:8181/api/kytos/mef_eline'
-        self.napp = Main(self.get_controller_mock())
+        self.napp = Main(get_controller_mock())
 
     def test_get_event_listeners(self):
         """Verify all event listeners registered."""
         expected_events = ['kytos/core.shutdown',
                            'kytos/core.shutdown.kytos/mef_eline',
-                           'kytos.*.link.down',
-                           'kytos.*.link.under_maintenance',
+                           '.*.switch.interface.link_down',
                            'kytos.*.link.up',
                            'kytos.*.link.end_maintenance',
                            'kytos/topology.updated']
         actual_events = self.napp.listeners()
-        self.assertEqual(expected_events, actual_events)
+        self.assertEqual(expected_events, actual_events, '%s' % actual_events)
 
     def test_verify_api_urls(self):
         """Verify all APIs registered."""
@@ -39,6 +36,8 @@ class TestMain(TestCase):
              '/api/kytos/mef_eline/v2/evc/'),
             ({}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/'),
+            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'DELETE'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
@@ -172,14 +171,6 @@ class TestMain(TestCase):
         evc_as_dict_mock.assert_called_once()
         # verify add circuit in sched
         sched_add_mock.assert_called_once()
-
-    @staticmethod
-    def get_controller_mock():
-        """Return a controller mock."""
-        options = KytosConfig().options['daemon']
-        controller = Controller(options)
-        controller.log = Mock()
-        return controller
 
     @staticmethod
     def get_napp_urls(napp):

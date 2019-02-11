@@ -13,7 +13,8 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA
 from napps.kytos.mef_eline.settings import MANAGER_URL  # NOQA
-from napps.kytos.mef_eline.tests.helpers import get_link_mocked, get_uni_mocked  # NOQA
+from tests.helpers import get_link_mocked,\
+    get_uni_mocked, get_controller_mock  # NOQA
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
@@ -29,6 +30,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method without primary links."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
@@ -43,6 +45,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with disable circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -58,6 +61,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with enabled and not active circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -73,6 +77,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test should deploy method with enabled and active circuit."""
         log_mock.debug.return_value = True
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -112,6 +117,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         interface_a = Interface('eth0', 1, Mock(spec=Switch))
         interface_z = Interface('eth1', 3, Mock(spec=Switch))
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -134,6 +140,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_prepare_pop_flow(self):
         """Test prepare pop flow  method."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
             "uni_z": get_uni_mocked(interface_port=2, is_valid=True),
@@ -158,6 +165,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     def test_prepare_push_flow(self):
         """Test prepare push flow method."""
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
             "uni_z": get_uni_mocked(interface_port=2, is_valid=True),
@@ -187,7 +195,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(expected_flow_mod, flow_mod)
 
     @staticmethod
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_install_uni_flows(send_flow_mods_mock):
         """Test install uni flows method.
 
@@ -199,6 +207,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -268,7 +277,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                             expected_flow_mod_z)
 
     @staticmethod
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_install_nni_flows(send_flow_mods_mock):
         """Test install nni flows method.
 
@@ -280,6 +289,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -322,15 +332,16 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         send_flow_mods_mock.assert_called_once_with(switch, expected_flow_mods)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
     @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
     def test_deploy_successfully(self, *args):
         """Test if all methods to deploy are called."""
-        (should_deploy_mock, activate_mock, install_uni_flows_mock,
-         install_nni_flows, chose_vlans_mock, log_mock) = args
+        (should_deploy_mock, activate_mock,
+         install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
+         log_mock) = args
 
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -338,20 +349,32 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
                                switch_id="switch_uni_z", is_valid=True)
 
+        primary_links = [
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
+        ]
+
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
-            "primary_links": [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6})
-            ]
+            "primary_links": primary_links
         }
+        # Setup path to deploy
+        path = Path()
+        path.append(primary_links[0])
+        path.append(primary_links[1])
 
         evc = EVC(**attributes)
-        deployed = evc.deploy_to_path(attributes['primary_links'])
+
+        #storehouse mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
+        deployed = evc.deploy_to_path(path)
 
         self.assertEqual(should_deploy_mock.call_count, 1)
         self.assertEqual(activate_mock.call_count, 1)
@@ -362,23 +385,30 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(deployed)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC.discover_new_path', return_value=None)
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
-    @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
+    @patch('napps.kytos.mef_eline.models.EVC.should_deploy', return_value = False)
+    @patch('napps.kytos.mef_eline.models.EVC.sync')
     def test_deploy_fail(self, *args):
         """Test if all methods is ignored when the should_deploy is false."""
-        (should_deploy_mock, activate_mock, install_uni_flows_mock,
-         install_nni_flows, chose_vlans_mock, log_mock) = args
+        (sync_mock, should_deploy_mock, activate_mock, install_uni_flows_mock,
+         install_nni_flows, chose_vlans_mock,
+         discover_new_path, log_mock) = args
 
-        should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
-                               switch_id="switch_uni_a", is_valid=True)
+                               switch_id="switch_uni_a",
+                               switch_dpid="switch_dpid_uni_a",
+                               is_valid=True)
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
-                               switch_id="switch_uni_z", is_valid=True)
+                               switch_id="switch_uni_z",
+                               switch_dpid="switch_dpid_uni_a",
+                               is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -399,12 +429,14 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(install_nni_flows.call_count, 0)
         self.assertEqual(chose_vlans_mock.call_count, 0)
         self.assertEqual(log_mock.info.call_count, 0)
+        self.assertEqual(sync_mock.call_count, 0)
         self.assertFalse(deployed)
 
+
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC.choose_vlans')
-    @patch('napps.kytos.mef_eline.models.EVC.install_nni_flows')
-    @patch('napps.kytos.mef_eline.models.EVC.install_uni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
     @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
     @patch('napps.kytos.mef_eline.models.EVC.discover_new_path')
@@ -414,13 +446,14 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
          log_mock) = args
 
-        should_deploy_mock.return_value = True
+        should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
                                switch_id="switch_uni_a", is_valid=True)
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -437,6 +470,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         discover_new_path_mocked.return_value = dynamic_backup_path
+
+        # storehouse initialization mock
+        evc._storehouse.box = Mock()
+        evc._storehouse.box.data = {}
+
         deployed = evc.deploy_to_path()
 
         self.assertEqual(should_deploy_mock.call_count, 1)
@@ -448,7 +486,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(log_mock.info.call_count, 1)
         self.assertTrue(deployed)
 
-    @patch('napps.kytos.mef_eline.models.EVC.send_flow_mods')
+    @patch('napps.kytos.mef_eline.models.EVC._send_flow_mods')
     def test_remove_current_flows(self, send_flow_mods_mocked):
         """Test remove current flows."""
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -457,6 +495,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                switch_id="switch_uni_z", is_valid=True)
 
         attributes = {
+            "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": uni_a,
             "uni_z": uni_z,
@@ -476,7 +515,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         self.assertEqual(send_flow_mods_mocked.call_count, 2)
         self.assertFalse(evc.is_active())
-        flows = [{'cookie': evc.get_cookie()}]
+        flows = [{'cookie': evc.get_cookie(),
+                 'cookie_mask': 18446744073709551615}]
         switch_1 = evc.primary_links[0].endpoint_a.switch
         switch_2 = evc.primary_links[0].endpoint_b.switch
         send_flow_mods_mocked.assert_any_call(switch_1, flows, 'delete')

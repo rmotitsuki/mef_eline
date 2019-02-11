@@ -8,6 +8,7 @@ from pytz import utc
 
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
+from tests.helpers import get_controller_mock
 
 
 class TestCircuitSchedule(TestCase):
@@ -96,7 +97,8 @@ class TestScheduler(TestCase):
         time_fmt = "%Y-%m-%dT%H:%M:%S"
         date = datetime.now().strftime(time_fmt)
         circuit_scheduler = CircuitSchedule(action="remove", date=date)
-        options = {"name": 'my evc1',
+        options = {"controller": get_controller_mock(),
+                   "name": 'my evc1',
                    "uni_a": 'uni_a',
                    "uni_z": 'uni_z',
                    "circuit_scheduler": [circuit_scheduler]
@@ -122,7 +124,8 @@ class TestScheduler(TestCase):
             'minutes': 3
         }
         circuit_scheduler = CircuitSchedule(action="create", interval=interval)
-        options = {"name": 'my evc1',
+        options = {"controller": get_controller_mock(),
+                   "name": 'my evc1',
                    "uni_a": 'uni_a',
                    "uni_z": 'uni_z',
                    "circuit_scheduler": [circuit_scheduler]
@@ -158,7 +161,8 @@ class TestScheduler(TestCase):
                                            timezone=utc)
         trigger_mock.return_value = trigger
 
-        options = {"name": 'my evc1',
+        options = {"controller": get_controller_mock(),
+                   "name": 'my evc1',
                    "uni_a": 'uni_a',
                    "uni_z": 'uni_z',
                    "circuit_scheduler": [circuit_scheduler]

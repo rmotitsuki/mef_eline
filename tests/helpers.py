@@ -1,7 +1,8 @@
 """Module to help to create tests."""
-import sys
-from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
+
+from kytos.core import Controller
+from kytos.core.config import KytosConfig
 
 from kytos.core.interface import TAG, UNI, Interface
 from kytos.core.switch import Switch
@@ -9,17 +10,26 @@ from kytos.core.link import Link
 from kytos.core.common import EntityStatus
 
 
+def get_controller_mock():
+    """Return a controller mock."""
+    options = KytosConfig().options['daemon']
+    controller = Controller(options)
+    controller.log = Mock()
+    return controller
+
 def get_link_mocked(**kwargs):
     """Return a link mocked.
 
     Args:
         link_dict: Python dict returned after call link.as_dict()
     """
-    switch = Mock(spec=Switch)
+    switch_a = Switch(kwargs.get('dpid', '00:00:00:00:00:01'))
+    switch_b = Switch(kwargs.get('dpid', '00:00:00:00:00:02'))
+
     endpoint_a = Interface(kwargs.get('endpoint_a_name', 'eth0'),
-                           kwargs.get('endpoint_a_port', 1), switch)
+                           kwargs.get('endpoint_a_port', 1), switch_a)
     endpoint_b = Interface(kwargs.get('endpoint_b_name', 'eth1'),
-                           kwargs.get('endpoint_b_port', 2), switch)
+                           kwargs.get('endpoint_b_port', 2), switch_b)
     link = Mock(spec=Link, endpoint_a=endpoint_a, endpoint_b=endpoint_b)
     link.as_dict.return_value = kwargs.get('link_dict', {"id": "link_id"})
     link.status = kwargs.get('status', EntityStatus.DOWN)
@@ -51,6 +61,7 @@ def get_uni_mocked(**kwargs):
     is_valid = kwargs.get("is_valid", False)
     switch = Mock(spec=Switch)
     switch.id = kwargs.get("switch_id", "custom_switch_id")
+    switch.dpid = kwargs.get("switch_dpid", "custom_switch_dpid")
     interface = Interface(interface_name, interface_port, switch)
     tag = TAG(tag_type, tag_value)
     uni = Mock(spec=UNI, interface=interface, user_tag=tag)
@@ -60,3 +71,9 @@ def get_uni_mocked(**kwargs):
         "tag": tag.as_dict()
     }
     return uni
+
+def get_paths_mock(circuit):
+    """Get a valid path for the circuit from the Pathfinder."""
+    return """{"paths": [{"hops": ["00:00:00:00:00:00:00:01",
+           "00:00:00:00:00:00:00:01:2", "00:00:00:00:00:00:00:02:2", 
+           "00:00:00:00:00:00:00:02"]}]}"""
