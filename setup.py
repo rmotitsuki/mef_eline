@@ -27,10 +27,10 @@ else:
 # Kytos var folder
 VAR_PATH = BASE_ENV / 'var' / 'lib' / 'kytos'
 # Path for enabled NApps
-ENABL_PATH = VAR_PATH / 'napps'
+ENABLED_PATH = VAR_PATH / 'napps'
 # Path to install NApps
-INSTL_PATH = VAR_PATH / 'napps' / '.installed'
-CURR_DIR = Path('.').resolve()
+INSTALLED_PATH = VAR_PATH / 'napps' / '.installed'
+CURRENT_DIR = Path('.').resolve()
 
 # NApps enabled by default
 CORE_NAPPS = ['of_core']
@@ -111,11 +111,11 @@ class KytosInstall:
     @staticmethod
     def enable_core_napps():
         """Enable a NAPP by creating a symlink."""
-        (ENABL_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
+        (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         for napp in CORE_NAPPS:
             napp_path = Path('kytos', napp)
-            src = ENABL_PATH / napp_path
-            dst = INSTL_PATH / napp_path
+            src = ENABLED_PATH / napp_path
+            dst = INSTALLED_PATH / napp_path
             src.symlink_to(dst)
 
 
@@ -158,7 +158,7 @@ class DevelopMode(develop):
         """Install the package in a developer mode."""
         super().run()
         if self.uninstall:
-            shutil.rmtree(str(ENABL_PATH), ignore_errors=True)
+            shutil.rmtree(str(ENABLED_PATH), ignore_errors=True)
         else:
             self._create_folder_symlinks()
             self._create_file_symlinks()
@@ -171,27 +171,27 @@ class DevelopMode(develop):
         ./napps/kytos/napp_name will generate a link in
         var/lib/kytos/napps/.installed/kytos/napp_name.
         """
-        links = INSTL_PATH / 'kytos'
+        links = INSTALLED_PATH / 'kytos'
         links.mkdir(parents=True, exist_ok=True)
-        code = CURR_DIR
+        code = CURRENT_DIR
         src = links / 'mef_eline'
         src.symlink_to(code)
 
-        (ENABL_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
-        dst = ENABL_PATH / Path('kytos', 'mef_eline')
+        (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
+        dst = ENABLED_PATH / Path('kytos', 'mef_eline')
         dst.symlink_to(src)
 
     @staticmethod
     def _create_file_symlinks():
         """Symlink to required files."""
-        src = ENABL_PATH / '__init__.py'
-        dst = CURR_DIR / 'napps' / '__init__.py'
+        src = ENABLED_PATH / '__init__.py'
+        dst = CURRENT_DIR / 'napps' / '__init__.py'
         src.symlink_to(dst)
 
 
 setup(name='kytos_mef_eline',
       version='2.3.0',
-      description='Core Napps developed by Kytos Team',
+      description='Core NApps developed by Kytos Team',
       url='http://github.com/kytos/mef_eline',
       author='Kytos Team',
       author_email='of-ng-dev@ncc.unesp.br',
