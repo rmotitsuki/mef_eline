@@ -22,7 +22,7 @@ build:
             tests:
                 override:
                     - command: 'tox'
-                        coverage:
-                            file: '.coverage'
-                            config_file: '.coveragerc'
-                            format: 'py-cc'
+                      coverage:
+                        file: '.coverage'
+                        config_file: '.coveragerc'
+                        format: 'py-cc'
