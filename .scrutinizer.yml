@@ -16,9 +16,13 @@ build:
         analysis:
             tests:
                 override:
+                    - py-scrutinizer-run
+
+        coverage:
+            tests:
+                override:
                     - command: 'tox'
                         coverage:
-                          file: '.coverage'
-                          config_file: '.coveragerc'
-                          format: 'py-cc'
-                    - py-scrutinizer-run
+                            file: '.coverage'
+                            config_file: '.coveragerc'
+                            format: 'py-cc'
