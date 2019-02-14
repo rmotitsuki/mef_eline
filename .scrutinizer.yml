@@ -12,11 +12,17 @@ build:
     dependencies:
         before:
             - pip install coverage git+git://github.com/diraol/watchdog.git#egg=watchdog
-    tests:
-        override:
-            -
-                command: 'tox'
-                coverage:
-                    file: '.coverage'
-                    config_file: '.coveragerc'
-                    format: 'py-cc'
+    nodes:
+        analysis:
+            tests:
+                override:
+                    - py-scrutinizer-run
+
+        coverage:
+            tests:
+                override:
+                    - command: 'tox'
+                      coverage:
+                        file: '.coverage'
+                        config_file: '.coveragerc'
+                        format: 'py-cc'

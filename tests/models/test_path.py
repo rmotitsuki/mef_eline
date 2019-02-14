@@ -1,8 +1,10 @@
 """Module to test the Path class."""
 import sys
 from unittest import TestCase
+from unittest.mock import patch
 
 from kytos.core.common import EntityStatus
+from tests.helpers import MockResponse
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
@@ -12,37 +14,44 @@ from napps.kytos.mef_eline.models import Path  # NOQA
 from tests.helpers import get_link_mocked  # NOQA
 
 
+
 class TestPath(TestCase):
     """"Class to test path methods."""
-
     def test_status_case_1(self):
         """Test if empty link is DISABLED."""
         current_path = Path()
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
-    def test_status_case_2(self):
+    # This method will be used by the mock to replace requests.get
+    def _mocked_requests_get_status_case_2(*args, **kwargs):
+        return MockResponse({}, 200)
+
+    @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
+    def test_status_case_2(self, requests_mocked):
         """Test if link status is DOWN."""
         links = [
-                 get_link_mocked(status=EntityStatus.DOWN),
-                 get_link_mocked(status=EntityStatus.UP)
+                 get_link_mocked(),
+                 get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DOWN)
 
     def test_status_case_3(self):
         """Test if link status is DISABLED."""
-        links = [
-                 get_link_mocked(status=EntityStatus.DISABLED),
-                 get_link_mocked(status=EntityStatus.UP)
-        ]
+        links = []
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
-    def test_status_case_4(self):
+    # This method will be used by the mock to replace requests.get
+    def _mocked_requests_get_status_case_4(*args, **kwargs):
+        return MockResponse({'key':'OK'}, 200)
+
+    @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
+    def test_status_case_4(self, requests_mocked):
         """Test if link status is UP."""
         links = [
-                 get_link_mocked(status=EntityStatus.UP),
-                 get_link_mocked(status=EntityStatus.UP)
+                 get_link_mocked(),
+                 get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.UP)

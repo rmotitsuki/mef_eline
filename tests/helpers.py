@@ -1,4 +1,5 @@
 """Module to help to create tests."""
+from uuid import uuid4
 from unittest.mock import Mock
 
 from kytos.core import Controller
@@ -23,15 +24,17 @@ def get_link_mocked(**kwargs):
     Args:
         link_dict: Python dict returned after call link.as_dict()
     """
-    switch_a = Switch(kwargs.get('dpid', '00:00:00:00:00:01'))
-    switch_b = Switch(kwargs.get('dpid', '00:00:00:00:00:02'))
+    switch_a = kwargs.get('switch_a', Switch('00:00:00:00:00:01'))
+    switch_b = kwargs.get('switch_b', Switch('00:00:00:00:00:02'))
 
     endpoint_a = Interface(kwargs.get('endpoint_a_name', 'eth0'),
                            kwargs.get('endpoint_a_port', 1), switch_a)
     endpoint_b = Interface(kwargs.get('endpoint_b_name', 'eth1'),
                            kwargs.get('endpoint_b_port', 2), switch_b)
     link = Mock(spec=Link, endpoint_a=endpoint_a, endpoint_b=endpoint_b)
-    link.as_dict.return_value = kwargs.get('link_dict', {"id": "link_id"})
+    link.as_dict.return_value = kwargs.get('link_dict',
+                                           {'id': kwargs.get('link_id', 1)})
+
     link.status = kwargs.get('status', EntityStatus.DOWN)
 
     metadata = kwargs.get("metadata", {})
@@ -77,3 +80,21 @@ def get_paths_mock(circuit):
     return """{"paths": [{"hops": ["00:00:00:00:00:00:00:01",
            "00:00:00:00:00:00:00:01:2", "00:00:00:00:00:00:00:02:2", 
            "00:00:00:00:00:00:00:02"]}]}"""
+
+class MockResponse:
+    """Mock a requests response object.
+    Just define a function and add the patch decorator to the test.
+
+    Example:
+    def mocked_requests_get(*args, **kwargs):
+        return MockResponse({}, 200)
+
+    @patch('requests.get', side_effect=mocked_requests_get)
+
+    """
+    def __init__(self, json_data, status_code):
+        self.json_data = json_data
+        self.status_code = status_code
+
+    def json(self):
+        return self.json_data
