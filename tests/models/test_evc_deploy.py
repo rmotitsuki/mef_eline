@@ -494,6 +494,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         uni_z = get_uni_mocked(interface_port=3, tag_value=83,
                                switch_id="switch_uni_z", is_valid=True)
 
+        switch_a = Switch('00:00:00:00:00:01')
+        switch_b = Switch('00:00:00:00:00:02')
+        switch_c = Switch('00:00:00:00:00:03')
+
         attributes = {
             "controller": get_controller_mock(),
             "name": "custom_name",
@@ -502,9 +506,13 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "active": True,
             "enabled": True,
             "primary_links": [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                get_link_mocked(switch_a=switch_a,
+                                switch_b=switch_b,
+                                endpoint_a_port=9, endpoint_b_port=10,
                                 metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                get_link_mocked(switch_a=switch_b,
+                                switch_b=switch_c,
+                                endpoint_a_port=11, endpoint_b_port=12,
                                 metadata={"s_vlan": 6})
             ]
         }
@@ -513,7 +521,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
 
-        self.assertEqual(send_flow_mods_mocked.call_count, 2)
+        self.assertEqual(send_flow_mods_mocked.call_count, 3)
         self.assertFalse(evc.is_active())
         flows = [{'cookie': evc.get_cookie(),
                  'cookie_mask': 18446744073709551615}]
