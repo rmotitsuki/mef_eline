@@ -32,10 +32,12 @@ def get_link_mocked(**kwargs):
     endpoint_b = Interface(kwargs.get('endpoint_b_name', 'eth1'),
                            kwargs.get('endpoint_b_port', 2), switch_b)
     link = Mock(spec=Link, endpoint_a=endpoint_a, endpoint_b=endpoint_b)
-    link.as_dict.return_value = kwargs.get('link_dict',
-                                           {'id': kwargs.get('link_id', 1)})
-
+    link.id = kwargs.get('link_id', 1)
     link.status = kwargs.get('status', EntityStatus.DOWN)
+    link.active = kwargs.get('active', False)
+    link.as_dict.return_value = kwargs.get('link_dict',
+                                           {'id': link.id,
+                                            'active': link.active})
 
     metadata = kwargs.get("metadata", {})
 

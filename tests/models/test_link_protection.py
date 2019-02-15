@@ -123,15 +123,23 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_path_down(*args, **kwargs):
-        return MockResponse({}, 200)
+        return MockResponse({'links': [
+            {'active': False},
+            {'active': True}
+        ]}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_path_down)
     def test_deploy_to_case_3(self, requests_get_path_down_mocked):
         """Test deploy with one link down."""
         primary_path = [
-                 get_link_mocked(status=EntityStatus.DOWN),
-                 get_link_mocked(status=EntityStatus.UP)
+                 get_link_mocked(link_id=0,
+                                 active=False,
+                                 status=EntityStatus.DOWN),
+                 get_link_mocked(link_id=1,
+                                 active=False,
+                                 status=EntityStatus.UP)
         ]
+
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
@@ -141,6 +149,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             "enabled": True
         }
         evc = EVC(**attributes)
+
         deployed = evc.deploy_to('primary_path', evc.primary_path)
         self.assertFalse(deployed)
 

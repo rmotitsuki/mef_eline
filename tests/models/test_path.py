@@ -24,7 +24,10 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_2(*args, **kwargs):
-        return MockResponse({}, 200)
+        return MockResponse({'links': [
+            {'active': False},
+            {'active': False}
+        ]}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
     def test_status_case_2(self, requests_mocked):
@@ -44,7 +47,10 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_4(*args, **kwargs):
-        return MockResponse({'key':'OK'}, 200)
+        return MockResponse({'links': [
+            {'active': True},
+            {'active': True}
+        ]}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
     def test_status_case_4(self, requests_mocked):
