@@ -86,7 +86,7 @@ class Linter(SimpleCommand):
     def run(self):
         """Run yala."""
         print('Yala is running. It may take several seconds...')
-        cmd = 'yala *.py */*.py */*/*.py'
+        cmd = 'yala *.py tests/*.py tests/models/*.py'
         check_call(cmd, shell=True)
 
 
