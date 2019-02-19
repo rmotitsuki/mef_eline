@@ -2,15 +2,13 @@
 import sys
 from unittest import TestCase
 
-from kytos.core.interface import UNI
+from napps.kytos.mef_eline.models import EVC
+from napps.kytos.mef_eline.scheduler import CircuitSchedule
+from tests.helpers import get_uni_mocked, get_controller_mock
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
-
-from napps.kytos.mef_eline.models import EVC
-from napps.kytos.mef_eline.scheduler import CircuitSchedule
-from tests.helpers import get_uni_mocked, get_controller_mock
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
@@ -173,10 +171,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             'creation_time': '2018-08-21T18:44:54',
             'owner': "my_name",
             'circuit_scheduler': [
-                CircuitSchedule.from_dict({"id":234243247, "action":"create",
-                                          "frequency":"1 * * * *"}),
-                CircuitSchedule.from_dict({"id":234243239, "action":"create",
-                                          "interval":{"hours": 2}})
+                CircuitSchedule.from_dict({"id": 234243247, "action": "create",
+                                          "frequency": "1 * * * *"}),
+                CircuitSchedule.from_dict({"id": 234243239, "action": "create",
+                                          "interval": {"hours": 2}})
             ],
             'enabled': True,
             'priority': 2
@@ -206,12 +204,12 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                     "frequency": "1 * * * *"
                 },
                 {
-                "id": 234243239,
-                "action": "create",
-                "interval": {
-                   "hours": 2
+                    "id": 234243239,
+                    "action": "create",
+                    "interval": {
+                        "hours": 2
+                    }
                 }
-               }
             ],
             'active': False,
             'enabled': True,
@@ -221,18 +219,23 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
             if name == 'circuit_scheduler':
-                obj_value = {}
-                obj_actual = {}
-
-                for index, actual_item in enumerate(actual):
-                    actual_item = actual_item.as_dict()
-                    for actual_name, actual_value in actual_item.items():
-                        obj_actual[actual_name] = actual_value
-
-                    # Check the scheduled expected items
-                    circuit_schedule = value[index]
-                    for schedule_name, schedule_value in circuit_schedule.items():
-                        obj_value[schedule_name] = schedule_value
-                        self.assertEqual(obj_value[schedule_name], obj_actual[schedule_name])
+                self._check_schedule_dict(actual, value)
             else:
                 self.assertEqual(value, actual)
+
+    def _check_schedule_dict(self, schedule, schedule_dict):
+        obj_value = {}
+        obj_actual = {}
+        for index, actual_item in enumerate(schedule):
+            actual_item = actual_item.as_dict()
+            for actual_name, actual_value in actual_item.items():
+                obj_actual[actual_name] = actual_value
+
+            # Check the scheduled expected items
+            circuit_schedule = schedule_dict[index]
+
+            for schedule_name, schedule_value \
+                    in circuit_schedule.items():
+                obj_value[schedule_name] = schedule_value
+                self.assertEqual(obj_value[schedule_name],
+                                 obj_actual[schedule_name])

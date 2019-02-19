@@ -39,14 +39,12 @@ class Main(KytosNApp):
 
     def execute(self):
         """Execute once when the napp is running."""
-        pass
 
     def shutdown(self):
         """Execute when your napp is unloaded.
 
         If you have some cleanup procedure, insert it here.
         """
-        pass
 
     @rest('/v2/evc/', methods=['GET'])
     def list_circuits(self):

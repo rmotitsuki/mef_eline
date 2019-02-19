@@ -4,40 +4,47 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from kytos.core.common import EntityStatus
-from tests.helpers import MockResponse
+from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.models import Path  # NOQA
+from tests.helpers import MockResponse, get_link_mocked  # NOQA
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.models import Path  # NOQA
-from tests.helpers import get_link_mocked  # NOQA
-
-
 
 class TestPath(TestCase):
-    """"Class to test path methods."""
+    """Class to test path methods."""
+
     def test_status_case_1(self):
         """Test if empty link is DISABLED."""
         current_path = Path()
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_2(*args, **kwargs):
+    @classmethod
+    def _mocked_requests_get_status_case_2(cls, url):
+        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'links')
+        if url != endpoint:
+            raise ValueError('Not a topology URL')
+
         return MockResponse({'links': [
             {'active': False},
             {'active': False}
         ]}, 200)
 
-    @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
+    @patch('requests.get')
     def test_status_case_2(self, requests_mocked):
         """Test if link status is DOWN."""
+        requests_mocked.side_effect = self._mocked_requests_get_status_case_2
+
         links = [
                  get_link_mocked(),
                  get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DOWN)
+        self.assertEqual(requests_mocked.call_count, 1)
 
     def test_status_case_3(self):
         """Test if link status is DISABLED."""
@@ -46,21 +53,28 @@ class TestPath(TestCase):
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_4(*args, **kwargs):
+    @classmethod
+    def _mocked_requests_get_status_case_4(cls, url):
+        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'links')
+        if url != endpoint:
+            raise ValueError('Not a topology URL')
+
         return MockResponse({'links': [
             {'active': True},
             {'active': True}
         ]}, 200)
 
-    @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
+    @patch('requests.get')
     def test_status_case_4(self, requests_mocked):
         """Test if link status is UP."""
+        requests_mocked.side_effect = self._mocked_requests_get_status_case_4
         links = [
                  get_link_mocked(),
                  get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.UP)
+        self.assertEqual(requests_mocked.call_count, 1)
 
     def test_compare_same_paths(self):
         """Test compare paths with same links."""
@@ -104,5 +118,3 @@ class TestPath(TestCase):
         current_path = Path(links)
         expected_dict = [{"id": 3}, {"id": 2}]
         self.assertEqual(expected_dict, current_path.as_dict())
-
-

@@ -91,7 +91,7 @@ class DynamicPathManager:
 
     @staticmethod
     def _clear_path(path):
-        """Remove switches from a path, returning only interfaeces."""
+        """Remove switches from a path, returning only interfaces."""
         return [endpoint for endpoint in path if len(endpoint) > 23]
 
     @classmethod
@@ -331,7 +331,6 @@ class EVCDeploy(EVCBase):
 
     def create(self):
         """Create a EVC."""
-        pass
 
     def discover_new_path(self):
         """Discover a new path to satisfy this circuit and deploy."""
@@ -339,11 +338,9 @@ class EVCDeploy(EVCBase):
 
     def change_path(self):
         """Change EVC path."""
-        pass
 
     def reprovision(self):
         """Force the EVC (re-)provisioning."""
-        pass
 
     def is_affected_by_link(self, link):
         """Return True if this EVC has the given link on its current path."""
@@ -447,11 +444,9 @@ class EVCDeploy(EVCBase):
 
 #    def discover_new_path(self):
 #        # TODO: discover a new path to satisfy this circuit and deploy
-#        pass
 
     def remove(self):
         """Remove EVC path."""
-        pass
 
     def remove_current_flows(self):
         """Remove all flows from current path."""
@@ -776,5 +771,3 @@ class LinkProtection(EVCDeploy):
 
 class EVC(LinkProtection):
     """Class that represents a E-Line Virtual Connection."""
-
-    pass
