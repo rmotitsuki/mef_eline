@@ -185,19 +185,6 @@ class Main(KytosNApp):
 
         return False
 
-    @listen_to('kytos/topology.updated')
-    def trigger_evc_reprovisioning(self, *_):
-        """Listen to topology update to trigger EVCs (re)provisioning.
-
-        Schedule all Circuits with valid UNIs.
-        """
-        for data in self.storehouse.get_data().values():
-            try:
-                evc = self.evc_from_dict(data)
-                self.sched.add(evc)
-            except ValueError as _exception:
-                log.debug(f'{data.get("id")} can not be provisioning yet.')
-
     @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
