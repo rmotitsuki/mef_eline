@@ -446,7 +446,8 @@ class EVCDeploy(EVCBase):
 #        # TODO: discover a new path to satisfy this circuit and deploy
 
     def remove(self):
-        """Remove EVC path."""
+        """Remove EVC path and disable it."""
+        self.remove_current_flows()
 
     def remove_current_flows(self):
         """Remove all flows from current path."""
