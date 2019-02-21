@@ -412,7 +412,7 @@ class EVCDeploy(EVCBase):
             # TODO: Log to say that cannot move primary to primary
             return True
 
-        if self.get_path_status(self.primary_path) is EntityStatus.UP:
+        if self.primary_path.status is EntityStatus.UP:
             return self.deploy_to_path(self.primary_path)
         return False
 
@@ -422,6 +422,7 @@ class EVCDeploy(EVCBase):
         Best path can be the primary path, if available. If not, the backup
         path, and, if it is also not available, a dynamic path.
         """
+        self.activate()
         success = self.deploy_to_primary_path()
         if not success:
             success = self.deploy_to_backup_path()
@@ -463,6 +464,7 @@ class EVCDeploy(EVCBase):
         for switch in switches:
             self._send_flow_mods(switch, [match], 'delete')
 
+        self.current_path = Path([])
         self.deactivate()
 
     @staticmethod
