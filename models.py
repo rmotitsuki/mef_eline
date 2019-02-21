@@ -311,7 +311,7 @@ class EVCBase(GenericEntity):
         evc_dict['creation_time'] = time
 
         evc_dict['owner'] = self.owner
-        evc_dict['circuit_scheduler'] = self.circuit_scheduler
+        evc_dict['circuit_scheduler'] = [sc.as_dict() for sc in self.circuit_scheduler]
 
         evc_dict['active'] = self.is_active()
         evc_dict['enabled'] = self.is_enabled()
