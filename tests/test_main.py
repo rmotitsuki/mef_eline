@@ -53,7 +53,7 @@ class TestMain(TestCase):
         self.assertEqual(json.loads(response.data.decode()), {})
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
-    def test_list_with_no_circuits_stored(self, storehouse_data_mock):
+    def test_list_no_circuits_stored(self, storehouse_data_mock):
         """Test if list circuits return all circuits stored."""
         circuits = {}
         storehouse_data_mock.return_value = circuits
@@ -126,23 +126,23 @@ class TestMain(TestCase):
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/'
         payload = {
-                   "name": "my evc1",
-                   "frequency": "* * * * *",
-                   "uni_a": {
-                     "interface_id": "00:00:00:00:00:00:00:01:1",
-                     "tag": {
-                       "tag_type": 1,
-                       "value": 80
-                     }
-                   },
-                   "uni_z": {
-                     "interface_id": "00:00:00:00:00:00:00:02:2",
-                     "tag": {
-                       "tag_type": 1,
-                       "value": 1
-                     }
-                   }
-                 }
+            "name": "my evc1",
+            "frequency": "* * * * *",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            }
+        }
 
         response = api.post(url, data=json.dumps(payload),
                             content_type='application/json')

@@ -9,7 +9,7 @@ from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager
+from napps.kytos.mef_eline.models import DynamicPathManager, EVC
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.storehouse import StoreHouse
 

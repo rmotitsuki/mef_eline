@@ -2,12 +2,11 @@
 from unittest.mock import Mock
 
 from kytos.core import Controller
-from kytos.core.config import KytosConfig
-
-from kytos.core.interface import TAG, UNI, Interface
-from kytos.core.switch import Switch
-from kytos.core.link import Link
 from kytos.core.common import EntityStatus
+from kytos.core.config import KytosConfig
+from kytos.core.interface import Interface, TAG, UNI
+from kytos.core.link import Link
+from kytos.core.switch import Switch
 
 
 def get_controller_mock():
@@ -42,6 +41,7 @@ def get_link_mocked(**kwargs):
     metadata = kwargs.get("metadata", {})
 
     def side_effect(key):
+        """Mock Link get metadata."""
         return Mock(value=metadata.get(key))
 
     link.get_metadata = Mock(side_effect=side_effect)

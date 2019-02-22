@@ -1,14 +1,13 @@
 """Module to test the LinkProtection class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from kytos.core.common import EntityStatus
 from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.models import EVC, Path  # NOQA
-from tests.helpers import MockResponse, get_link_mocked,\
-    get_uni_mocked, get_controller_mock  # NOQA
+from napps.kytos.mef_eline.models import EVC, Path
+from tests.helpers import (
+    get_controller_mock, get_link_mocked, get_uni_mocked, MockResponse)
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
@@ -21,10 +20,10 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     def test_is_using_backup_path(self):
         """Test test is using backup path."""
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6})
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
         ]
 
         attributes = {
@@ -43,10 +42,10 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     def test_is_using_primary_path(self):
         """Test test is using primary path."""
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6})
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
         ]
 
         attributes = {
@@ -66,10 +65,10 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     def test_deploy_to_case_1(self, log_mocked):
         """Test if the path is equal to current_path."""
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5}),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6})
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -97,8 +96,8 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
 
         primary_path = [
-                 get_link_mocked(status=EntityStatus.UP),
-                 get_link_mocked(status=EntityStatus.UP)
+            get_link_mocked(status=EntityStatus.UP),
+            get_link_mocked(status=EntityStatus.UP)
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -138,12 +137,12 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             self._mocked_requests_get_path_down
 
         primary_path = [
-                 get_link_mocked(link_id=0,
-                                 active=False,
-                                 status=EntityStatus.DOWN),
-                 get_link_mocked(link_id=1,
-                                 active=True,
-                                 status=EntityStatus.UP)
+            get_link_mocked(link_id=0,
+                            active=False,
+                            status=EntityStatus.DOWN),
+            get_link_mocked(link_id=1,
+                            active=True,
+                            status=EntityStatus.UP)
         ]
 
         attributes = {
@@ -170,20 +169,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
 
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -214,20 +213,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = True
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -260,20 +259,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = False
         deploy_to_mocked.return_value = False
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -313,20 +312,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = False
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -363,20 +362,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = True
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -403,20 +402,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = True
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.UP),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -447,20 +446,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         deploy_to_mocked.return_value = True
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=13, endpoint_b_port=14,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=13, endpoint_b_port=14,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         attributes = {
             "controller": get_controller_mock(),
@@ -498,20 +497,20 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_to_mocked.return_value = False
 
         primary_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
         backup_path = [
-                get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
-                                metadata={"s_vlan": 5},
-                                status=EntityStatus.DOWN),
-                get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
-                                metadata={"s_vlan": 6},
-                                status=EntityStatus.UP),
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5},
+                            status=EntityStatus.DOWN),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6},
+                            status=EntityStatus.UP),
         ]
 
         # Setup best_path mock

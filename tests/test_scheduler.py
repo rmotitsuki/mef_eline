@@ -97,18 +97,19 @@ class TestScheduler(TestCase):
         time_fmt = "%Y-%m-%dT%H:%M:%S"
         date = datetime.now().strftime(time_fmt)
         circuit_scheduler = CircuitSchedule(action="remove", date=date)
-        options = {"controller": get_controller_mock(),
-                   "name": 'my evc1',
-                   "uni_a": 'uni_a',
-                   "uni_z": 'uni_z',
-                   "circuit_scheduler": [circuit_scheduler]
-                   }
+        options = {
+            "controller": get_controller_mock(),
+            "name": 'my evc1',
+            "uni_a": 'uni_a',
+            "uni_z": 'uni_z',
+            "circuit_scheduler": [circuit_scheduler]
+        }
         evc = EVC(**options)
         self.scheduler.add(evc)
         expected_parameters = {
             "id": circuit_scheduler.id,
             "run_date": circuit_scheduler.date,
-            }
+        }
         scheduler_add_job_mock.assert_called_once_with(evc.remove, 'date',
                                                        **expected_parameters)
 
@@ -124,12 +125,13 @@ class TestScheduler(TestCase):
             'minutes': 3
         }
         circuit_scheduler = CircuitSchedule(action="create", interval=interval)
-        options = {"controller": get_controller_mock(),
-                   "name": 'my evc1',
-                   "uni_a": 'uni_a',
-                   "uni_z": 'uni_z',
-                   "circuit_scheduler": [circuit_scheduler]
-                   }
+        options = {
+            "controller": get_controller_mock(),
+            "name": 'my evc1',
+            "uni_a": 'uni_a',
+            "uni_z": 'uni_z',
+            "circuit_scheduler": [circuit_scheduler]
+        }
         evc = EVC(**options)
         self.scheduler.add(evc)
 
@@ -161,12 +163,13 @@ class TestScheduler(TestCase):
                                            timezone=utc)
         trigger_mock.return_value = trigger
 
-        options = {"controller": get_controller_mock(),
-                   "name": 'my evc1',
-                   "uni_a": 'uni_a',
-                   "uni_z": 'uni_z',
-                   "circuit_scheduler": [circuit_scheduler]
-                   }
+        options = {
+            "controller": get_controller_mock(),
+            "name": 'my evc1',
+            "uni_a": 'uni_a',
+            "uni_z": 'uni_z',
+            "circuit_scheduler": [circuit_scheduler]
+        }
         evc = EVC(**options)
         self.scheduler.add(evc)
         expected_parameters = {

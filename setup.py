@@ -3,12 +3,12 @@
 Run "python3 setup --help-commands" to list all available commands and their
 descriptions.
 """
-import os
-import shutil
-import sys
 from abc import abstractmethod
+import os
 from pathlib import Path
-from subprocess import call, check_call
+import shutil
+from subprocess import call, check_call, PIPE, Popen
+import sys
 
 from setuptools import Command, setup
 from setuptools.command.develop import develop
@@ -108,6 +108,7 @@ class KytosInstall:
     @staticmethod
     def enable_core_napps():
         """Enable a NAPP by creating a symlink."""
+        # pylint: disable=E1101
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         for napp in CORE_NAPPS:
             napp_path = Path('kytos', napp)
@@ -169,11 +170,13 @@ class DevelopMode(develop):
         var/lib/kytos/napps/.installed/kytos/napp_name.
         """
         links = INSTALLED_PATH / 'kytos'
+        # pylint: disable=E1101
         links.mkdir(parents=True, exist_ok=True)
         code = CURRENT_DIR
         src = links / 'mef_eline'
         src.symlink_to(code)
 
+        # pylint: disable=E1101
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         dst = ENABLED_PATH / Path('kytos', 'mef_eline')
         dst.symlink_to(src)
@@ -183,6 +186,7 @@ class DevelopMode(develop):
         """Symlink to required files."""
         src = ENABLED_PATH / '__init__.py'
         dst = CURRENT_DIR / 'napps' / '__init__.py'
+        # pylint: disable=E1101
         src.symlink_to(dst)
 
 

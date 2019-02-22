@@ -4,7 +4,7 @@ from unittest import TestCase
 
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.scheduler import CircuitSchedule
-from tests.helpers import get_uni_mocked, get_controller_mock
+from tests.helpers import get_controller_mock, get_uni_mocked
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
@@ -172,9 +172,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             'owner': "my_name",
             'circuit_scheduler': [
                 CircuitSchedule.from_dict({"id": 234243247, "action": "create",
-                                          "frequency": "1 * * * *"}),
+                                           "frequency": "1 * * * *"}),
                 CircuitSchedule.from_dict({"id": 234243239, "action": "create",
-                                          "interval": {"hours": 2}})
+                                           "interval": {"hours": 2}})
             ],
             'enabled': True,
             'priority': 2
