@@ -84,10 +84,9 @@ class Linter(SimpleCommand):
     description = 'lint Python source code'
 
     def run(self):
-        """Run yala."""
-        print('Yala is running. It may take several seconds...')
-        cmd = 'yala *.py tests/*.py tests/models/*.py'
-        check_call(cmd, shell=True)
+        """Run coala bears."""
+        print('Coala is running. It may take several seconds...')
+        check_call(['coala', '--non-interactive', '--no-autoapply-warn'])
 
 
 class CITest(SimpleCommand):
@@ -199,7 +198,6 @@ setup(name='kytos_mef_eline',
           'dev': [
               'coverage',
               'pip-tools',
-              'yala',
               'tox',
           ],
       },
