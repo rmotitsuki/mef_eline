@@ -23,15 +23,17 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_2(*args, **kwargs):
-        return MockResponse({}, 200)
+        return MockResponse({'links':{'abc': {'active': False},
+                                      'def': {'active': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
     def test_status_case_2(self, requests_mocked):
         """Test if link status is DOWN."""
-        links = [
-                 get_link_mocked(),
-                 get_link_mocked()
-        ]
+        link1 = get_link_mocked()
+        link2 = get_link_mocked()
+        link1.id = 'def'
+        link2.id = 'abc'
+        links = [link1, link2] 
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DOWN)
 
@@ -43,15 +45,17 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_4(*args, **kwargs):
-        return MockResponse({'key':'OK'}, 200)
+        return MockResponse({'links':{'abc': {'active': True},
+                                      'def': {'active': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
     def test_status_case_4(self, requests_mocked):
         """Test if link status is UP."""
-        links = [
-                 get_link_mocked(),
-                 get_link_mocked()
-        ]
+        link1 = get_link_mocked()
+        link2 = get_link_mocked()
+        link1.id = 'def'
+        link2.id = 'abc'
+        links = [link1, link2] 
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.UP)
 
