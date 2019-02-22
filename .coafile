@@ -1,0 +1,25 @@
+[all]
+ignore = .tox/**,
+         requirements/**,
+         ui/**
+
+[all.Python]
+bears = PyDocStyleBear,
+        PyLintBear,
+        PycodestyleBear
+files = *.py, tests/**/*py
+pylint_disable = E0401,  # unable to import napps.kytos...
+                 R0902,  # too many instance attributes
+                 R0903,  # Too few public methods
+
+[all.Python.isort]
+bears = PyImportSortBear
+files = *.py, tests/**/*py
+force_single_line_imports = no
+known_first_party_imports = kytos.core,tests
+known_standard_library = pyof
+
+[all.Security]
+bears = BanditBear
+files = *.py
+language = python
