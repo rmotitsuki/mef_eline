@@ -53,7 +53,7 @@ class TestMain(TestCase):
         self.assertEqual(json.loads(response.data.decode()), {})
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
-    def test_list_with_no_circuits_stored(self, storehouse_data_mock):
+    def test_list_no_circuits_stored(self, storehouse_data_mock):
         """Test if list circuits return all circuits stored."""
         circuits = {}
         storehouse_data_mock.return_value = circuits

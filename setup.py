@@ -109,12 +109,13 @@ class KytosInstall:
     @staticmethod
     def enable_core_napps():
         """Enable a NAPP by creating a symlink."""
+        # pylint: disable=no-member
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         for napp in CORE_NAPPS:
             napp_path = Path('kytos', napp)
             src = ENABLED_PATH / napp_path
             dst = INSTALLED_PATH / napp_path
-            src.symlink_to(dst)
+            src.symlink_to(dst)  # pylint: disable=no-member
 
 
 class InstallMode(install):
@@ -170,21 +171,22 @@ class DevelopMode(develop):
         var/lib/kytos/napps/.installed/kytos/napp_name.
         """
         links = INSTALLED_PATH / 'kytos'
-        links.mkdir(parents=True, exist_ok=True)
+        links.mkdir(parents=True, exist_ok=True)  # pylint: disable=no-member
         code = CURRENT_DIR
         src = links / 'mef_eline'
-        src.symlink_to(code)
+        src.symlink_to(code)  # pylint: disable=no-member
 
+        # pylint: disable=no-member
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         dst = ENABLED_PATH / Path('kytos', 'mef_eline')
-        dst.symlink_to(src)
+        dst.symlink_to(src)  # pylint: disable=no-member
 
     @staticmethod
     def _create_file_symlinks():
         """Symlink to required files."""
         src = ENABLED_PATH / '__init__.py'
         dst = CURRENT_DIR / 'napps' / '__init__.py'
-        src.symlink_to(dst)
+        src.symlink_to(dst)  # pylint: disable=no-member
 
 
 setup(name='kytos_mef_eline',

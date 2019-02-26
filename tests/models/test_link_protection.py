@@ -5,14 +5,14 @@ from unittest.mock import patch
 from unittest.mock import Mock
 
 from kytos.core.common import EntityStatus
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.models import EVC, Path  # NOQA
-from tests.helpers import MockResponse, get_link_mocked,\
-    get_uni_mocked, get_controller_mock  # NOQA
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
+from napps.kytos.mef_eline import settings  # NOQA pycodestyle
+from napps.kytos.mef_eline.models import EVC, Path  # NOQA pycodestyle
+from tests.helpers import MockResponse, get_link_mocked,\
+    get_uni_mocked, get_controller_mock  # NOQA pycodestyle
 
 
 class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods

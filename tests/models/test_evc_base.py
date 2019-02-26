@@ -2,13 +2,14 @@
 import sys
 from unittest import TestCase
 
-from napps.kytos.mef_eline.models import EVC
-from napps.kytos.mef_eline.scheduler import CircuitSchedule
-from tests.helpers import get_uni_mocked, get_controller_mock
-
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
+from napps.kytos.mef_eline.models import EVC  # NOQA  pycodestyle
+from napps.kytos.mef_eline.scheduler import \
+    CircuitSchedule   # NOQA  pycodestyle
+from tests.helpers import get_uni_mocked, \
+    get_controller_mock  # NOQA  pycodestyle
 
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
