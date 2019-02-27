@@ -120,23 +120,12 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(deployed)
 
     # This method will be used by the mock to replace requests.get
-    @classmethod
-    def _mocked_requests_get_path_down(cls, url):
-        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'links')
-        if url != endpoint:
-            raise ValueError('Not a topology URL')
+    def _mocked_requests_get_path_down(*args, **kwargs):
+        return MockResponse({}, 200)
 
-        return MockResponse({'links': [
-            {'active': False},
-            {'active': True}
-        ]}, 200)
-
-    @patch('requests.get')
+    @patch('requests.get', side_effect=_mocked_requests_get_path_down)
     def test_deploy_to_case_3(self, requests_get_path_down_mocked):
         """Test deploy with one link down."""
-        requests_get_path_down_mocked.side_effect = \
-            self._mocked_requests_get_path_down
-
         primary_path = [
                  get_link_mocked(link_id=0,
                                  active=False,
@@ -145,7 +134,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
                                  active=True,
                                  status=EntityStatus.UP)
         ]
-
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
@@ -155,10 +143,9 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             "enabled": True
         }
         evc = EVC(**attributes)
-
         deployed = evc.deploy_to('primary_path', evc.primary_path)
-        self.assertEqual(requests_get_path_down_mocked.call_count, 1)
         self.assertFalse(deployed)
+
 
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.LinkProtection.deploy_to')

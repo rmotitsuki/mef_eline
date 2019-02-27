@@ -22,29 +22,18 @@ class TestPath(TestCase):
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    @classmethod
-    def _mocked_requests_get_status_case_2(cls, url):
-        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'links')
-        if url != endpoint:
-            raise ValueError('Not a topology URL')
+    def _mocked_requests_get_status_case_2(*args, **kwargs):
+        return MockResponse({}, 200)
 
-        return MockResponse({'links': [
-            {'active': False},
-            {'active': False}
-        ]}, 200)
-
-    @patch('requests.get')
+    @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
     def test_status_case_2(self, requests_mocked):
         """Test if link status is DOWN."""
-        requests_mocked.side_effect = self._mocked_requests_get_status_case_2
-
         links = [
                  get_link_mocked(),
                  get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DOWN)
-        self.assertEqual(requests_mocked.call_count, 1)
 
     def test_status_case_3(self):
         """Test if link status is DISABLED."""
@@ -53,28 +42,18 @@ class TestPath(TestCase):
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    @classmethod
-    def _mocked_requests_get_status_case_4(cls, url):
-        endpoint = '%s/%s' % (settings.TOPOLOGY_URL, 'links')
-        if url != endpoint:
-            raise ValueError('Not a topology URL')
+    def _mocked_requests_get_status_case_4(*args, **kwargs):
+        return MockResponse({'key':'OK'}, 200)
 
-        return MockResponse({'links': [
-            {'active': True},
-            {'active': True}
-        ]}, 200)
-
-    @patch('requests.get')
+    @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
     def test_status_case_4(self, requests_mocked):
         """Test if link status is UP."""
-        requests_mocked.side_effect = self._mocked_requests_get_status_case_4
         links = [
                  get_link_mocked(),
                  get_link_mocked()
         ]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.UP)
-        self.assertEqual(requests_mocked.call_count, 1)
 
     def test_compare_same_paths(self):
         """Test compare paths with same links."""
@@ -118,3 +97,5 @@ class TestPath(TestCase):
         current_path = Path(links)
         expected_dict = [{"id": 3}, {"id": 2}]
         self.assertEqual(expected_dict, current_path.as_dict())
+
+
