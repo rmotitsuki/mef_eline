@@ -4,13 +4,13 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from kytos.core.common import EntityStatus
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.models import Path  # NOQA
-from tests.helpers import MockResponse, get_link_mocked  # NOQA
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
+from napps.kytos.mef_eline import settings  # NOQA pycodestyle
+from napps.kytos.mef_eline.models import Path  # NOQA pycodestyle
+from tests.helpers import MockResponse, get_link_mocked  # NOQA pycodestyle
 
 
 class TestPath(TestCase):
