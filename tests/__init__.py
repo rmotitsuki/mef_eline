@@ -1,4 +1,8 @@
-"""Module to test the napp kytos/mef_eline."""
+"""
+Module to test the napp kytos/mef_eline.
+
+Add mef_eline source from the installed directory.
+"""
 import sys
 import os
 from pathlib import Path as PathLib

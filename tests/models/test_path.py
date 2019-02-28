@@ -4,19 +4,18 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from kytos.core.common import EntityStatus
-from tests.helpers import MockResponse
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
-
-from napps.kytos.mef_eline.models import Path  # NOQA
-from tests.helpers import get_link_mocked  # NOQA
-
+from napps.kytos.mef_eline import settings  # NOQA pycodestyle
+from napps.kytos.mef_eline.models import Path  # NOQA pycodestyle
+from tests.helpers import MockResponse, get_link_mocked  # NOQA pycodestyle
 
 
 class TestPath(TestCase):
-    """"Class to test path methods."""
+    """Class to test path methods."""
+
     def test_status_case_1(self):
         """Test if empty link is DISABLED."""
         current_path = Path()

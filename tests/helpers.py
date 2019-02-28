@@ -1,10 +1,8 @@
 """Module to help to create tests."""
-from uuid import uuid4
 from unittest.mock import Mock
 
 from kytos.core import Controller
 from kytos.core.config import KytosConfig
-
 from kytos.core.interface import TAG, UNI, Interface
 from kytos.core.switch import Switch
 from kytos.core.link import Link
@@ -17,6 +15,7 @@ def get_controller_mock():
     controller = Controller(options)
     controller.log = Mock()
     return controller
+
 
 def get_link_mocked(**kwargs):
     """Return a link mocked.
@@ -40,11 +39,13 @@ def get_link_mocked(**kwargs):
     metadata = kwargs.get("metadata", {})
 
     def side_effect(key):
+        """Mock Link get metadata."""
         return Mock(value=metadata.get(key))
 
     link.get_metadata = Mock(side_effect=side_effect)
 
     return link
+
 
 def get_uni_mocked(**kwargs):
     """Create an uni mocked.
@@ -75,14 +76,10 @@ def get_uni_mocked(**kwargs):
     }
     return uni
 
-def get_paths_mock(circuit):
-    """Get a valid path for the circuit from the Pathfinder."""
-    return """{"paths": [{"hops": ["00:00:00:00:00:00:00:01",
-           "00:00:00:00:00:00:00:01:2", "00:00:00:00:00:00:00:02:2", 
-           "00:00:00:00:00:00:00:02"]}]}"""
 
 class MockResponse:
     """Mock a requests response object.
+
     Just define a function and add the patch decorator to the test.
 
     Example:
@@ -90,11 +87,18 @@ class MockResponse:
         return MockResponse({}, 200)
 
     @patch('requests.get', side_effect=mocked_requests_get)
-
     """
+
     def __init__(self, json_data, status_code):
+        """Create mock response object with parameters.
+
+        Args:
+            json_data: JSON response content
+            status_code: HTTP status code.
+        """
         self.json_data = json_data
         self.status_code = status_code
 
     def json(self):
+        """Return the response json data."""
         return self.json_data
