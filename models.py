@@ -37,6 +37,13 @@ class Path(list, GenericEntity):
                 return link
         return None
 
+    def choose_vlans(self):
+        """Choose the VLANs to be used for the circuit."""
+        for link in self:
+            tag = link.get_next_available_tag()
+            link.use_tag(tag)
+            link.add_metadata('s_vlan', tag)
+
     @property
     def status(self):
         """Check for the  status of a path.
@@ -469,14 +476,6 @@ class EVCDeploy(EVCBase):
         self.deactivate()
 
     @staticmethod
-    def _choose_vlans(path=None):
-        """Choose the VLANs to be used for the circuit."""
-        for link in path:
-            tag = link.get_next_available_tag()
-            link.use_tag(tag)
-            link.add_metadata('s_vlan', tag)
-
-    @staticmethod
     def links_zipped(path=None):
         """Return an iterator which yields pairs of links in order."""
         if not path:
@@ -520,7 +519,7 @@ class EVCDeploy(EVCBase):
             if not path:
                 return False
 
-        self._choose_vlans(path)
+        path.choose_vlans()
         self._install_nni_flows(path)
         self._install_uni_flows(path)
         self.activate()
