@@ -349,7 +349,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         send_flow_mods_mock.assert_called_once_with(switch, expected_flow_mods)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
     @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
@@ -405,7 +405,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.EVC.discover_new_path',
            return_value=None)
-    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
     @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
@@ -455,7 +455,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertFalse(deployed)
 
     @patch('napps.kytos.mef_eline.models.log')
-    @patch('napps.kytos.mef_eline.models.EVC._choose_vlans')
+    @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
     @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.EVC.activate')
