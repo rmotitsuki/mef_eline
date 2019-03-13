@@ -256,7 +256,7 @@ class EVCBase(GenericEntity):
                 if not isinstance(uni, UNI):
                     raise ValueError(f'{attribute} is an invalid UNI.')
 
-                elif not uni.is_valid():
+                if not uni.is_valid():
                     tag = uni.user_tag.value
                     message = f'VLAN tag {tag} is not available in {attribute}'
                     raise ValueError(message)

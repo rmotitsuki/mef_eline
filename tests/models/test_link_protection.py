@@ -9,7 +9,6 @@ from kytos.core.common import EntityStatus
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
-from napps.kytos.mef_eline import settings  # NOQA pycodestyle
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA pycodestyle
 from tests.helpers import MockResponse, get_link_mocked,\
     get_uni_mocked, get_controller_mock  # NOQA pycodestyle
@@ -120,12 +119,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(deployed)
 
     # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_path_down(*args, **kwargs):
-        return MockResponse({'links':{'abc': {'active': False},
-                                      'def': {'active': True}}}, 200)
+    def _mocked_requests_get_path_down(self):
+        # pylint: disable=no-self-use
+        return MockResponse({'links': {'abc': {'active': False},
+                                       'def': {'active': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_path_down)
-    def test_deploy_to_case_3(self, requests_get_path_down_mocked):
+    def test_deploy_to_case_3(self, requests_mocked):
+        # pylint: disable=unused-argument
         """Test deploy with one link down."""
         link1 = get_link_mocked()
         link2 = get_link_mocked()
@@ -143,7 +144,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         evc = EVC(**attributes)
         deployed = evc.deploy_to('primary_path', evc.primary_path)
         self.assertFalse(deployed)
-
 
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.LinkProtection.deploy_to')

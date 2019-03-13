@@ -8,7 +8,6 @@ from kytos.core.common import EntityStatus
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
-from napps.kytos.mef_eline import settings  # NOQA pycodestyle
 from napps.kytos.mef_eline.models import Path  # NOQA pycodestyle
 from tests.helpers import MockResponse, get_link_mocked  # NOQA pycodestyle
 
@@ -22,18 +21,20 @@ class TestPath(TestCase):
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_2(*args, **kwargs):
-        return MockResponse({'links':{'abc': {'active': False},
-                                      'def': {'active': True}}}, 200)
+    def _mocked_requests_get_status_case_2(self):
+        # pylint: disable=no-self-use
+        return MockResponse({'links': {'abc': {'active': False},
+                                       'def': {'active': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_2)
     def test_status_case_2(self, requests_mocked):
+        # pylint: disable=unused-argument
         """Test if link status is DOWN."""
         link1 = get_link_mocked()
         link2 = get_link_mocked()
         link1.id = 'def'
         link2.id = 'abc'
-        links = [link1, link2] 
+        links = [link1, link2]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.DOWN)
 
@@ -44,18 +45,20 @@ class TestPath(TestCase):
         self.assertEqual(current_path.status, EntityStatus.DISABLED)
 
     # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_4(*args, **kwargs):
-        return MockResponse({'links':{'abc': {'active': True},
-                                      'def': {'active': True}}}, 200)
+    def _mocked_requests_get_status_case_4(self):
+        # pylint: disable=no-self-use
+        return MockResponse({'links': {'abc': {'active': True},
+                                       'def': {'active': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_status_case_4)
     def test_status_case_4(self, requests_mocked):
+        # pylint: disable=unused-argument
         """Test if link status is UP."""
         link1 = get_link_mocked()
         link2 = get_link_mocked()
         link1.id = 'def'
         link2.id = 'abc'
-        links = [link1, link2] 
+        links = [link1, link2]
         current_path = Path(links)
         self.assertEqual(current_path.status, EntityStatus.UP)
 
@@ -101,5 +104,3 @@ class TestPath(TestCase):
         current_path = Path(links)
         expected_dict = [{"id": 3}, {"id": 2}]
         self.assertEqual(expected_dict, current_path.as_dict())
-
-
