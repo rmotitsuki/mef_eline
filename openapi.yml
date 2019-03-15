@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  version: '2.3.0'
+  version: '2.3.1'
   title: Kytos Circuit Provisioning
   description: Kytos NApp for provisioning of SDN circuits.
 servers:
