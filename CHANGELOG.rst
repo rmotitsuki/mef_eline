@@ -23,6 +23,21 @@ Fixed
 Security
 ========
 
+[2.3.1] - 2019-03-15
+********************
+
+Added
+=====
+ - Scrutinizer running after every push to GitHub repository.
+ - Linter checking all python code.
+
+Fixed
+=====
+ - Fixed link up/down events from kytos/topology (#99 and #100).
+ - Load VLANs from storehouse (#101).
+ - Check path status using kytos/topology (#102).
+ - Fixed tests to mock call to get links from kytos/topology (#118).
+
 [2.3.0] - 2018-12-14
 ********************
 
