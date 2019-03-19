@@ -219,24 +219,4 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         actual_dict = evc.as_dict()
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
-            if name == 'circuit_scheduler':
-                self._check_schedule_dict(actual, value)
-            else:
-                self.assertEqual(value, actual)
-
-    def _check_schedule_dict(self, schedule, schedule_dict):
-        obj_value = {}
-        obj_actual = {}
-        for index, actual_item in enumerate(schedule):
-            actual_item = actual_item.as_dict()
-            for actual_name, actual_value in actual_item.items():
-                obj_actual[actual_name] = actual_value
-
-            # Check the scheduled expected items
-            circuit_schedule = schedule_dict[index]
-
-            for schedule_name, schedule_value \
-                    in circuit_schedule.items():
-                obj_value[schedule_name] = schedule_value
-                self.assertEqual(obj_value[schedule_name],
-                                 obj_actual[schedule_name])
+            self.assertEqual(value, actual)
