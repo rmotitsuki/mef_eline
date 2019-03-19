@@ -311,7 +311,8 @@ class EVCBase(GenericEntity):
         evc_dict['creation_time'] = time
 
         evc_dict['owner'] = self.owner
-        evc_dict['circuit_scheduler'] = self.circuit_scheduler
+        evc_dict['circuit_scheduler'] = [sc.as_dict()
+                                         for sc in self.circuit_scheduler]
 
         evc_dict['active'] = self.is_active()
         evc_dict['enabled'] = self.is_enabled()
@@ -412,7 +413,7 @@ class EVCDeploy(EVCBase):
             # TODO: Log to say that cannot move primary to primary
             return True
 
-        if self.get_path_status(self.primary_path) is EntityStatus.UP:
+        if self.primary_path.status is EntityStatus.UP:
             return self.deploy_to_path(self.primary_path)
         return False
 
@@ -422,6 +423,7 @@ class EVCDeploy(EVCBase):
         Best path can be the primary path, if available. If not, the backup
         path, and, if it is also not available, a dynamic path.
         """
+        self.activate()
         success = self.deploy_to_primary_path()
         if not success:
             success = self.deploy_to_backup_path()
@@ -446,7 +448,8 @@ class EVCDeploy(EVCBase):
 #        # TODO: discover a new path to satisfy this circuit and deploy
 
     def remove(self):
-        """Remove EVC path."""
+        """Remove EVC path and disable it."""
+        self.remove_current_flows()
 
     def remove_current_flows(self):
         """Remove all flows from current path."""
@@ -462,6 +465,7 @@ class EVCDeploy(EVCBase):
         for switch in switches:
             self._send_flow_mods(switch, [match], 'delete')
 
+        self.current_path = Path([])
         self.deactivate()
 
     @staticmethod

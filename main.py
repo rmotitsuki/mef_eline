@@ -114,7 +114,10 @@ class Main(KytosNApp):
 
         # Schedule the circuit deploy
         self.sched.add(evc)
-        evc.deploy()
+
+        # Circuit has no schedule, deploy now
+        if not evc.circuit_scheduler:
+            evc.deploy()
 
         # Notify users
         event = KytosEvent(name='kytos.mef_eline.created',
@@ -184,19 +187,6 @@ class Main(KytosNApp):
                 return True
 
         return False
-
-    @listen_to('kytos/topology.updated')
-    def trigger_evc_reprovisioning(self, *_):
-        """Listen to topology update to trigger EVCs (re)provisioning.
-
-        Schedule all Circuits with valid UNIs.
-        """
-        for data in self.storehouse.get_data().values():
-            try:
-                evc = self.evc_from_dict(data)
-                self.sched.add(evc)
-            except ValueError as _exception:
-                log.debug(f'{data.get("id")} can not be provisioning yet.')
 
     @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):

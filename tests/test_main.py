@@ -22,7 +22,8 @@ class TestMain(TestCase):
         """Verify all event listeners registered."""
         expected_events = ['kytos/core.shutdown',
                            'kytos/core.shutdown.kytos/mef_eline',
-                           'kytos/topology.updated']
+                           'kytos/topology.link_up',
+                           'kytos/topology.link_down']
         actual_events = self.napp.listeners()
 
         for _event in expected_events:
