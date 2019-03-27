@@ -386,9 +386,10 @@ class EVCDeploy(EVCBase):
 
     def is_using_dynamic_path(self):
         """Verify if the current deployed path is a dynamic path."""
-        if not self.is_using_primary_path() and \
+        if self.current_path and \
+           not self.is_using_primary_path() and \
            not self.is_using_backup_path() and \
-           self.get_path_status(self.current_path) == EntityStatus.UP:
+           self.current_path.status == EntityStatus.UP:
             return True
         return False
 
@@ -705,7 +706,8 @@ class LinkProtection(EVCDeploy):
 
     def is_using_dynamic_path(self):
         """Verify if the current deployed path is dynamic."""
-        if not self.is_using_primary_path() and \
+        if self.current_path and \
+           not self.is_using_primary_path() and \
            not self.is_using_backup_path() and \
            self.current_path.status is EntityStatus.UP:
             return True
