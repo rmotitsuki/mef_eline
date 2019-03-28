@@ -451,7 +451,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(install_nni_flows.call_count, 0)
         self.assertEqual(chose_vlans_mock.call_count, 0)
         self.assertEqual(log_mock.info.call_count, 0)
-        self.assertEqual(sync_mock.call_count, 0)
+        self.assertEqual(sync_mock.call_count, 1)
         self.assertFalse(deployed)
 
     @patch('napps.kytos.mef_eline.models.log')
@@ -540,6 +540,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
+
+        # storehouse initialization mock
+        evc._storehouse.box = Mock()  # pylint: disable=protected-access
+        evc._storehouse.box.data = {}  # pylint: disable=protected-access
+
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
 

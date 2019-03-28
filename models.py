@@ -44,6 +44,12 @@ class Path(list, GenericEntity):
             link.use_tag(tag)
             link.add_metadata('s_vlan', tag)
 
+    def make_vlans_available(self):
+        """Make the VLANs used in a path available when undeployed."""
+        for link in self:
+            link.make_tag_available(link.get_metadata('s_vlan'))
+            link.remove_metadata('s_vlan')
+
     @property
     def status(self):
         """Check for the  status of a path.
@@ -61,7 +67,10 @@ class Path(list, GenericEntity):
             return None
         links = api_reply.json()['links']
         for path_link in self:
-            link = links[path_link.id]
+            try:
+                link = links[path_link.id]
+            except KeyError:
+                return EntityStatus.DOWN
             if link['active'] is False:
                 return EntityStatus.DOWN
         return EntityStatus.UP
@@ -377,9 +386,10 @@ class EVCDeploy(EVCBase):
 
     def is_using_dynamic_path(self):
         """Verify if the current deployed path is a dynamic path."""
-        if not self.is_using_primary_path() and \
+        if self.current_path and \
+           not self.is_using_primary_path() and \
            not self.is_using_backup_path() and \
-           self.get_path_status(self.current_path) == EntityStatus.UP:
+           self.current_path.status == EntityStatus.UP:
             return True
         return False
 
@@ -398,7 +408,7 @@ class EVCDeploy(EVCBase):
             return True
 
         success = False
-        if self.get_path_status(self.backup_path) is EntityStatus.UP:
+        if self.backup_path.status is EntityStatus.UP:
             success = self.deploy_to_path(self.backup_path)
 
         if success:
@@ -472,8 +482,10 @@ class EVCDeploy(EVCBase):
         for switch in switches:
             self._send_flow_mods(switch, [match], 'delete')
 
+        self.current_path.make_vlans_available()
         self.current_path = Path([])
         self.deactivate()
+        self.sync()
 
     @staticmethod
     def links_zipped(path=None):
@@ -694,7 +706,8 @@ class LinkProtection(EVCDeploy):
 
     def is_using_dynamic_path(self):
         """Verify if the current deployed path is dynamic."""
-        if not self.is_using_primary_path() and \
+        if self.current_path and \
+           not self.is_using_primary_path() and \
            not self.is_using_backup_path() and \
            self.current_path.status is EntityStatus.UP:
             return True
@@ -723,7 +736,7 @@ class LinkProtection(EVCDeploy):
 
         success = False
         if self.primary_path.is_affected_by_link(link):
-            success = self.deploy_to('primary_path', self.primary_path)
+            success = self.deploy_to_primary_path()
 
         if success:
             return True
@@ -736,7 +749,7 @@ class LinkProtection(EVCDeploy):
         # In this case, probably the circuit is not being used and
         # we can move to backup
         if self.backup_path.is_affected_by_link(link):
-            success = self.deploy_to('backup_path', self.backup_path)
+            success = self.deploy_to_backup_path()
 
         if success:
             return True
