@@ -8,13 +8,13 @@ class StoreHouse:
 
     @classmethod
     def __new__(cls, *args, **kwargs):
-        """Make this class a Singleton"""
-
-        it = cls.__dict__.get("__it__")
-        if it is not None:
-            return it
-        cls.__it__ = it = object.__new__(cls)
-        return it
+        # pylint: disable=unused-argument
+        """Make this class a Singleton."""
+        instance = cls.__dict__.get("__instance__")
+        if instance is not None:
+            return instance
+        cls.__instance__ = instance = object.__new__(cls)
+        return instance
 
     def __init__(self, controller):
         """Create a storehouse instance."""
