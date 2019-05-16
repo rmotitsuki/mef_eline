@@ -6,11 +6,22 @@ from kytos.core.events import KytosEvent
 class StoreHouse:
     """Class to handle storehouse."""
 
+    @classmethod
+    def __new__(cls, *args, **kwargs):
+        """Make this class a Singleton"""
+
+        it = cls.__dict__.get("__it__")
+        if it is not None:
+            return it
+        cls.__it__ = it = object.__new__(cls)
+        return it
+
     def __init__(self, controller):
         """Create a storehouse instance."""
         self.controller = controller
         self.namespace = 'kytos.mef_eline.circuits'
-        self.box = None
+        if 'box' not in self.__dict__:
+            self.box = None
         self.list_stored_boxes()
 
     def get_data(self):
