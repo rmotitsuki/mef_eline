@@ -7,6 +7,9 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 ********************************
 Added
 =====
+ - Added EVC status check when deploying using schedule.
+ - Serialize circuit scheduler for storehouse.
+ - Fix VLAN availability on interfaces after using them.
 
 Changed
 =======
