@@ -93,6 +93,20 @@ paths:
         '400':
           description: Bad request.
 
+    delete:
+      summary: Delete a circuit
+      description: Delete a circuit based on circuit_id
+      operationId: delete
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
 components:
   schemas:
     NewCircuit:
