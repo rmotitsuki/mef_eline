@@ -130,7 +130,7 @@ class Main(KytosNApp):
     def update(self, circuit_id):
         """Update a circuit based on payload.
 
-        The EVC required attributes can't be updated.
+        The EVC required attributes (name, uni_a, uni_z) can't be updated.
         """
         data = request.get_json()
         circuits = self.storehouse.get_data()
@@ -155,7 +155,7 @@ class Main(KytosNApp):
     def delete_circuit(self, circuit_id):
         """Remove a circuit.
 
-        First, flows are removed from the switches, then the EVC is
+        First, the flows are removed from the switches, and then the EVC is
         disabled.
         """
         circuits = self.storehouse.get_data()
