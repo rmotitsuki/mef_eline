@@ -26,7 +26,8 @@ paths:
       summary: Creates a new circuit
       operationId: create_circuit
       requestBody:
-        description: Creates a new circuit based on the endpoints and constraints given.
+        description: Creates a new circuit based on the endpoints and
+          constraints given.
         required: true
         content:
           application/json:
@@ -43,7 +44,8 @@ paths:
                   circuit_id: # the unique circuit id
                     type: string
         '400':
-          description: Request do not have a JSON or JSON format do not match the EVC object or EVC already exists.
+          description: Request do not have a JSON or JSON format do not match
+            the EVC object or EVC already exists.
         '409':
           description: Not Acceptable. This evc already exists.
 
@@ -70,7 +72,8 @@ paths:
 
     patch:
       summary: Update a circuit
-      description: Update a circuit based on payload
+      description: Update a circuit based on payload. The EVC required
+        attributes (name, uni_a, uni_z) can't be updated.
       operationId: update
       parameters:
         - name: circuit_id
@@ -93,14 +96,32 @@ paths:
         '400':
           description: Bad request.
 
+    delete:
+      summary: Delete a circuit
+      description: The flows are removed from the switches, and then the EVC is
+        disabled.
+      operationId: delete
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
 components:
   schemas:
     NewCircuit:
       type: object
       required:
+        - name
         - uni_a
         - uni_z
       properties:
+        name:
+          type: string
         uni_a:
           $ref: '#/components/schemas/Endpoint'
         uni_z:
@@ -123,19 +144,18 @@ components:
           items:
             $ref: '#/components/schemas/Path'
         circuit_scheduler:
-          $ref: '#/components/schemas/Scheduler'
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitSchedule'
 
     Endpoint:
       type: object
       required:
-        - dpid
-        - port
+        - interface_id
       properties:
-        dpid:
+        interface_id:
           type: string
-          format: '00:00:00:00:00:00:00:00'
-        port:
-          type: string
+          format: '00:00:00:00:00:00:00:00:0'
         tag:
           $ref: '#/components/schemas/Tag'
     Link:
@@ -168,40 +188,93 @@ components:
       required:
         - id
         - name
-        - path
+        - uni_a
+        - uni_z
       properties:
         id:
           type: integer
           format: int32
         name:
           type: string
-        path:
-          $ref: '#/components/schemas/Path'
-        backup:
-          $ref: '#/components/schemas/Path'
+        uni_a:
+          $ref: '#/components/schemas/Endpoint'
+        uni_z:
+          $ref: '#/components/schemas/Endpoint'
+
         start_date:
           type: string
           format: date-time
         end_date:
           type: string
           format: date-time
+
+        bandwidth:
+          type: integer
+          format: int64
+
+        primary_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/Path'
+        backup_links:
+          type: array
+          items:
+            $ref: '#/components/schemas/Path'
+
+        current_path:
+          $ref: '#/components/schemas/Path'
+        primary_path:
+          $ref: '#/components/schemas/Path'
+        backup_path:
+          $ref: '#/components/schemas/Path'
+
+        dynamic_backup_path:
+          type: boolean
+        creation_time:
+          type: string
+          format: date-time
+
+        enabled:
+          type: boolean
+
+        active:
+          type: boolean
+
+        owner:
+          type: string
+        priority:
+          type: integer
+          format: int32
+
+        circuit_scheduler:
+          type: array
+          items:
+            $ref: '#/components/schemas/CircuitSchedule'
+        request_time:
+          type: string
+          format: date-time
     Tag:
       type: object
       required:
-        - type
+        - tag_type
         - value
       properties:
-        type:
+        tag_type:
           type: string
         value:
           type: string
-    Scheduler:
+    CircuitSchedule:
       type: object
       properties:
+        id:
+          type: integer
+          format: int32
         date:
           type: string
           format: date-time
         interval:
           type: string
         frequency:
-            type: string
+          type: string
+        action:
+          type: string
