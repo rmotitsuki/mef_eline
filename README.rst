@@ -1,6 +1,9 @@
 Overview
 ========
 
+|Experimental| |License| |Build| |Coverage| |Quality|
+
+
 .. attention::
 
     THIS NAPP IS STILL EXPERIMENTAL AND IT'S EVENTS, METHODS AND STRUCTURES MAY
@@ -17,3 +20,21 @@ Requirements
 ============
 - kytos/flow_manager
 - kytos/pathfinder
+- kytos/topology
+
+
+.. TAGs
+
+.. |Experimental| image:: https://img.shields.io/badge/stability-experimental-orange.svg
+   :target: https://github.com/kytos/mef_eline
+.. |License| image:: https://img.shields.io/github/license/kytos/kytos.svg
+   :target: https://github.com/kytos/mef_eline/blob/master/LICENSE
+.. |Build| image:: https://scrutinizer-ci.com/g/kytos/mef_eline/badges/build.png?b=master
+   :alt: Build status
+   :target: https://scrutinizer-ci.com/g/kytos/kytos/?branch=master
+.. |Coverage| image:: https://scrutinizer-ci.com/g/kytos/mef_eline/badges/coverage.png?b=master
+   :alt: Code coverage
+   :target: https://scrutinizer-ci.com/g/kytos/mef_eline/
+.. |Quality| image:: https://scrutinizer-ci.com/g/kytos/mef_eline/badges/quality-score.png?b=master
+   :alt: Code-quality score
+   :target: https://scrutinizer-ci.com/g/kytos/mef_eline/
