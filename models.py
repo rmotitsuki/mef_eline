@@ -783,9 +783,9 @@ class LinkProtection(EVCDeploy):
         """
         success = False
         if self.is_using_primary_path():
-            success = self.deploy_to('backup_path', self.backup_path)
+            success = self.deploy_to_backup_path()
         elif self.is_using_backup_path():
-            success = self.deploy_to('primary_path', self.primary_path)
+            success = self.deploy_to_primary_path()
 
         if not success and self.dynamic_backup_path:
             success = self.deploy_to_path()
