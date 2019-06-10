@@ -162,8 +162,10 @@ class Main(KytosNApp):
         log.info("Removing %s" % circuit_id)
         evc = self.evc_from_dict(circuits.get(circuit_id))
         evc.remove_current_flows()
+        evc.deactivate()
         evc.disable()
-        self.storehouse.save_evc(evc)
+        evc.archive()
+        evc.sync()
 
         return jsonify("Circuit removed"), 200
 
@@ -183,7 +185,7 @@ class Main(KytosNApp):
             except ValueError:
                 continue
 
-            if circuit == evc:
+            if not evc.archived and circuit == evc:
                 return True
 
         return False

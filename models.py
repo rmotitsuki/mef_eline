@@ -167,10 +167,12 @@ class EVCBase(GenericEntity):
                                        Dafault is False.
             creation_time(datetime|str): datetime when the circuit should be
                                          activated. default is now().
-            enabled(Boolean): attribute to indicate the operational state.
+            enabled(Boolean): attribute to indicate the administrative state;
                               default is False.
-            active(Boolean): attribute to Administrative state;
+            active(Boolean): attribute to indicate the operational state;
                              default is False.
+            archived(Boolean): indicate the EVC has been deleted and is
+                               archived; default is False.
             owner(str): The EVC owner. Default is None.
             priority(int): Service level provided in the request. Default is 0.
 
@@ -206,6 +208,8 @@ class EVCBase(GenericEntity):
         self.current_links_cache = set()
         self.primary_links_cache = set()
         self.backup_links_cache = set()
+
+        self.archived = kwargs.get('archived', False)
 
         self._storehouse = StoreHouse(controller)
 
@@ -332,6 +336,7 @@ class EVCBase(GenericEntity):
 
         evc_dict['active'] = self.is_active()
         evc_dict['enabled'] = self.is_enabled()
+        evc_dict['archived'] = self.archived
         evc_dict['priority'] = self.priority
 
         return evc_dict
@@ -340,6 +345,10 @@ class EVCBase(GenericEntity):
     def id(self):  # pylint: disable=invalid-name
         """Return this EVC's ID."""
         return self._id
+
+    def archive(self):
+        """Archive this EVC on deletion."""
+        self.archived = True
 
 
 # pylint: disable=fixme, too-many-public-methods
