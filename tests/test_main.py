@@ -214,3 +214,53 @@ class TestMain(TestCase):
 
         self.assertEqual(400, response.status_code)
         self.assertEqual(current_data, expected_data)
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    def test_create_circuit_already_enabled(self, *args):
+        """Test create an already created circuit."""
+        (evc_as_dict_mock, validate_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock, storehouse_data_mock) = args
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z', 'uni_a', 'uni_z']
+        circuits = {'1': {'name': 'circuit_1'}}
+
+        api = self.get_app_test_client(self.napp)
+        payload = {
+            "name": "my evc1",
+            "frequency": "* * * * *",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            }
+        }
+
+        circuits.update({2: payload})
+        storehouse_data_mock.return_value = circuits
+        evc_as_dict_mock.return_value = payload
+
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload),
+                            content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = 'Not Acceptable: This evc already exists.'
+
+        self.assertEqual(current_data, expected_data)
+        self.assertEqual(409, response.status_code)

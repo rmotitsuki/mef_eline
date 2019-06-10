@@ -449,7 +449,9 @@ class EVCDeploy(EVCBase):
         Best path can be the primary path, if available. If not, the backup
         path, and, if it is also not available, a dynamic path.
         """
-        self.activate()
+        if self.archived:
+            return False
+        self.enable()
         success = self.deploy_to_primary_path()
         if not success:
             success = self.deploy_to_backup_path()
@@ -476,6 +478,8 @@ class EVCDeploy(EVCBase):
     def remove(self):
         """Remove EVC path and disable it."""
         self.remove_current_flows()
+        self.disable()
+        self.sync()
 
     def remove_current_flows(self):
         """Remove all flows from current path."""
