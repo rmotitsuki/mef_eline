@@ -2,6 +2,7 @@
 from uuid import uuid4
 
 from apscheduler.jobstores.base import ConflictingIdError
+from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import utc
@@ -91,4 +92,8 @@ class Scheduler:
 
     def cancel_job(self, circuit_scheduler_id):
         """Cancel a specific job from scheduler."""
-        self.scheduler.remove_job(circuit_scheduler_id)
+        try:
+            self.scheduler.remove_job(circuit_scheduler_id)
+        except JobLookupError as job_error:
+            # Job was not found... Maybe someone already remove it.
+            log.error(job_error)

@@ -109,6 +109,7 @@ class Main(KytosNApp):
         try:
             evc = self.evc_from_dict(data)
         except ValueError as exception:
+            log.error(exception)
             return jsonify("Bad request: {}".format(exception)), 400
 
         # verify duplicated evc
@@ -146,6 +147,7 @@ class Main(KytosNApp):
             data = request.get_json()
             evc.update(**data)
         except ValueError as exception:
+            log.error(exception)
             result = {'response': 'Bad Request: {}'.format(exception)}
             status = 400
         except TypeError:
@@ -191,6 +193,170 @@ class Main(KytosNApp):
                 evc.sync()
                 result = {'response': f'Circuit {circuit_id} removed'}
                 status = 200
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/schedule', methods=['GET'])
+    def list_schedules(self):
+        """Endpoint to return all circuits stored."""
+        circuits = self.storehouse.get_data().values()
+        if not circuits:
+            return jsonify({}), 200
+
+        result = []
+        for circuit in circuits:
+            if circuit["circuit_scheduler"]:
+                schedule = {circuit["id"]: circuit["circuit_scheduler"]}
+                result.append(schedule)
+
+        return jsonify(result), 200
+
+    @rest('/v2/evc/<circuit_id>/schedule/', methods=['GET'])
+    def get_schedule(self, circuit_id):
+        """Endpoint to return list all schedule from a circuit."""
+        circuits = self.storehouse.get_data()
+
+        if circuit_id in circuits:
+            circuit = circuits[circuit_id]
+            result = circuit["circuit_scheduler"]
+            status = 200
+        else:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            status = 400
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/<circuit_id>/schedule/', methods=['POST'])
+    def create_schedule(self, circuit_id):
+        """
+        Create a new schedule for a given circuit.
+
+        This service do no check if there are conflicts with another schedule.
+        """
+        # Try to create the circuit object
+        data = request.get_json()
+
+        if not data:
+            return jsonify("Bad request: The request do not have a json."), 400
+
+        try:
+            # new schedule from dict
+            new_schedule = CircuitSchedule.from_dict(data)
+        except ValueError as exception:
+            log.error(exception)
+            return jsonify("Bad request: {}".format(exception)), 400
+
+        # get the circuit
+        circuits = self.storehouse.get_data()
+        if circuit_id not in circuits:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            return jsonify(result), 404
+
+        evc = self.evc_from_dict(circuits.get(circuit_id))
+
+        # If there is no schedule, create the list
+        if not evc.circuit_scheduler:
+            evc.circuit_scheduler = []
+
+        # Add the new schedule
+        evc.circuit_scheduler.append(new_schedule)
+
+        # save circuit
+        self.storehouse.save_evc(evc)
+
+        return jsonify({"schedule_id": new_schedule.id}), 201
+
+    @rest('/v2/evc/<circuit_id>/schedule/<schedule_id>', methods=['PATCH'])
+    def update_schedule(self, circuit_id, schedule_id):
+        """Update a schedule.
+
+        Change all attributes from the given schedule from a EVC circuit.
+        The schedule ID is preserved as default, but it can also be modified.
+
+        The scheduler is notified and refresh all the schedules from
+        the given EVC circuit.
+        """
+        data = request.get_json()
+        circuits = self.storehouse.get_data()
+
+        if circuit_id not in circuits:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            return jsonify(result), 404
+
+        try:
+            evc = self.evc_from_dict(circuits.get(circuit_id))
+
+            # Try to find a circuit schedule
+            found_schedule = None
+            for schedule in evc.circuit_scheduler:
+                if schedule.id == schedule_id:
+                    found_schedule = schedule
+                    break
+
+            if found_schedule:
+                new_schedule = CircuitSchedule.from_dict(data)
+                new_schedule.id = found_schedule.id
+                # Remove the old schedule
+                evc.circuit_scheduler.remove(found_schedule)
+                # Append the modified schedule
+                evc.circuit_scheduler.append(new_schedule)
+
+                # Cancel all schedule jobs
+                for schedule in evc.circuit_scheduler:
+                    self.sched.cancel_job(schedule.id)
+                # Add all the circuit schedules again
+                self.sched.add(evc)
+                # Save EVC to the storehouse
+                self.storehouse.save_evc(evc)
+
+                result = {evc.id: evc.as_dict()}
+                status = 200
+            else:
+                result = {'response': f'schedule_id {schedule_id} not found'}
+                status = 404
+
+        except ValueError as exception:
+            log.error(exception)
+            result = "Bad request: {}".format(exception)
+            status = 400
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/<circuit_id>/schedule/<schedule_id>', methods=['DELETE'])
+    def delete_schedule(self, circuit_id, schedule_id):
+        """Remove a circuit schedule.
+
+        Remove the Schedule from EVC.
+        Remove the Schedule from cron job.
+        Save the EVC to the Storehouse.
+        """
+        circuits = self.storehouse.get_data()
+        evc = self.evc_from_dict(circuits.get(circuit_id))
+
+        # Try to find a circuit schedule
+        found_schedule = None
+        for schedule in evc.circuit_scheduler:
+            if schedule.id == schedule_id:
+                found_schedule = schedule
+                break
+
+        if found_schedule:
+            # Remove the old schedule
+            evc.circuit_scheduler.remove(found_schedule)
+
+            # Cancel all schedule jobs
+            for schedule in evc.circuit_scheduler:
+                self.sched.cancel_job(schedule.id)
+            # Add all the circuit schedules again
+            self.sched.add(evc)
+            # Save EVC to the storehouse
+            self.storehouse.save_evc(evc)
+
+            result = "Schedule removed"
+            status = 200
+        else:
+            result = {'response': f'schedule_id {schedule_id} not found'}
+            status = 404
 
         return jsonify(result), status
 

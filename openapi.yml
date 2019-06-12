@@ -111,6 +111,122 @@ paths:
         '200':
           description: OK
 
+  /v2/evc/schedule/:
+    get:
+      summary: List all schedules stored.
+      description: List all circuits stored.
+      operationId: list_circuit_schedules
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CircuitSchedule'
+
+  /v2/evc/{circuit_id}/schedule/:
+    get:
+      summary: Get all schedules stored for on circuit.
+      description: Get all circuits stored for on circuit.
+      operationId: get_circuit_schedules
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CircuitSchedule'
+
+    post:
+      summary: Creates a new circuit schedule
+      operationId: create_schedule
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Creates a new schedule.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CircuitSchedule'
+      responses:
+        '201':
+          description: Schedule created. The circuit ID is being returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  circuit_id: # the unique schedule id
+                    type: string
+        '400':
+          description: Request do not have a JSON or JSON format do not match
+            the EVC object or EVC already exists.
+        '409':
+          description: Not Acceptable.
+  /v2/evc/{circuit_id}/schedule/{schedule_id}:
+    patch:
+      summary: Update a circuit schedule
+      description: Update a circuit schedule based on payload. The circuit_id and schedule_id are required.
+      operationId: update_schedule
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: Update a circuit schedule based on the circuit_id, schedule_id and payload given
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CircuitSchedule'
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: Circuit id or Schedule id not found.
+        '400':
+          description: Bad request.
+    delete:
+      summary: Delete a circuit schedule
+      description: Delete a schedule from a circuit.
+      operationId: delete_schedule
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: schedule_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+
 components:
   schemas:
     NewCircuit:
