@@ -164,8 +164,7 @@ class Main(KytosNApp):
         evc.remove_current_flows()
         evc.deactivate()
         evc.disable()
-        for circuit_scheduler in evc.circuit_scheduler:
-            self.sched.cancel_job(circuit_scheduler.id)
+        self.sched.remove(evc)
         evc.archive()
         evc.sync()
 
