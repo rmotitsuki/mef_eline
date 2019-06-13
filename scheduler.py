@@ -80,6 +80,11 @@ class Scheduler:
                                                 timezone=utc)
                 self.scheduler.add_job(action, cron, **data)
 
+    def remove(self, circuit):
+        """Remove all scheduler from a circuit."""
+        for job in circuit.circuit_scheduler:
+            self.cancel_job(job.id)
+
     def cancel_job(self, circuit_scheduler_id):
         """Cancel a specific job from scheduler."""
         self.scheduler.remove_job(circuit_scheduler_id)

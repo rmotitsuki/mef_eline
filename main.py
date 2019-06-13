@@ -162,8 +162,11 @@ class Main(KytosNApp):
         log.info("Removing %s" % circuit_id)
         evc = self.evc_from_dict(circuits.get(circuit_id))
         evc.remove_current_flows()
+        evc.deactivate()
         evc.disable()
-        self.storehouse.save_evc(evc)
+        self.sched.remove(evc)
+        evc.archive()
+        evc.sync()
 
         return jsonify("Circuit removed"), 200
 
@@ -183,7 +186,7 @@ class Main(KytosNApp):
             except ValueError:
                 continue
 
-            if circuit == evc:
+            if not evc.archived and circuit == evc:
                 return True
 
         return False
@@ -200,7 +203,8 @@ class Main(KytosNApp):
                 log.debug(f'{data.get("id")} can not be provisioning yet.')
                 continue
 
-            evc.handle_link_up(event.content['link'])
+            if evc.is_enabled() and not evc.archived:
+                evc.handle_link_up(event.content['link'])
 
     @listen_to('kytos/topology.link_down')
     def handle_link_down(self, event):
