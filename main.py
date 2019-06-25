@@ -186,7 +186,7 @@ class Main(KytosNApp):
             except ValueError:
                 continue
 
-            if not evc.archived and circuit == evc:
+            if not circuit.archived and circuit == evc:
                 return True
 
         return False
