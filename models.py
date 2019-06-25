@@ -793,6 +793,9 @@ class LinkProtection(EVCDeploy):
         if success:
             log.debug(f"{self} deployed after link down.")
         else:
+            self.deactivate()
+            self.current_path = Path([])
+            self.sync()
             log.debug(f'Failed to re-deploy {self} after link down.')
 
         return success
