@@ -62,11 +62,10 @@ class Main(KytosNApp):
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
         circuits = self.storehouse.get_data()
-
-        if circuit_id in circuits:
+        try:
             result = circuits[circuit_id]
             status = 200
-        else:
+        except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 400
 
@@ -135,23 +134,23 @@ class Main(KytosNApp):
     @rest('/v2/evc/<circuit_id>', methods=['PATCH'])
     def update(self, circuit_id):
         """Update a circuit based on payload.
+
         The EVC required attributes (name, uni_a, uni_z) can't be updated.
         """
         data = request.get_json()
 
-        if circuit_id not in self.circuits:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            return jsonify(result), 404
-
         try:
-            evc = self.circuits.get(circuit_id)
+            evc = self.circuits[circuit_id]
             evc.update(**data)
-            self.storehouse.save_evc(evc)
+            evc.sync()
             result = {evc.id: evc.as_dict()}
             status = 200
         except ValueError as exception:
             result = "Bad request: {}".format(exception)
             status = 400
+        except KeyError:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            status = 404
 
         return jsonify(result), status
 
@@ -162,16 +161,22 @@ class Main(KytosNApp):
         First, the flows are removed from the switches, and then the EVC is
         disabled.
         """
-        log.info("Removing %s" % circuit_id)
-        evc = self.circuits.get(circuit_id)
-        evc.remove_current_flows()
-        evc.deactivate()
-        evc.disable()
-        self.sched.remove(evc)
-        evc.archive()
-        evc.sync()
+        try:
+            evc = self.circuits[circuit_id]
+            log.info(f'Removing {circuit_id}')
+            evc.remove_current_flows()
+            evc.deactivate()
+            evc.disable()
+            self.sched.remove(evc)
+            evc.archive()
+            evc.sync()
+            result = {'response': f'Circuit {circuit_id} removed'}
+            status = 200
+        except KeyError:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            status = 404
 
-        return jsonify("Circuit removed"), 200
+        return jsonify(result), status
 
     def is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
