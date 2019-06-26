@@ -215,7 +215,6 @@ class TestMain(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual(current_data, expected_data)
 
-    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
@@ -224,16 +223,16 @@ class TestMain(TestCase):
     def test_create_circuit_already_enabled(self, *args):
         """Test create an already created circuit."""
         (evc_as_dict_mock, validate_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock, storehouse_data_mock) = args
+         uni_from_dict_mock, sched_add_mock) = args
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
         sched_add_mock.return_value = True
         uni_from_dict_mock.side_effect = ['uni_a', 'uni_z', 'uni_a', 'uni_z']
-        circuits = {'1': {'name': 'circuit_1'}}
+        payload1 = {'name': 'circuit_1'}
 
         api = self.get_app_test_client(self.napp)
-        payload = {
+        payload2 = {
             "name": "my evc1",
             "frequency": "* * * * *",
             "uni_a": {
@@ -252,15 +251,22 @@ class TestMain(TestCase):
             }
         }
 
-        circuits.update({2: payload})
-        storehouse_data_mock.return_value = circuits
-        evc_as_dict_mock.return_value = payload
+        evc_as_dict_mock.return_value = payload1
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload1),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
+
+        evc_as_dict_mock.return_value = payload2
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload2),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
 
         response = api.post(f'{self.server_name_url}/v2/evc/',
-                            data=json.dumps(payload),
+                            data=json.dumps(payload2),
                             content_type='application/json')
         current_data = json.loads(response.data)
         expected_data = 'Not Acceptable: This evc already exists.'
-
         self.assertEqual(current_data, expected_data)
         self.assertEqual(409, response.status_code)

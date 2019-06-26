@@ -37,6 +37,9 @@ class Main(KytosNApp):
         # set the controller that will manager the dynamic paths
         DynamicPathManager.set_controller(self.controller)
 
+        # dictionary of EVCs created
+        self.circuits = {}
+
     def execute(self):
         """Execute once when the napp is running."""
 
@@ -109,6 +112,9 @@ class Main(KytosNApp):
         if self.is_duplicated_evc(evc):
             return jsonify("Not Acceptable: This evc already exists."), 409
 
+        # store circuit in dictionary
+        self.circuits[evc.id] = evc
+
         # save circuit
         self.storehouse.save_evc(evc)
 
@@ -129,18 +135,16 @@ class Main(KytosNApp):
     @rest('/v2/evc/<circuit_id>', methods=['PATCH'])
     def update(self, circuit_id):
         """Update a circuit based on payload.
-
         The EVC required attributes (name, uni_a, uni_z) can't be updated.
         """
         data = request.get_json()
-        circuits = self.storehouse.get_data()
 
-        if circuit_id not in circuits:
+        if circuit_id not in self.circuits:
             result = {'response': f'circuit_id {circuit_id} not found'}
             return jsonify(result), 404
 
         try:
-            evc = self.evc_from_dict(circuits.get(circuit_id))
+            evc = self.circuits.get(circuit_id)
             evc.update(**data)
             self.storehouse.save_evc(evc)
             result = {evc.id: evc.as_dict()}
@@ -158,9 +162,8 @@ class Main(KytosNApp):
         First, the flows are removed from the switches, and then the EVC is
         disabled.
         """
-        circuits = self.storehouse.get_data()
         log.info("Removing %s" % circuit_id)
-        evc = self.evc_from_dict(circuits.get(circuit_id))
+        evc = self.circuits.get(circuit_id)
         evc.remove_current_flows()
         evc.deactivate()
         evc.disable()
@@ -180,44 +183,22 @@ class Main(KytosNApp):
             boolean: True if the circuit is duplicated, otherwise False.
 
         """
-        for circuit_dict in self.storehouse.get_data().values():
-            try:
-                circuit = self.evc_from_dict(circuit_dict)
-            except ValueError:
-                continue
-
+        for circuit in self.circuits.values():
             if not circuit.archived and circuit == evc:
                 return True
-
         return False
 
     @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
-        evc = None
-
-        for data in self.storehouse.get_data().values():
-            try:
-                evc = self.evc_from_dict(data)
-            except ValueError as _exception:
-                log.debug(f'{data.get("id")} can not be provisioning yet.')
-                continue
-
+        for evc in self.circuits.values():
             if evc.is_enabled() and not evc.archived:
                 evc.handle_link_up(event.content['link'])
 
     @listen_to('kytos/topology.link_down')
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
-        evc = None
-
-        for data in self.storehouse.get_data().values():
-            try:
-                evc = self.evc_from_dict(data)
-            except ValueError as _exception:
-                log.debug(f'{data.get("id")} can not be provisioned yet.')
-                continue
-
+        for evc in self.circuits.values():
             if evc.is_affected_by_link(event.content['link']):
                 log.info('handling evc %s' % evc)
                 evc.handle_link_down()
