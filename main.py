@@ -67,7 +67,7 @@ class Main(KytosNApp):
             status = 200
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 400
+            status = 404
 
         return jsonify(result), status
 
