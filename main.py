@@ -3,6 +3,7 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
+from werkzeug.exceptions import BadRequest
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
@@ -137,16 +138,22 @@ class Main(KytosNApp):
 
         The EVC required attributes (name, uni_a, uni_z) can't be updated.
         """
-        data = request.get_json()
-
         try:
             evc = self.circuits[circuit_id]
+            data = request.get_json()
             evc.update(**data)
             evc.sync()
             result = {evc.id: evc.as_dict()}
             status = 200
         except ValueError as exception:
-            result = "Bad request: {}".format(exception)
+            result = {'response': 'Bad Request: {}'.format(exception)}
+            status = 400
+        except TypeError:
+            result = {'response': 'Content-Type must be application/json'}
+            status = 415
+        except BadRequest:
+            response = 'Bad Request: The request is not in JSON format.'
+            result = {'response': response}
             status = 400
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
