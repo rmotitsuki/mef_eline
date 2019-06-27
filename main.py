@@ -142,9 +142,6 @@ class Main(KytosNApp):
             evc = self.circuits[circuit_id]
             data = request.get_json()
             evc.update(**data)
-            evc.sync()
-            result = {evc.id: evc.as_dict()}
-            status = 200
         except ValueError as exception:
             result = {'response': 'Bad Request: {}'.format(exception)}
             status = 400
@@ -152,12 +149,16 @@ class Main(KytosNApp):
             result = {'response': 'Content-Type must be application/json'}
             status = 415
         except BadRequest:
-            response = 'Bad Request: The request is not in JSON format.'
+            response = 'Bad Request: The request is not a valid JSON.'
             result = {'response': response}
             status = 400
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 404
+        else:
+            evc.sync()
+            result = {evc.id: evc.as_dict()}
+            status = 200
 
         return jsonify(result), status
 
@@ -170,6 +171,10 @@ class Main(KytosNApp):
         """
         try:
             evc = self.circuits[circuit_id]
+        except KeyError:
+            result = {'response': f'circuit_id {circuit_id} not found'}
+            status = 404
+        else:
             log.info(f'Removing {circuit_id}')
             if evc.archived:
                 result = {'response': f'Circuit {circuit_id} already removed'}
@@ -183,9 +188,6 @@ class Main(KytosNApp):
                 evc.sync()
                 result = {'response': f'Circuit {circuit_id} removed'}
                 status = 200
-        except KeyError:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 404
 
         return jsonify(result), status
 
