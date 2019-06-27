@@ -164,14 +164,18 @@ class Main(KytosNApp):
         try:
             evc = self.circuits[circuit_id]
             log.info(f'Removing {circuit_id}')
-            evc.remove_current_flows()
-            evc.deactivate()
-            evc.disable()
-            self.sched.remove(evc)
-            evc.archive()
-            evc.sync()
-            result = {'response': f'Circuit {circuit_id} removed'}
-            status = 200
+            if evc.archived:
+                result = {'response': f'Circuit {circuit_id} already removed'}
+                status = 404
+            else:
+                evc.remove_current_flows()
+                evc.deactivate()
+                evc.disable()
+                self.sched.remove(evc)
+                evc.archive()
+                evc.sync()
+                result = {'response': f'Circuit {circuit_id} removed'}
+                status = 200
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 404
