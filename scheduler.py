@@ -1,9 +1,12 @@
 """Module responsible to handle schedulers."""
 from uuid import uuid4
 
+from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from pytz import utc
+
+from kytos.core import log
 
 
 class CircuitSchedule:
@@ -66,19 +69,20 @@ class Scheduler:
 
             if circuit_scheduler.date:
                 data.update({'run_date': circuit_scheduler.date})
-                self.scheduler.add_job(action, 'date', **data)
-            else:
-                data.update({'start_date': circuit.start_date,
-                             'end_date': circuit.end_date})
-
-            if circuit_scheduler.interval:
+                trigger = 'date'
+            elif circuit_scheduler.interval:
                 data.update(circuit_scheduler.interval)
-                self.scheduler.add_job(action, 'interval', **data)
-
+                trigger = 'interval'
             elif circuit_scheduler.frequency:
-                cron = CronTrigger.from_crontab(circuit_scheduler.frequency,
-                                                timezone=utc)
-                self.scheduler.add_job(action, cron, **data)
+                trigger = CronTrigger.from_crontab(circuit_scheduler.frequency,
+                                                   timezone=utc)
+            else:
+                continue
+
+            try:
+                self.scheduler.add_job(action, trigger, **data)
+            except ConflictingIdError:
+                log.info(f'Job with id {circuit_scheduler.id} already added.')
 
     def remove(self, circuit):
         """Remove all scheduler from a circuit."""
