@@ -388,11 +388,11 @@ class EVCDeploy(EVCBase):
 
     def is_using_primary_path(self):
         """Verify if the current deployed path is self.primary_path."""
-        return self.current_path == self.primary_path
+        return self.primary_path and (self.current_path == self.primary_path)
 
     def is_using_backup_path(self):
         """Verify if the current deployed path is self.backup_path."""
-        return self.current_path == self.backup_path
+        return self.backup_path and (self.current_path == self.backup_path)
 
     def is_using_dynamic_path(self):
         """Verify if the current deployed path is a dynamic path."""
