@@ -221,6 +221,25 @@ class Main(KytosNApp):
                 log.info('handling evc %s' % evc)
                 evc.handle_link_down()
 
+    @listen_to('kytos/of_core.switch.port.created')
+    def load_evcs(self, _event):
+        """Try to load the unloaded EVCs from storehouse."""
+        circuits = self.storehouse.get_data()
+        for circuit_id in circuits:
+            if circuit_id not in self.circuits:
+                try:
+                    evc = self.evc_from_dict(circuits[circuit_id])
+                except ValueError as exception:
+                    log.info(
+                        f'Could not load EVC {circuit_id} because {exception}')
+                    continue
+                log.info(f'Loading EVC {circuit_id}')
+                if evc.is_enabled():
+                    log.info(f'Trying to deploy EVC {circuit_id}')
+                    evc.deploy()
+                self.circuits[circuit_id] = evc
+                self.sched.add(evc)
+
     def evc_from_dict(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
 
