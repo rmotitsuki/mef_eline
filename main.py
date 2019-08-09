@@ -216,13 +216,13 @@ class Main(KytosNApp):
         """Endpoint to return list all schedule from a circuit."""
         circuits = self.storehouse.get_data()
 
-        if circuit_id in circuits:
-            circuit = circuits[circuit_id]
-            result = circuit["circuit_scheduler"]
-            status = 200
-        else:
+        if circuit_id not in circuits:
             result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 400
+            return jsonify(result), 404
+
+        circuit = circuits[circuit_id]
+        result = circuit["circuit_scheduler"]
+        status = 200
 
         return jsonify(result), status
 
@@ -457,8 +457,7 @@ class Main(KytosNApp):
 
             if attribute == 'circuit_scheduler':
                 data[attribute] = []
-                for schedule in value:
-                    data[attribute].append(CircuitSchedule.from_dict(schedule))
+                data[attribute].append(CircuitSchedule.from_dict(value))
 
             if 'link' in attribute:
                 if value:
