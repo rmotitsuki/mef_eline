@@ -351,10 +351,7 @@ class Main(KytosNApp):
             evc.circuit_scheduler.remove(found_schedule)
 
             # Cancel all schedule jobs
-            for schedule in evc.circuit_scheduler:
-                self.sched.cancel_job(schedule.id)
-            # Add all the circuit schedules again
-            self.sched.add(evc)
+            self.sched.cancel_job(found_schedule.id)
             # Save EVC to the storehouse
             self.storehouse.save_evc(evc)
 
