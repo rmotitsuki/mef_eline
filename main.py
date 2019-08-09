@@ -232,6 +232,13 @@ class Main(KytosNApp):
         Create a new schedule for a given circuit.
 
         This service do no check if there are conflicts with another schedule.
+        Example:
+            {
+              "date": "2019-08-07T14:52:10.967Z",
+              "interval": "string",
+              "frequency": "1 * * *",
+              "action": "create"
+            }
         """
         # Try to create the circuit object
         data = request.get_json()
@@ -261,10 +268,13 @@ class Main(KytosNApp):
         # Add the new schedule
         evc.circuit_scheduler.append(new_schedule)
 
+        # Add schedule job
+        self.sched.add_circuit_job(evc, new_schedule)
+
         # save circuit
         self.storehouse.save_evc(evc)
 
-        return jsonify({"schedule_id": new_schedule.id}), 201
+        return jsonify(new_schedule.as_dict()), 201
 
     @rest('/v2/evc/<circuit_id>/schedule/<schedule_id>', methods=['PATCH'])
     def update_schedule(self, circuit_id, schedule_id):
