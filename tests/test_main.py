@@ -7,7 +7,7 @@ from napps.kytos.mef_eline.main import Main
 from tests.helpers import get_controller_mock
 
 
-class TestMain(TestCase):
+class TestMain(TestCase):  # pylint: disable=too-many-public-methods
     """Test the Main class."""
 
     def setUp(self):
@@ -32,18 +32,77 @@ class TestMain(TestCase):
     def test_verify_api_urls(self):
         """Verify all APIs registered."""
         expected_urls = [
-            ({}, {'OPTIONS', 'POST'},
+            ({}, {'POST', 'OPTIONS'},
              '/api/kytos/mef_eline/v2/evc/'),
+
             ({}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/'),
+
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'DELETE'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
+
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'HEAD', 'GET'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
+
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
-             '/api/kytos/mef_eline/v2/evc/<circuit_id>')]
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
+
+            ({}, {'OPTIONS', 'GET', 'HEAD'},
+             '/api/kytos/mef_eline/v2/evc/schedule'),
+
+            ({'circuit_id': '[circuit_id]'}, {'POST', 'OPTIONS'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>/schedule/'),
+
+            ({'schedule_id': '[schedule_id]', 'circuit_id': '[circuit_id]'},
+             {'OPTIONS', 'DELETE'},
+             '/api/kytos/mef_eline/v2/'
+             'evc/<circuit_id>/schedule/<schedule_id>'),
+
+            ({'schedule_id': '[schedule_id]', 'circuit_id': '[circuit_id]'},
+             {'OPTIONS', 'PATCH'},
+             '/api/kytos/mef_eline/v2/'
+             'evc/<circuit_id>/schedule/<schedule_id>'),
+
+            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'GET', 'HEAD'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>/schedule/')
+            ]
+
         urls = self.get_napp_urls(self.napp)
-        self.assertEqual(expected_urls, urls)
+        self.assertCountEqual(expected_urls, urls)
+
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    def test_evc_from_dict(self, _validate_mock, uni_from_dict_mock):
+        """
+        Test the helper method that create an EVN from dict.
+
+        Verify object creation with circuit data and schedule data.
+        """
+        _validate_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        payload = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            },
+            "circuit_scheduler": {
+                "frequency": "* * * * *",
+                "action": "create"
+            }
+        }
+        evc_response = self.napp.evc_from_dict(payload)
+        self.assertIsNotNone(evc_response)
 
     def test_list_without_circuits(self):
         """Test if list circuits return 'no circuit stored.'."""
@@ -234,7 +293,6 @@ class TestMain(TestCase):
         api = self.get_app_test_client(self.napp)
         payload2 = {
             "name": "my evc1",
-            "frequency": "* * * * *",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
                 "tag": {
@@ -460,3 +518,304 @@ class TestMain(TestCase):
         self.napp.load_circuits_by_interface(stored_circuits)
         # pylint: disable=protected-access
         self.assertEqual(self.napp._circuits_by_interface, expected_result)
+
+    def test_list_schedules__no_data(self):
+        """Test list of schedules."""
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule'
+        response = api.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.data.decode()), {})
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_schedules__no_data_stored(self, storehouse_data_mock):
+        """Test if list circuits return all circuits stored."""
+        circuits = {}
+        storehouse_data_mock.return_value = circuits
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule'
+
+        response = api.get(url)
+        expected_result = circuits
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(response.data), expected_result)
+
+    # pylint: disable=no-self-use
+    def _add_storehouse_schedule_data(self, storehouse_data_mock):
+        """Add schedule data to storehouse mock object."""
+        circuits = {}
+        payload_1 = {
+            "id": "aa:aa:aa",
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            },
+            "circuit_scheduler": {
+                "frequency": "* * * * *",
+                "action": "create"
+            }
+        }
+        circuits.update({'1': payload_1})
+        payload_2 = {
+            "id": "bb:bb:bb",
+            "name": "my second evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 90
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:03:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100
+                }
+            },
+            "circuit_scheduler": {
+                "frequency": "1 * * * *",
+                "action": "create"
+            }
+        }
+        circuits.update({'2': payload_2})
+        # Add one circuit to the storehouse.
+        storehouse_data_mock.return_value = circuits
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_schedules_from_storehouse(self, storehouse_data_mock):
+        """Test if list circuits return specific circuits stored."""
+        self._add_storehouse_schedule_data(storehouse_data_mock)
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule'
+
+        # Call URL
+        response = api.get(url)
+
+        # Expected JSON data from response
+        expected = [{'aa:aa:aa':
+                    {'action': 'create', 'frequency': '* * * * *'}},
+                    {'bb:bb:bb':
+                    {'action': 'create', 'frequency': '1 * * * *'}}]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(expected, json.loads(response.data))
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_get_specific_schedule_from_storehouse(self, storehouse_data_mock):
+        """Test get schedule byt ID. Return specific circuits stored."""
+        self._add_storehouse_schedule_data(storehouse_data_mock)
+
+        requested_id = "2"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+
+        # Call URL
+        response = api.get(url)
+
+        # Expected JSON data from response
+        expected = {'action': 'create', 'frequency': '1 * * * *'}
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(expected, json.loads(response.data))
+
+    def test_get_specific_schedules_from_storehouse_not_found(self):
+        """Test get specific schedule ID that does not exist."""
+        requested_id = "blah"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+
+        # Call URL
+        response = api.get(url)
+
+        expected = {'response': 'circuit_id blah not found'}
+        # Assert response not found
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(expected, json.loads(response.data))
+
+    @patch('apscheduler.schedulers.background.BackgroundScheduler.add_job')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    def test_create_schedule(self, *args):  # pylint: disable=too-many-locals
+        """Test create a circuit schedule."""
+        (validate_mock, evc_as_dict_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock, storehouse_data_mock,
+         scheduler_add_job_mock) = args
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        evc_as_dict_mock.return_value = {}
+        sched_add_mock.return_value = True
+        storehouse_data_mock.return_value = {}
+
+        self._add_storehouse_schedule_data(storehouse_data_mock)
+
+        requested_id = "2"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+
+        payload = {
+            "frequency": "1 * * * *",
+            "action": "create"
+        }
+
+        # Call URL
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+
+        response_json = json.loads(response.data)
+
+        scheduler_add_job_mock.assert_called_once()
+        save_evc_mock.assert_called_once()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(payload["frequency"], response_json["frequency"])
+        self.assertEqual(payload["action"], response_json["action"])
+        self.assertIsNotNone(response_json["id"])
+
+    @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    def test_update_schedule(self, *args):  # pylint: disable=too-many-locals
+        """Test create a circuit schedule."""
+        (validate_mock, evc_as_dict_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock, storehouse_data_mock,
+         scheduler_remove_job_mock) = args
+
+        storehouse_payload_1 = {
+            "2": {
+                "id": "2",
+                "name": "my evc1",
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:01:1",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 80
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:02:2",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 1
+                    }
+                },
+                "circuit_scheduler": {
+                    "id": "1",
+                    "frequency": "* * * * *",
+                    "action": "create"
+                }
+            }
+        }
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        evc_as_dict_mock.return_value = {}
+        storehouse_data_mock.return_value = storehouse_payload_1
+        scheduler_remove_job_mock.return_value = True
+
+        requested_circuit_id = "2"
+        requested_schedule_id = "1"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/{requested_circuit_id}/'\
+              f'schedule/{requested_schedule_id}'
+
+        payload = {
+            "frequency": "1 * * * *",
+            "action": "create"
+        }
+
+        # Call URL
+        response = api.patch(url, data=json.dumps(payload),
+                             content_type='application/json')
+
+        response_json = json.loads(response.data)
+
+        scheduler_remove_job_mock.assert_called_once()
+        save_evc_mock.assert_called_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["frequency"], response_json["frequency"])
+        self.assertEqual(payload["action"], response_json["action"])
+        self.assertIsNotNone(response_json["id"])
+
+    @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    def test_delete_schedule(self, *args):
+        """Test create a circuit schedule."""
+        (validate_mock, evc_as_dict_mock, save_evc_mock,
+         uni_from_dict_mock, storehouse_data_mock,
+         scheduler_remove_job_mock) = args
+
+        storehouse_payload_1 = {
+            "2": {
+                "id": "2",
+                "name": "my evc1",
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:01:1",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 80
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:02:2",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 1
+                    }
+                },
+                "circuit_scheduler": {
+                    "id": "1",
+                    "frequency": "* * * * *",
+                    "action": "create"
+                }
+            }
+        }
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        evc_as_dict_mock.return_value = {}
+        storehouse_data_mock.return_value = storehouse_payload_1
+        scheduler_remove_job_mock.return_value = True
+
+        requested_circuit_id = "2"
+        requested_schedule_id = "1"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/{requested_circuit_id}/'\
+              f'schedule/{requested_schedule_id}'
+
+        # Call URL
+        response = api.delete(url)
+
+        scheduler_remove_job_mock.assert_called_once()
+        save_evc_mock.assert_called_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Schedule removed", f"{response.data}")
