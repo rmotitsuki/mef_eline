@@ -282,9 +282,6 @@ class Main(KytosNApp):
 
         Change all attributes from the given schedule from a EVC circuit.
         The schedule ID is preserved as default, but it can also be modified.
-
-        The scheduler is notified and refresh all the schedules from
-        the given EVC circuit.
         """
         data = request.get_json()
         circuits = self.storehouse.get_data()
@@ -312,14 +309,13 @@ class Main(KytosNApp):
                 evc.circuit_scheduler.append(new_schedule)
 
                 # Cancel all schedule jobs
-                for schedule in evc.circuit_scheduler:
-                    self.sched.cancel_job(schedule.id)
-                # Add all the circuit schedules again
-                self.sched.add(evc)
+                self.sched.cancel_job(found_schedule.id)
+                # Add the new circuit schedule
+                self.sched.add_circuit_job(evc, new_schedule)
                 # Save EVC to the storehouse
                 self.storehouse.save_evc(evc)
 
-                result = {evc.id: evc.as_dict()}
+                result = new_schedule.as_dict()
                 status = 200
             else:
                 result = {'response': f'schedule_id {schedule_id} not found'}
