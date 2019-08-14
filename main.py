@@ -245,11 +245,17 @@ class Main(KytosNApp):
         self._circuits_by_interface[intf].add(circuit_id)
 
     @listen_to('kytos/of_core.switch.port.created')
-    def load_evcs(self, _event):
+    def load_evcs(self, event):
         """Try to load the unloaded EVCs from storehouse."""
         circuits = self.storehouse.get_data()
-        for circuit_id in circuits:
-            if circuit_id not in self.circuits:
+        if not self._circuits_by_interface:
+            self.load_circuits_by_interface(circuits)
+
+        interface_id = '{}:{}'.format(event.content['switch'],
+                                      event.content['port'])
+
+        for circuit_id in self._circuits_by_interface.get(interface_id, []):
+            if circuit_id in circuits and circuit_id not in self.circuits:
                 try:
                     evc = self.evc_from_dict(circuits[circuit_id])
                 except ValueError as exception:
