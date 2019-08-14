@@ -234,6 +234,8 @@ class Main(KytosNApp):
                         f'Could not load EVC {circuit_id} because {exception}')
                     continue
                 log.info(f'Loading EVC {circuit_id}')
+                if evc.archived:
+                    continue
                 if evc.is_enabled():
                     log.info(f'Trying to deploy EVC {circuit_id}')
                     evc.deploy()
