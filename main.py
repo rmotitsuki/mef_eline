@@ -228,17 +228,17 @@ class Main(KytosNApp):
         """Load circuits in storehouse for in-memory dictionary."""
         for circuit_id, circuit in circuits.items():
             intf_a = circuit['uni_a']['interface_id']
-            self.add_to_circuits_by_interface(intf_a, circuit_id)
+            self.add_to_dict_of_sets(intf_a, circuit_id)
             intf_z = circuit['uni_z']['interface_id']
-            self.add_to_circuits_by_interface(intf_z, circuit_id)
+            self.add_to_dict_of_sets(intf_z, circuit_id)
             for path in ('current_path', 'primary_path', 'backup_path'):
                 for link in circuit[path]:
                     intf_a = link['endpoint_a']['id']
-                    self.add_to_circuits_by_interface(intf_a, circuit_id)
+                    self.add_to_dict_of_sets(intf_a, circuit_id)
                     intf_b = link['endpoint_b']['id']
-                    self.add_to_circuits_by_interface(intf_b, circuit_id)
+                    self.add_to_dict_of_sets(intf_b, circuit_id)
 
-    def add_to_circuits_by_interface(self, intf, circuit_id):
+    def add_to_dict_of_sets(self, intf, circuit_id):
         """Add a single item to the dictionary of circuits by interface."""
         if intf not in self._circuits_by_interface:
             self._circuits_by_interface[intf] = set()
