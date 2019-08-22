@@ -244,7 +244,7 @@ class Main(KytosNApp):
             self._circuits_by_interface[intf] = set()
         self._circuits_by_interface[intf].add(circuit_id)
 
-    @listen_to('kytos/of_core.switch.port.created')
+    @listen_to('kytos/topology.port.created')
     def load_evcs(self, event):
         """Try to load the unloaded EVCs from storehouse."""
         circuits = self.storehouse.get_data()
