@@ -211,28 +211,80 @@ class Main(KytosNApp):
 
         return jsonify(result), 200
 
-    @rest('/v2/evc/<circuit_id>/schedule/', methods=['GET'])
-    def get_schedule(self, circuit_id):
-        """Endpoint to return list all schedule from a circuit."""
-        circuits = self.storehouse.get_data()
-
-        if circuit_id not in circuits:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            return jsonify(result), 404
-
-        circuit = circuits[circuit_id]
-        result = circuit["circuit_scheduler"]
-        status = 200
-
-        return jsonify(result), status
-
-    @rest('/v2/evc/<circuit_id>/schedule/', methods=['POST'])
-    def create_schedule(self, circuit_id):
+    @rest('/v2/evc/schedule/', methods=['POST'])
+    def create_schedule(self):
         """
         Create a new schedule for a given circuit.
 
         This service do no check if there are conflicts with another schedule.
-        Example:
+        Payload example:
+            {
+              "circuit_id":"aa:bb:cc",
+              "schedule": {
+                "date": "2019-08-07T14:52:10.967Z",
+                "interval": "string",
+                "frequency": "1 * * * *",
+                "action": "create"
+              }
+            }
+        """
+        # Try to create the circuit object
+        json_data = request.get_json()
+        result = ""
+        status = 200
+        if not json_data:
+            result = "Bad request: The request does not have a json."
+            status = 400
+        elif "circuit_id" not in json_data:
+            result = result = "Bad request: Missing circuit_id."
+            status = 400
+        elif "schedule" not in json_data:
+            result = "Bad request: Missing schedule data."
+            status = 400
+        else:
+            try:
+                circuit_id = json_data["circuit_id"]
+                schedule_data = json_data["schedule"]
+
+                # new schedule from dict
+                new_schedule = CircuitSchedule.from_dict(schedule_data)
+                # get the circuit
+                circuits = self.storehouse.get_data()
+                if circuit_id not in circuits:
+                    result = {'response': f'circuit_id {circuit_id} not found'}
+                    status = 404
+                else:
+                    evc = self.evc_from_dict(circuits.get(circuit_id))
+
+                    # If there is no schedule, create the list
+                    if not evc.circuit_scheduler:
+                        evc.circuit_scheduler = []
+
+                    # Add the new schedule
+                    evc.circuit_scheduler.append(new_schedule)
+
+                    # Add schedule job
+                    self.sched.add_circuit_job(evc, new_schedule)
+
+                    # save circuit
+                    self.storehouse.save_evc(evc)
+
+                    result = new_schedule.as_dict()
+                    status = 201
+            except ValueError as exception:
+                log.exception(exception)
+                result = "Bad request: {}".format(exception)
+                status = 400
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/schedule/<schedule_id>', methods=['PATCH'])
+    def update_schedule(self, schedule_id):
+        """Update a schedule.
+
+        Change all attributes from the given schedule from a EVC circuit.
+        The schedule ID is preserved as default.
+        Payload example:
             {
               "date": "2019-08-07T14:52:10.967Z",
               "interval": "string",
@@ -240,65 +292,11 @@ class Main(KytosNApp):
               "action": "create"
             }
         """
-        # Try to create the circuit object
         data = request.get_json()
 
-        if not data:
-            return jsonify("Bad request: The request do not have a json."), 400
-
         try:
-            # new schedule from dict
-            new_schedule = CircuitSchedule.from_dict(data)
-        except ValueError as exception:
-            log.error(exception)
-            return jsonify("Bad request: {}".format(exception)), 400
-
-        # get the circuit
-        circuits = self.storehouse.get_data()
-        if circuit_id not in circuits:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            return jsonify(result), 404
-
-        evc = self.evc_from_dict(circuits.get(circuit_id))
-
-        # If there is no schedule, create the list
-        if not evc.circuit_scheduler:
-            evc.circuit_scheduler = []
-
-        # Add the new schedule
-        evc.circuit_scheduler.append(new_schedule)
-
-        # Add schedule job
-        self.sched.add_circuit_job(evc, new_schedule)
-
-        # save circuit
-        self.storehouse.save_evc(evc)
-
-        return jsonify(new_schedule.as_dict()), 201
-
-    @rest('/v2/evc/<circuit_id>/schedule/<schedule_id>', methods=['PATCH'])
-    def update_schedule(self, circuit_id, schedule_id):
-        """Update a schedule.
-
-        Change all attributes from the given schedule from a EVC circuit.
-        The schedule ID is preserved as default, but it can also be modified.
-        """
-        data = request.get_json()
-        circuits = self.storehouse.get_data()
-
-        if circuit_id not in circuits:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            return jsonify(result), 404
-
-        try:
-            evc = self.evc_from_dict(circuits.get(circuit_id))
-
             # Try to find a circuit schedule
-            found_schedule = None
-            for schedule in evc.circuit_scheduler:
-                if schedule.id == schedule_id:
-                    found_schedule = schedule
-                    break
+            evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
 
             if found_schedule:
                 new_schedule = CircuitSchedule.from_dict(data)
@@ -328,23 +326,15 @@ class Main(KytosNApp):
 
         return jsonify(result), status
 
-    @rest('/v2/evc/<circuit_id>/schedule/<schedule_id>', methods=['DELETE'])
-    def delete_schedule(self, circuit_id, schedule_id):
+    @rest('/v2/evc/schedule/<schedule_id>', methods=['DELETE'])
+    def delete_schedule(self, schedule_id):
         """Remove a circuit schedule.
 
         Remove the Schedule from EVC.
         Remove the Schedule from cron job.
         Save the EVC to the Storehouse.
         """
-        circuits = self.storehouse.get_data()
-        evc = self.evc_from_dict(circuits.get(circuit_id))
-
-        # Try to find a circuit schedule
-        found_schedule = None
-        for schedule in evc.circuit_scheduler:
-            if schedule.id == schedule_id:
-                found_schedule = schedule
-                break
+        evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
 
         if found_schedule:
             # Remove the old schedule
@@ -457,7 +447,8 @@ class Main(KytosNApp):
 
             if attribute == 'circuit_scheduler':
                 data[attribute] = []
-                data[attribute].append(CircuitSchedule.from_dict(value))
+                for schedule in value:
+                    data[attribute].append(CircuitSchedule.from_dict(schedule))
 
             if 'link' in attribute:
                 if value:
@@ -509,3 +500,24 @@ class Main(KytosNApp):
                 raise ValueError(error_msg)
             link.update_metadata('s_vlan', tag)
         return link
+
+    def find_evc_by_schedule_id(self, schedule_id):
+        """
+        Find an EVC and CircuitSchedule based on schedule_id.
+
+        :param schedule_id: Schedule ID
+        :return: EVC and Schedule
+        """
+        found_schedule = None
+        evc = None
+
+        circuits = self.storehouse.get_data()
+
+        for c_id, circuit in circuits.items():
+            if "circuit_scheduler" in circuit:
+                evc = self.evc_from_dict(circuits.get(c_id))
+                for schedule in evc.circuit_scheduler:
+                    if schedule.id == schedule_id:
+                        found_schedule = schedule
+                        break
+        return evc, found_schedule

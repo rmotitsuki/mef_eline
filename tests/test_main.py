@@ -50,21 +50,16 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
             ({}, {'OPTIONS', 'GET', 'HEAD'},
              '/api/kytos/mef_eline/v2/evc/schedule'),
 
-            ({'circuit_id': '[circuit_id]'}, {'POST', 'OPTIONS'},
-             '/api/kytos/mef_eline/v2/evc/<circuit_id>/schedule/'),
+            ({}, {'POST', 'OPTIONS'},
+             '/api/kytos/mef_eline/v2/evc/schedule/'),
 
-            ({'schedule_id': '[schedule_id]', 'circuit_id': '[circuit_id]'},
+            ({'schedule_id': '[schedule_id]'},
              {'OPTIONS', 'DELETE'},
-             '/api/kytos/mef_eline/v2/'
-             'evc/<circuit_id>/schedule/<schedule_id>'),
+             '/api/kytos/mef_eline/v2/evc/schedule/<schedule_id>'),
 
-            ({'schedule_id': '[schedule_id]', 'circuit_id': '[circuit_id]'},
+            ({'schedule_id': '[schedule_id]'},
              {'OPTIONS', 'PATCH'},
-             '/api/kytos/mef_eline/v2/'
-             'evc/<circuit_id>/schedule/<schedule_id>'),
-
-            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'GET', 'HEAD'},
-             '/api/kytos/mef_eline/v2/evc/<circuit_id>/schedule/')
+             '/api/kytos/mef_eline/v2/evc/schedule/<schedule_id>')
             ]
 
         urls = self.get_napp_urls(self.napp)
@@ -96,10 +91,10 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                     "value": 1
                 }
             },
-            "circuit_scheduler": {
+            "circuit_scheduler": [{
                 "frequency": "* * * * *",
                 "action": "create"
-            }
+            }]
         }
         evc_response = self.napp.evc_from_dict(payload)
         self.assertIsNotNone(evc_response)
@@ -109,7 +104,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/'
         response = api.get(url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(json.loads(response.data.decode()), {})
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
@@ -271,7 +266,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         current_data = json.loads(response.data)
         expected_data = 'Bad request: The request do not have a json.'
 
-        self.assertEqual(400, response.status_code)
+        self.assertEqual(400, response.status_code, response.data)
         self.assertEqual(current_data, expected_data)
 
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
@@ -524,7 +519,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/schedule'
         response = api.get(url)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(json.loads(response.data.decode()), {})
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
@@ -539,7 +534,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         response = api.get(url)
         expected_result = circuits
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(json.loads(response.data), expected_result)
 
     # pylint: disable=no-self-use
@@ -563,10 +558,18 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                     "value": 1
                 }
             },
-            "circuit_scheduler": {
-                "frequency": "* * * * *",
-                "action": "create"
-            }
+            "circuit_scheduler": [
+                {
+                    "id": "1",
+                    "frequency": "* * * * *",
+                    "action": "create"
+                },
+                {
+                    "id": "2",
+                    "frequency": "1 * * * *",
+                    "action": "remove"
+                }
+            ]
         }
         circuits.update({'1': payload_1})
         payload_2 = {
@@ -586,10 +589,18 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                     "value": 100
                 }
             },
-            "circuit_scheduler": {
-                "frequency": "1 * * * *",
-                "action": "create"
-            }
+            "circuit_scheduler": [
+                {
+                    "id": "3",
+                    "frequency": "1 * * * *",
+                    "action": "create"
+                },
+                {
+                    "id": "4",
+                    "frequency": "2 * * * *",
+                    "action": "remove"
+                }
+            ]
         }
         circuits.update({'2': payload_2})
         # Add one circuit to the storehouse.
@@ -605,46 +616,59 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         # Call URL
         response = api.get(url)
-
         # Expected JSON data from response
-        expected = [{'aa:aa:aa':
-                    {'action': 'create', 'frequency': '* * * * *'}},
-                    {'bb:bb:bb':
-                    {'action': 'create', 'frequency': '1 * * * *'}}]
+        expected = [{"aa:aa:aa":
+                    [{"action": "create",
+                      "frequency": "* * * * *",
+                      "id": "1"},
+                     {"action": "remove",
+                      "frequency": "1 * * * *",
+                      "id": "2"}]},
+                    {"bb:bb:bb":
+                        [{"action": "create",
+                          "frequency": "1 * * * *",
+                          "id": "3"},
+                         {"action": "remove",
+                          "frequency": "2 * * * *",
+                          "id": "4"}]}
 
-        self.assertEqual(response.status_code, 200)
+                    ]
+
+        self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(expected, json.loads(response.data))
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     def test_get_specific_schedule_from_storehouse(self, storehouse_data_mock):
-        """Test get schedule byt ID. Return specific circuits stored."""
+        """Test get schedules from a circuit."""
         self._add_storehouse_schedule_data(storehouse_data_mock)
 
         requested_id = "2"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+        url = f'{self.server_name_url}/v2/evc/{requested_id}'
 
         # Call URL
         response = api.get(url)
 
         # Expected JSON data from response
-        expected = {'action': 'create', 'frequency': '1 * * * *'}
+        expected = [{'action': 'create', 'frequency': '1 * * * *', 'id': '3'},
+                    {'action': 'remove', 'frequency': '2 * * * *', 'id': '4'}]
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(expected, json.loads(response.data))
+        self.assertEqual(expected,
+                         json.loads(response.data)["circuit_scheduler"])
 
     def test_get_specific_schedules_from_storehouse_not_found(self):
         """Test get specific schedule ID that does not exist."""
         requested_id = "blah"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+        url = f'{self.server_name_url}/v2/evc/{requested_id}'
 
         # Call URL
         response = api.get(url)
 
         expected = {'response': 'circuit_id blah not found'}
         # Assert response not found
-        self.assertEqual(response.status_code, 404)
+        self.assertEqual(response.status_code, 404, response.data)
         self.assertEqual(expected, json.loads(response.data))
 
     @patch('apscheduler.schedulers.background.BackgroundScheduler.add_job')
@@ -671,12 +695,15 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         requested_id = "2"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_id}/schedule/'
+        url = f'{self.server_name_url}/v2/evc/schedule/'
 
         payload = {
-            "frequency": "1 * * * *",
-            "action": "create"
-        }
+              "circuit_id": requested_id,
+              "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+              }
+            }
 
         # Call URL
         response = api.post(url, data=json.dumps(payload),
@@ -684,11 +711,13 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         response_json = json.loads(response.data)
 
+        self.assertEqual(response.status_code, 201, response.data)
         scheduler_add_job_mock.assert_called_once()
         save_evc_mock.assert_called_once()
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(payload["frequency"], response_json["frequency"])
-        self.assertEqual(payload["action"], response_json["action"])
+        self.assertEqual(payload["schedule"]["frequency"],
+                         response_json["frequency"])
+        self.assertEqual(payload["schedule"]["action"],
+                         response_json["action"])
         self.assertIsNotNone(response_json["id"])
 
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
@@ -722,11 +751,12 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                         "value": 1
                     }
                 },
-                "circuit_scheduler": {
+                "circuit_scheduler": [{
                     "id": "1",
                     "frequency": "* * * * *",
                     "action": "create"
                 }
+                ]
             }
         }
 
@@ -738,11 +768,9 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         storehouse_data_mock.return_value = storehouse_payload_1
         scheduler_remove_job_mock.return_value = True
 
-        requested_circuit_id = "2"
         requested_schedule_id = "1"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_circuit_id}/'\
-              f'schedule/{requested_schedule_id}'
+        url = f'{self.server_name_url}/v2/evc/schedule/{requested_schedule_id}'
 
         payload = {
             "frequency": "1 * * * *",
@@ -755,9 +783,9 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         response_json = json.loads(response.data)
 
+        self.assertEqual(response.status_code, 200, response.data)
         scheduler_remove_job_mock.assert_called_once()
         save_evc_mock.assert_called_once()
-        self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["frequency"], response_json["frequency"])
         self.assertEqual(payload["action"], response_json["action"])
         self.assertIsNotNone(response_json["id"])
@@ -792,11 +820,11 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                         "value": 1
                     }
                 },
-                "circuit_scheduler": {
+                "circuit_scheduler": [{
                     "id": "1",
                     "frequency": "* * * * *",
                     "action": "create"
-                }
+                }]
             }
         }
         validate_mock.return_value = True
@@ -806,16 +834,14 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         storehouse_data_mock.return_value = storehouse_payload_1
         scheduler_remove_job_mock.return_value = True
 
-        requested_circuit_id = "2"
         requested_schedule_id = "1"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_circuit_id}/'\
-              f'schedule/{requested_schedule_id}'
+        url = f'{self.server_name_url}/v2/evc/schedule/{requested_schedule_id}'
 
         # Call URL
         response = api.delete(url)
 
+        self.assertEqual(response.status_code, 200, response.data)
         scheduler_remove_job_mock.assert_called_once()
         save_evc_mock.assert_called_once()
-        self.assertEqual(response.status_code, 200)
         self.assertIn("Schedule removed", f"{response.data}")

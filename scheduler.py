@@ -53,7 +53,11 @@ class CircuitSchedule:
 
 
 class Scheduler:
-    """Class to schedule the circuits rules."""
+    """Class to schedule the circuits rules.
+
+    It is responsible to create/remove schedule jobs based on
+    Circuit Schedules.
+    """
 
     def __init__(self):
         """Create a new schedule structure."""
@@ -70,6 +74,7 @@ class Scheduler:
 
         Args:
             circuit (napps.kytos.mef_eline.models.EVCBase): EVC circuit
+
         """
         for circuit_scheduler in circuit.circuit_scheduler:
             self.add_circuit_job(circuit, circuit_scheduler)
@@ -122,6 +127,7 @@ class Scheduler:
                         'minutes': 3
                     }
                 if job_call is frequency, the template is the cron format.
+
         """
         if circuit_scheduler.date:
             self.scheduler.add_job(job_call, 'date', **data)
