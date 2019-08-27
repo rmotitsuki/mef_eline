@@ -38,7 +38,8 @@ class Main(KytosNApp):
         # set the controller that will manager the dynamic paths
         DynamicPathManager.set_controller(self.controller)
 
-        # dictionary of EVCs created
+        # dictionary of EVCs created. It acts as a circuit buffer.
+        # Every create/update/delete must be synced to storehouse.
         self.circuits = {}
 
         # dictionary of EVCs by interface
@@ -66,6 +67,7 @@ class Main(KytosNApp):
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
         circuits = self.storehouse.get_data()
+
         try:
             result = circuits[circuit_id]
             status = 200
@@ -248,13 +250,16 @@ class Main(KytosNApp):
 
                 # new schedule from dict
                 new_schedule = CircuitSchedule.from_dict(schedule_data)
+
+                circuits = self.get_circuits_buffer()
+
                 # get the circuit
-                circuits = self.storehouse.get_data()
                 if circuit_id not in circuits:
                     result = {'response': f'circuit_id {circuit_id} not found'}
                     status = 404
                 else:
-                    evc = self.evc_from_dict(circuits.get(circuit_id))
+                    # Get EVC from circuits buffer
+                    evc = circuits[circuit_id]
 
                     # If there is no schedule, create the list
                     if not evc.circuit_scheduler:
@@ -266,8 +271,8 @@ class Main(KytosNApp):
                     # Add schedule job
                     self.sched.add_circuit_job(evc, new_schedule)
 
-                    # save circuit
-                    self.storehouse.save_evc(evc)
+                    # save circuit to storehouse
+                    evc.sync()
 
                     result = new_schedule.as_dict()
                     status = 201
@@ -311,7 +316,7 @@ class Main(KytosNApp):
                 # Add the new circuit schedule
                 self.sched.add_circuit_job(evc, new_schedule)
                 # Save EVC to the storehouse
-                self.storehouse.save_evc(evc)
+                evc.sync()
 
                 result = new_schedule.as_dict()
                 status = 200
@@ -343,7 +348,7 @@ class Main(KytosNApp):
             # Cancel all schedule jobs
             self.sched.cancel_job(found_schedule.id)
             # Save EVC to the storehouse
-            self.storehouse.save_evc(evc)
+            evc.sync()
 
             result = "Schedule removed"
             status = 200
@@ -508,16 +513,25 @@ class Main(KytosNApp):
         :param schedule_id: Schedule ID
         :return: EVC and Schedule
         """
+        circuits = self.get_circuits_buffer()
         found_schedule = None
         evc = None
 
-        circuits = self.storehouse.get_data()
-
         for c_id, circuit in circuits.items():
-            if "circuit_scheduler" in circuit:
-                evc = self.evc_from_dict(circuits.get(c_id))
-                for schedule in evc.circuit_scheduler:
-                    if schedule.id == schedule_id:
-                        found_schedule = schedule
-                        break
+            for schedule in circuit.circuit_scheduler:
+                if schedule.id == schedule_id:
+                    found_schedule = schedule
+                    evc = circuit
+                    break
+            if found_schedule:
+                break
         return evc, found_schedule
+
+    def get_circuits_buffer(self):
+        if not self.circuits:
+            # Load storehouse circuits to buffer
+            circuits = self.storehouse.get_data()
+            for c_id, circuit in circuits.items():
+                evc = self.evc_from_dict(circuit)
+                self.circuits[evc.id] = evc
+        return self.circuits

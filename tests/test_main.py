@@ -3,6 +3,7 @@ import json
 from unittest import TestCase
 from unittest.mock import patch
 
+from kytos.core.interface import UNI, Interface
 from napps.kytos.mef_eline.main import Main
 from tests.helpers import get_controller_mock
 
@@ -571,7 +572,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                 }
             ]
         }
-        circuits.update({'1': payload_1})
+        circuits.update({"aa:aa:aa": payload_1})
         payload_2 = {
             "id": "bb:bb:bb",
             "name": "my second evc1",
@@ -602,7 +603,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                 }
             ]
         }
-        circuits.update({'2': payload_2})
+        circuits.update({"bb:bb:bb": payload_2})
         # Add one circuit to the storehouse.
         storehouse_data_mock.return_value = circuits
 
@@ -642,9 +643,9 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         """Test get schedules from a circuit."""
         self._add_storehouse_schedule_data(storehouse_data_mock)
 
-        requested_id = "2"
+        requested_circuit_id = "bb:bb:bb"
         api = self.get_app_test_client(self.napp)
-        url = f'{self.server_name_url}/v2/evc/{requested_id}'
+        url = f'{self.server_name_url}/v2/evc/{requested_circuit_id}'
 
         # Call URL
         response = api.get(url)
@@ -671,6 +672,12 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(response.status_code, 404, response.data)
         self.assertEqual(expected, json.loads(response.data))
 
+    def _uni_from_dict_side_effect(self, uni_dict):
+        interface_id = uni_dict.get("interface_id")
+        tag_dict = uni_dict.get("tag")
+        interface = Interface(interface_id, "0", "switch")
+        return UNI(interface, tag_dict)
+
     @patch('apscheduler.schedulers.background.BackgroundScheduler.add_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
@@ -686,14 +693,15 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
-        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        #uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        uni_from_dict_mock.side_effect = self._uni_from_dict_side_effect
         evc_as_dict_mock.return_value = {}
         sched_add_mock.return_value = True
         storehouse_data_mock.return_value = {}
 
         self._add_storehouse_schedule_data(storehouse_data_mock)
 
-        requested_id = "2"
+        requested_id = "bb:bb:bb"
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/schedule/'
 
@@ -734,8 +742,8 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
          scheduler_remove_job_mock) = args
 
         storehouse_payload_1 = {
-            "2": {
-                "id": "2",
+            "aa:aa:aa": {
+                "id": "aa:aa:aa",
                 "name": "my evc1",
                 "uni_a": {
                     "interface_id": "00:00:00:00:00:00:00:01:1",
