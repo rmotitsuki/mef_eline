@@ -4,6 +4,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from kytos.core.interface import UNI, Interface
+
 from napps.kytos.mef_eline.main import Main
 from tests.helpers import get_controller_mock
 
@@ -575,7 +576,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         circuits.update({"aa:aa:aa": payload_1})
         payload_2 = {
             "id": "bb:bb:bb",
-            "name": "my second evc1",
+            "name": "my second evc2",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:2",
                 "tag": {
@@ -604,6 +605,25 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
             ]
         }
         circuits.update({"bb:bb:bb": payload_2})
+        payload_3 = {
+            "id": "cc:cc:cc",
+            "name": "my third evc3",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:03:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 90
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:04:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100
+                }
+            }
+        }
+        circuits.update({"cc:cc:cc": payload_3})
         # Add one circuit to the storehouse.
         storehouse_data_mock.return_value = circuits
 
@@ -693,7 +713,6 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
-        #uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
         uni_from_dict_mock.side_effect = self._uni_from_dict_side_effect
         evc_as_dict_mock.return_value = {}
         sched_add_mock.return_value = True
@@ -781,7 +800,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         url = f'{self.server_name_url}/v2/evc/schedule/{requested_schedule_id}'
 
         payload = {
-            "frequency": "1 * * * *",
+            "frequency": "*/1 * * * *",
             "action": "create"
         }
 
@@ -797,6 +816,52 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(payload["frequency"], response_json["frequency"])
         self.assertEqual(payload["action"], response_json["action"])
         self.assertIsNotNone(response_json["id"])
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    def test_update_schedule_archived(self, *args):
+        """Test create a circuit schedule."""
+        # pylint: disable=too-many-locals
+        (validate_mock, evc_as_dict_mock,
+         uni_from_dict_mock, sched_add_mock, storehouse_data_mock) = args
+
+        storehouse_payload_1 = {
+            "aa:aa:aa": {
+                "id": "aa:aa:aa",
+                "name": "my evc1",
+                "archived": True,
+                "circuit_scheduler": [{
+                    "id": "1",
+                    "frequency": "* * * * *",
+                    "action": "create"
+                }
+                ]
+            }
+        }
+
+        validate_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        evc_as_dict_mock.return_value = {}
+        storehouse_data_mock.return_value = storehouse_payload_1
+
+        requested_schedule_id = "1"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule/{requested_schedule_id}'
+
+        payload = {
+            "frequency": "*/1 * * * *",
+            "action": "create"
+        }
+
+        # Call URL
+        response = api.patch(url, data=json.dumps(payload),
+                             content_type='application/json')
+
+        self.assertEqual(response.status_code, 403, response.data)
 
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
@@ -853,3 +918,39 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         scheduler_remove_job_mock.assert_called_once()
         save_evc_mock.assert_called_once()
         self.assertIn("Schedule removed", f"{response.data}")
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    def test_delete_schedule_archived(self, *args):
+        """Test create a circuit schedule."""
+        (validate_mock, evc_as_dict_mock,
+         uni_from_dict_mock, storehouse_data_mock) = args
+
+        storehouse_payload_1 = {
+            "2": {
+                "id": "2",
+                "name": "my evc1",
+                "archived": True,
+                "circuit_scheduler": [{
+                    "id": "1",
+                    "frequency": "* * * * *",
+                    "action": "create"
+                }]
+            }
+        }
+
+        validate_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        evc_as_dict_mock.return_value = {}
+        storehouse_data_mock.return_value = storehouse_payload_1
+
+        requested_schedule_id = "1"
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule/{requested_schedule_id}'
+
+        # Call URL
+        response = api.delete(url)
+
+        self.assertEqual(response.status_code, 403, response.data)
