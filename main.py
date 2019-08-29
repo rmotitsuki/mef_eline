@@ -245,29 +245,29 @@ class Main(KytosNApp):
                 result = "Bad request: Missing schedule data."
                 status = 400
             else:
-
                 circuit_id = json_data["circuit_id"]
                 schedule_data = json_data["schedule"]
 
-                # new schedule from dict
-                new_schedule = CircuitSchedule.from_dict(schedule_data)
-
+                # Get EVC from circuits buffer
                 circuits = self.get_circuits_buffer()
 
                 # get the circuit
-                if circuit_id not in circuits:
+                evc = circuits.get(circuit_id, None)
+
+                # get the circuit
+                if not evc:
                     result = {'response': f'circuit_id {circuit_id} not found'}
                     status = 404
                 else:
-                    # Get EVC from circuits buffer
-                    evc = circuits[circuit_id]
-
                     # Can not modify circuits deleted and archived
                     if evc.archived:
                         result = {'response': f'Circuit is archived.'
                                               f'Update is forbidden.'}
                         status = 403
                     else:
+                        # new schedule from dict
+                        new_schedule = CircuitSchedule.from_dict(schedule_data)
+
                         # If there is no schedule, create the list
                         if not evc.circuit_scheduler:
                             evc.circuit_scheduler = []
@@ -313,18 +313,22 @@ class Main(KytosNApp):
             }
         """
         try:
-            data = request.get_json()
-
             # Try to find a circuit schedule
             evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
 
             # Can not modify circuits deleted and archived
-            if found_schedule:
+            if not found_schedule:
+                result = {'response':
+                          f'schedule_id {schedule_id} not found'}
+                status = 404
+            else:
                 if evc.archived:
                     result = {'response': f'Circuit is archived.'
                                           f'Update is forbidden.'}
                     status = 403
                 else:
+                    data = request.get_json()
+
                     new_schedule = CircuitSchedule.from_dict(data)
                     new_schedule.id = found_schedule.id
                     # Remove the old schedule
@@ -341,10 +345,6 @@ class Main(KytosNApp):
 
                     result = new_schedule.as_dict()
                     status = 200
-            else:
-                result = {'response':
-                          f'schedule_id {schedule_id} not found'}
-                status = 404
 
         except ValueError as exception:
             log.error(exception)
@@ -369,8 +369,12 @@ class Main(KytosNApp):
         Save the EVC to the Storehouse.
         """
         evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
+
         # Can not modify circuits deleted and archived
-        if found_schedule:
+        if not found_schedule:
+            result = {'response': f'schedule_id {schedule_id} not found'}
+            status = 404
+        else:
             if evc.archived:
                 result = {'response': f'Circuit is archived.'
                                       f'Update is forbidden.'}
@@ -386,9 +390,6 @@ class Main(KytosNApp):
 
                 result = "Schedule removed"
                 status = 200
-        else:
-            result = {'response': f'schedule_id {schedule_id} not found'}
-            status = 404
 
         return jsonify(result), status
 
@@ -477,7 +478,8 @@ class Main(KytosNApp):
         data = evc_dict.copy()  # Do not modify the original dict
 
         for attribute, value in data.items():
-
+            # Get multiple attributes.
+            # Ex: uni_a, uni_z
             if 'uni' in attribute:
                 try:
                     data[attribute] = self.uni_from_dict(value)
@@ -489,14 +491,23 @@ class Main(KytosNApp):
                 for schedule in value:
                     data[attribute].append(CircuitSchedule.from_dict(schedule))
 
-            if 'link' in attribute:
-                if value:
-                    data[attribute] = self.link_from_dict(value)
+            # Get multiple attributes.
+            # Ex: primary_links,
+            #     backup_links,
+            #     current_links_cache,
+            #     primary_links_cache,
+            #     backup_links_cache
+            if 'links' in attribute:
+                data[attribute] = [self.link_from_dict(link)
+                                   for link in value]
 
+            # Get multiple attributes.
+            # Ex: current_path,
+            #     primary_path,
+            #     backup_path
             if 'path' in attribute and attribute != 'dynamic_backup_path':
-                if value:
-                    data[attribute] = [self.link_from_dict(link)
-                                       for link in value]
+                data[attribute] = [self.link_from_dict(link)
+                                   for link in value]
 
         return EVC(self.controller, **data)
 

@@ -100,6 +100,103 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         }
         evc_response = self.napp.evc_from_dict(payload)
         self.assertIsNotNone(evc_response)
+        self.assertIsNotNone(evc_response.uni_a)
+        self.assertIsNotNone(evc_response.uni_z)
+        self.assertIsNotNone(evc_response.circuit_scheduler)
+        self.assertIsNotNone(evc_response.name)
+
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    @patch('kytos.core.Controller.get_interface_by_id')
+    def test_evc_from_dict_paths(self, _get_interface_by_id_mock,
+                                 _validate_mock, uni_from_dict_mock):
+        """
+        Test the helper method that create an EVN from dict.
+
+        Verify object creation with circuit data and schedule data.
+        """
+        _get_interface_by_id_mock.return_value = True
+        _validate_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        payload = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            },
+            "current_path": [],
+            "primary_path": [
+                {"endpoint_a": {"interface_id": "00:00:00:00:00:00:00:01:1"},
+                 "endpoint_b": {"interface_id": "00:00:00:00:00:00:00:02:2"}}
+            ],
+            "backup_path": []
+        }
+
+        evc_response = self.napp.evc_from_dict(payload)
+        self.assertIsNotNone(evc_response)
+        self.assertIsNotNone(evc_response.uni_a)
+        self.assertIsNotNone(evc_response.uni_z)
+        self.assertIsNotNone(evc_response.circuit_scheduler)
+        self.assertIsNotNone(evc_response.name)
+        self.assertEqual(len(evc_response.current_path), 0)
+        self.assertEqual(len(evc_response.backup_path), 0)
+        self.assertEqual(len(evc_response.primary_path), 1)
+
+    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    @patch('kytos.core.Controller.get_interface_by_id')
+    def test_evc_from_dict_links(self, _get_interface_by_id_mock,
+                                 _validate_mock, uni_from_dict_mock):
+        """
+        Test the helper method that create an EVN from dict.
+
+        Verify object creation with circuit data and schedule data.
+        """
+        _get_interface_by_id_mock.return_value = True
+        _validate_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z']
+        payload = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            },
+            "primary_links": [
+                {"endpoint_a": {"interface_id": "00:00:00:00:00:00:00:01:1"},
+                 "endpoint_b": {"interface_id": "00:00:00:00:00:00:00:02:2"}}
+            ],
+            "backup_links": []
+        }
+
+        evc_response = self.napp.evc_from_dict(payload)
+        self.assertIsNotNone(evc_response)
+        self.assertIsNotNone(evc_response.uni_a)
+        self.assertIsNotNone(evc_response.uni_z)
+        self.assertIsNotNone(evc_response.circuit_scheduler)
+        self.assertIsNotNone(evc_response.name)
+        self.assertEqual(len(evc_response.current_links_cache), 0)
+        self.assertEqual(len(evc_response.backup_links), 0)
+        self.assertEqual(len(evc_response.primary_links), 1)
 
     def test_list_without_circuits(self):
         """Test if list circuits return 'no circuit stored.'."""
