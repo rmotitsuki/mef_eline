@@ -41,6 +41,9 @@ class Main(KytosNApp):
         # dictionary of EVCs created
         self.circuits = {}
 
+        # dictionary of EVCs by interface
+        self._circuits_by_interface = {}
+
     def execute(self):
         """Execute once when the napp is running."""
 
@@ -220,6 +223,53 @@ class Main(KytosNApp):
             if evc.is_affected_by_link(event.content['link']):
                 log.info('handling evc %s' % evc)
                 evc.handle_link_down()
+
+    def load_circuits_by_interface(self, circuits):
+        """Load circuits in storehouse for in-memory dictionary."""
+        for circuit_id, circuit in circuits.items():
+            intf_a = circuit['uni_a']['interface_id']
+            self.add_to_dict_of_sets(intf_a, circuit_id)
+            intf_z = circuit['uni_z']['interface_id']
+            self.add_to_dict_of_sets(intf_z, circuit_id)
+            for path in ('current_path', 'primary_path', 'backup_path'):
+                for link in circuit[path]:
+                    intf_a = link['endpoint_a']['id']
+                    self.add_to_dict_of_sets(intf_a, circuit_id)
+                    intf_b = link['endpoint_b']['id']
+                    self.add_to_dict_of_sets(intf_b, circuit_id)
+
+    def add_to_dict_of_sets(self, intf, circuit_id):
+        """Add a single item to the dictionary of circuits by interface."""
+        if intf not in self._circuits_by_interface:
+            self._circuits_by_interface[intf] = set()
+        self._circuits_by_interface[intf].add(circuit_id)
+
+    @listen_to('kytos/topology.port.created')
+    def load_evcs(self, event):
+        """Try to load the unloaded EVCs from storehouse."""
+        circuits = self.storehouse.get_data()
+        if not self._circuits_by_interface:
+            self.load_circuits_by_interface(circuits)
+
+        interface_id = '{}:{}'.format(event.content['switch'],
+                                      event.content['port'])
+
+        for circuit_id in self._circuits_by_interface.get(interface_id, []):
+            if circuit_id in circuits and circuit_id not in self.circuits:
+                try:
+                    evc = self.evc_from_dict(circuits[circuit_id])
+                except ValueError as exception:
+                    log.info(
+                        f'Could not load EVC {circuit_id} because {exception}')
+                    continue
+                log.info(f'Loading EVC {circuit_id}')
+                if evc.archived:
+                    continue
+                if evc.is_enabled():
+                    log.info(f'Trying to deploy EVC {circuit_id}')
+                    evc.deploy()
+                self.circuits[circuit_id] = evc
+                self.sched.add(evc)
 
     def evc_from_dict(self, evc_dict):
         """Convert some dict values to instance of EVC classes.

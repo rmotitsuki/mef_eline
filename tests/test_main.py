@@ -270,3 +270,193 @@ class TestMain(TestCase):
         expected_data = 'Not Acceptable: This evc already exists.'
         self.assertEqual(current_data, expected_data)
         self.assertEqual(409, response.status_code)
+
+    def test_load_circuits_by_interface(self):
+        """Test if existing circuits are correctly loaded to the cache."""
+        stored_circuits = {
+            "182f5bac84074017a262a2321195dbb4": {
+                "active": False,
+                "archived": True,
+                "backup_links": [],
+                "backup_path": [],
+                "bandwidth": 0,
+                "circuit_scheduler": [
+                    {
+                        "action": "create",
+                        "frequency": "*/3 * * * *",
+                        "id": "db7f8a301e2b4ff69a2ad9a6267430e2"
+                    },
+                    {
+                        "action": "remove",
+                        "frequency": "2-59/3 * * * *",
+                        "id": "b8a8bbe85bc144b0afc65181e4c069a1"
+                    }
+                ],
+                "creation_time": "2019-08-09T19:25:06",
+                "current_path": [],
+                "dynamic_backup_path": True,
+                "enabled": False,
+                "end_date": "2018-12-29T15:16:50",
+                "id": "182f5bac84074017a262a2321195dbb4",
+                "name": "Teste2",
+                "owner": None,
+                "primary_links": [],
+                "primary_path": [],
+                "priority": 0,
+                "request_time": "2019-08-09T19:25:06",
+                "start_date": "2019-08-09T19:25:06",
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:03:12",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 321
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:06:11",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 612
+                    }
+                }
+            },
+            "65c4582cc8f249c2a5947ef500c19e37": {
+                "active": False,
+                "archived": False,
+                "backup_links": [],
+                "backup_path": [],
+                "bandwidth": 0,
+                "circuit_scheduler": [
+                    {
+                        "action": "create",
+                        "frequency": "*/3 * * * *",
+                        "id": "0939dedf66ce431f85beb53daf578d73"
+                    },
+                    {
+                        "action": "remove",
+                        "frequency": "2-59/3 * * * *",
+                        "id": "6cdcab31a11f44708e23776b4dad7893"
+                    }
+                ],
+                "creation_time": "2019-07-22T16:01:24",
+                "current_path": [],
+                "dynamic_backup_path": True,
+                "enabled": False,
+                "end_date": "2018-12-29T15:16:50",
+                "id": "65c4582cc8f249c2a5947ef500c19e37",
+                "name": "Teste2",
+                "owner": None,
+                "primary_links": [],
+                "primary_path": [
+                    {
+                        "active": False,
+                        "enabled": True,
+                        "endpoint_a": {
+                            "active": False,
+                            "enabled": True,
+                            "id": "00:00:00:00:00:00:00:03:3",
+                            "link": "0e2b5d7bc858b9f38db11b69",
+                            "mac": "ae:6e:d3:96:83:5a",
+                            "metadata": {},
+                            "name": "s3-eth3",
+                            "nni": True,
+                            "port_number": 3,
+                            "speed": 1250000000.0,
+                            "switch": "00:00:00:00:00:00:00:03",
+                            "type": "interface",
+                            "uni": False
+                        },
+                        "endpoint_b": {
+                            "active": False,
+                            "enabled": True,
+                            "id": "00:00:00:00:00:00:00:05:2",
+                            "link": "0e2b5d7bc858b9f38db11b69",
+                            "mac": "de:eb:d0:b0:14:cf",
+                            "metadata": {},
+                            "name": "s5-eth2",
+                            "nni": True,
+                            "port_number": 2,
+                            "speed": 1250000000.0,
+                            "switch": "00:00:00:00:00:00:00:05",
+                            "type": "interface",
+                            "uni": False
+                        },
+                        "id": "0e2b5d7bc858b9f38db11b69",
+                        "metadata": {}
+                    },
+                    {
+                        "active": False,
+                        "enabled": True,
+                        "endpoint_a": {
+                            "active": False,
+                            "enabled": True,
+                            "id": "00:00:00:00:00:00:00:05:4",
+                            "link": "53bd36ff55a5aa2029bd5d50",
+                            "mac": "6e:c2:ea:c4:18:12",
+                            "metadata": {},
+                            "name": "s5-eth4",
+                            "nni": True,
+                            "port_number": 4,
+                            "speed": 1250000000.0,
+                            "switch": "00:00:00:00:00:00:00:05",
+                            "type": "interface",
+                            "uni": False
+                        },
+                        "endpoint_b": {
+                            "active": False,
+                            "enabled": True,
+                            "id": "00:00:00:00:00:00:00:06:2",
+                            "link": "53bd36ff55a5aa2029bd5d50",
+                            "mac": "5a:25:7b:7c:0d:ac",
+                            "metadata": {},
+                            "name": "s6-eth2",
+                            "nni": True,
+                            "port_number": 2,
+                            "speed": 1250000000.0,
+                            "switch": "00:00:00:00:00:00:00:06",
+                            "type": "interface",
+                            "uni": False
+                        },
+                        "id": "53bd36ff55a5aa2029bd5d50",
+                        "metadata": {}
+                    }
+                ],
+                "priority": 0,
+                "request_time": "2019-07-22T16:01:24",
+                "start_date": "2019-07-22T16:01:24",
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:03:12",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 321
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:06:11",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 612
+                    }
+                }
+            }
+        }
+
+        expected_result = {
+            '00:00:00:00:00:00:00:03:12':
+                {'182f5bac84074017a262a2321195dbb4',
+                 '65c4582cc8f249c2a5947ef500c19e37'},
+            '00:00:00:00:00:00:00:06:11':
+                {'182f5bac84074017a262a2321195dbb4',
+                 '65c4582cc8f249c2a5947ef500c19e37'},
+            '00:00:00:00:00:00:00:03:3':
+                {'65c4582cc8f249c2a5947ef500c19e37'},
+            '00:00:00:00:00:00:00:05:2':
+                {'65c4582cc8f249c2a5947ef500c19e37'},
+            '00:00:00:00:00:00:00:05:4':
+                {'65c4582cc8f249c2a5947ef500c19e37'},
+            '00:00:00:00:00:00:00:06:2':
+                {'65c4582cc8f249c2a5947ef500c19e37'}
+        }
+        self.napp.load_circuits_by_interface(stored_circuits)
+        # pylint: disable=protected-access
+        self.assertEqual(self.napp._circuits_by_interface, expected_result)
