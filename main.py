@@ -213,9 +213,13 @@ class Main(KytosNApp):
 
         result = []
         for circuit in circuits:
-            if "circuit_scheduler" in circuit:
-                schedule = {circuit["id"]: circuit["circuit_scheduler"]}
-                result.append(schedule)
+            circuit_scheduler = circuit.get("circuit_scheduler")
+            if circuit_scheduler:
+                for scheduler in circuit_scheduler:
+                    value = {"schedule_id": scheduler.get("id"),
+                             "circuit_id": circuit.get("id"),
+                             "schedule": scheduler}
+                    result.append(value)
 
         return jsonify(result), 200
 
