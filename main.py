@@ -109,13 +109,13 @@ class Main(KytosNApp):
             return jsonify("Bad request: The request do not have a json."), 400
 
         try:
-            evc = self.evc_from_dict(data)
+            evc = self._evc_from_dict(data)
         except ValueError as exception:
             log.error(exception)
             return jsonify("Bad request: {}".format(exception)), 400
 
         # verify duplicated evc
-        if self.is_duplicated_evc(evc):
+        if self._is_duplicated_evc(evc):
             return jsonify("Not Acceptable: This evc already exists."), 409
 
         # store circuit in dictionary
@@ -329,7 +329,7 @@ class Main(KytosNApp):
         """
         try:
             # Try to find a circuit schedule
-            evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
+            evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
 
             # Can not modify circuits deleted and archived
             if not found_schedule:
@@ -383,7 +383,7 @@ class Main(KytosNApp):
         Remove the Schedule from cron job.
         Save the EVC to the Storehouse.
         """
-        evc, found_schedule = self.find_evc_by_schedule_id(schedule_id)
+        evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
 
         # Can not modify circuits deleted and archived
         if not found_schedule:
@@ -409,7 +409,7 @@ class Main(KytosNApp):
 
         return jsonify(result), status
 
-    def is_duplicated_evc(self, evc):
+    def _is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
 
         Args:
@@ -472,7 +472,7 @@ class Main(KytosNApp):
         for circuit_id in self._circuits_by_interface.get(interface_id, []):
             if circuit_id in circuits and circuit_id not in self.circuits:
                 try:
-                    evc = self.evc_from_dict(circuits[circuit_id])
+                    evc = self._evc_from_dict(circuits[circuit_id])
                 except ValueError as exception:
                     log.info(
                         f'Could not load EVC {circuit_id} because {exception}')
@@ -486,7 +486,7 @@ class Main(KytosNApp):
                 self.circuits[circuit_id] = evc
                 self.sched.add(evc)
 
-    def evc_from_dict(self, evc_dict):
+    def _evc_from_dict(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
 
         This method will convert: [UNI, Link]
@@ -498,7 +498,7 @@ class Main(KytosNApp):
             # Ex: uni_a, uni_z
             if 'uni' in attribute:
                 try:
-                    data[attribute] = self.uni_from_dict(value)
+                    data[attribute] = self._uni_from_dict(value)
                 except ValueError as exc:
                     raise ValueError(f'Error creating UNI: {exc}')
 
@@ -514,7 +514,7 @@ class Main(KytosNApp):
             #     primary_links_cache,
             #     backup_links_cache
             if 'links' in attribute:
-                data[attribute] = [self.link_from_dict(link)
+                data[attribute] = [self._link_from_dict(link)
                                    for link in value]
 
             # Get multiple attributes.
@@ -522,12 +522,12 @@ class Main(KytosNApp):
             #     primary_path,
             #     backup_path
             if 'path' in attribute and attribute != 'dynamic_backup_path':
-                data[attribute] = [self.link_from_dict(link)
+                data[attribute] = [self._link_from_dict(link)
                                    for link in value]
 
         return EVC(self.controller, **data)
 
-    def uni_from_dict(self, uni_dict):
+    def _uni_from_dict(self, uni_dict):
         """Return a UNI object from python dict."""
         if uni_dict is None:
             return False
@@ -546,7 +546,7 @@ class Main(KytosNApp):
 
         return uni
 
-    def link_from_dict(self, link_dict):
+    def _link_from_dict(self, link_dict):
         """Return a Link object from python dict."""
         id_a = link_dict.get('endpoint_a').get('id')
         id_b = link_dict.get('endpoint_b').get('id')
@@ -567,14 +567,14 @@ class Main(KytosNApp):
             link.update_metadata('s_vlan', tag)
         return link
 
-    def find_evc_by_schedule_id(self, schedule_id):
+    def _find_evc_by_schedule_id(self, schedule_id):
         """
         Find an EVC and CircuitSchedule based on schedule_id.
 
         :param schedule_id: Schedule ID
         :return: EVC and Schedule
         """
-        circuits = self.get_circuits_buffer()
+        circuits = self._get_circuits_buffer()
         found_schedule = None
         evc = None
 
@@ -589,7 +589,7 @@ class Main(KytosNApp):
                 break
         return evc, found_schedule
 
-    def get_circuits_buffer(self):
+    def _get_circuits_buffer(self):
         """
         Return the circuit buffer.
 
@@ -599,6 +599,6 @@ class Main(KytosNApp):
             # Load storehouse circuits to buffer
             circuits = self.storehouse.get_data()
             for c_id, circuit in circuits.items():
-                evc = self.evc_from_dict(circuit)
+                evc = self._evc_from_dict(circuit)
                 self.circuits[c_id] = evc
         return self.circuits

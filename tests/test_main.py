@@ -67,7 +67,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         urls = self.get_napp_urls(self.napp)
         self.assertCountEqual(expected_urls, urls)
 
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.models.EVCBase._validate')
     def test_evc_from_dict(self, _validate_mock, uni_from_dict_mock):
         """
@@ -98,14 +98,15 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
                 "action": "create"
             }]
         }
-        evc_response = self.napp.evc_from_dict(payload)
+        # pylint: disable=protected-access
+        evc_response = self.napp._evc_from_dict(payload)
         self.assertIsNotNone(evc_response)
         self.assertIsNotNone(evc_response.uni_a)
         self.assertIsNotNone(evc_response.uni_z)
         self.assertIsNotNone(evc_response.circuit_scheduler)
         self.assertIsNotNone(evc_response.name)
 
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.models.EVCBase._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
     def test_evc_from_dict_paths(self, _get_interface_by_id_mock,
@@ -142,7 +143,8 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
             "backup_path": []
         }
 
-        evc_response = self.napp.evc_from_dict(payload)
+        # pylint: disable=protected-access
+        evc_response = self.napp._evc_from_dict(payload)
         self.assertIsNotNone(evc_response)
         self.assertIsNotNone(evc_response.uni_a)
         self.assertIsNotNone(evc_response.uni_z)
@@ -152,7 +154,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(len(evc_response.backup_path), 0)
         self.assertEqual(len(evc_response.primary_path), 1)
 
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.models.EVCBase._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
     def test_evc_from_dict_links(self, _get_interface_by_id_mock,
@@ -188,7 +190,8 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
             "backup_links": []
         }
 
-        evc_response = self.napp.evc_from_dict(payload)
+        # pylint: disable=protected-access
+        evc_response = self.napp._evc_from_dict(payload)
         self.assertIsNotNone(evc_response)
         self.assertIsNotNone(evc_response.uni_a)
         self.assertIsNotNone(evc_response.uni_z)
@@ -261,7 +264,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
@@ -369,7 +372,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(current_data, expected_data)
 
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
@@ -798,7 +801,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
     @patch('apscheduler.schedulers.background.BackgroundScheduler.add_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
@@ -847,7 +850,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
@@ -916,7 +919,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
     def test_update_schedule_archived(self, *args):
@@ -962,7 +965,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
 
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
@@ -1017,7 +1020,7 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIn("Schedule removed", f"{response.data}")
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
-    @patch('napps.kytos.mef_eline.main.Main.uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
     def test_delete_schedule_archived(self, *args):
