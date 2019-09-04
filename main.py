@@ -200,7 +200,13 @@ class Main(KytosNApp):
 
     @rest('/v2/evc/schedule', methods=['GET'])
     def list_schedules(self):
-        """Endpoint to return all circuits stored."""
+        """Endpoint to return all schedules stored for all circuits.
+
+        Return a JSON with the following template:
+        [{"schedule_id": <schedule_id>,
+         "circuit_id": <circuit_id>,
+         "schedule": <schedule object>}]
+        """
         circuits = self.storehouse.get_data().values()
         if not circuits:
             return jsonify({}), 200
