@@ -9,7 +9,8 @@ from napps.kytos.mef_eline.main import Main
 from tests.helpers import get_controller_mock
 
 
-class TestMain(TestCase):  # pylint: disable=too-many-public-methods
+# pylint: disable=too-many-public-methods, too-many-lines
+class TestMain(TestCase):
     """Test the Main class."""
 
     def setUp(self):
@@ -738,22 +739,22 @@ class TestMain(TestCase):  # pylint: disable=too-many-public-methods
         # Call URL
         response = api.get(url)
         # Expected JSON data from response
-        expected = [{"aa:aa:aa":
-                    [{"action": "create",
-                      "frequency": "* * * * *",
-                      "id": "1"},
-                     {"action": "remove",
-                      "frequency": "1 * * * *",
-                      "id": "2"}]},
-                    {"bb:bb:bb":
-                        [{"action": "create",
-                          "frequency": "1 * * * *",
-                          "id": "3"},
-                         {"action": "remove",
-                          "frequency": "2 * * * *",
-                          "id": "4"}]}
-
-                    ]
+        expected = [{'circuit_id': 'aa:aa:aa',
+                     'schedule': {'action': 'create',
+                                  'frequency': '* * * * *', 'id': '1'},
+                     'schedule_id': '1'},
+                    {'circuit_id': 'aa:aa:aa',
+                     'schedule': {'action': 'remove',
+                                  'frequency': '1 * * * *', 'id': '2'},
+                     'schedule_id': '2'},
+                    {'circuit_id': 'bb:bb:bb',
+                     'schedule': {'action': 'create',
+                                  'frequency': '1 * * * *', 'id': '3'},
+                     'schedule_id': '3'},
+                    {'circuit_id': 'bb:bb:bb',
+                     'schedule': {'action': 'remove',
+                                  'frequency': '2 * * * *', 'id': '4'},
+                     'schedule_id': '4'}]
 
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(expected, json.loads(response.data))

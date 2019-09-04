@@ -1,7 +1,6 @@
 """Module responsible to handle schedulers."""
 from uuid import uuid4
 
-from apscheduler.jobstores.base import ConflictingIdError
 from apscheduler.jobstores.base import JobLookupError
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
