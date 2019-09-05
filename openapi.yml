@@ -113,8 +113,8 @@ paths:
 
   /v2/evc/schedule/:
     get:
-      summary: List all schedules stored.
-      description: List all circuits stored.
+      summary: List all schedules stored for all circuits .
+      description: List all schedules stored for all circuits .
       operationId: list_circuit_schedules
       responses:
         '200':
@@ -124,13 +124,13 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/CircuitSchedule'
+                  $ref: '#/components/schemas/CircuitScheduleList'
 
     post:
       summary: Creates a new circuit schedule
       operationId: create_schedule
       requestBody:
-        description: Creates a new schedule.
+        description: Creates a new circuit schedule.
         required: true
         content:
           application/json:
@@ -138,19 +138,18 @@ paths:
               $ref: '#/components/schemas/NewCircuitSchedule'
       responses:
         '201':
-          description: Schedule created. The circuit ID is being returned.
+          description: Schedule created. The Schedule object is being returned.
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  circuit_id: # the unique schedule id
-                    type: string
+                $ref: '#/components/schemas/CircuitSchedule'
         '400':
           description: Request do not have a JSON or JSON format do not match
-            the EVC object or EVC already exists.
+            the Schedule object or some parameters are missing.
         '404':
           description: Circuit id not found.
+        '403':
+          description:  Can´t change data. Circuit is deleted and archived.
         '409':
           description: Not Acceptable.
 
@@ -175,10 +174,12 @@ paths:
       responses:
         '200':
           description: OK
+        '400':
+          description: Bad request. Invalid format or some parameters are missing.
+        '403':
+          description:  Can´t change data. Circuit is deleted and archived.
         '404':
           description: Schedule id not found.
-        '400':
-          description: Bad request.
     delete:
       summary: Delete a circuit schedule
       description: Delete a schedule from a circuit.
@@ -192,11 +193,16 @@ paths:
       responses:
         '200':
           description: OK
+        '403':
+          description:  Can´t change data. Circuit is deleted and archived.
         '404':
           description:  Schedule id not found.
 components:
+  #-------------------------------
+  # Reusable schemas (data models)
+  #-------------------------------
   schemas:
-    NewCircuit:
+    NewCircuit: # Can be referenced via '#/components/schemas/NewCircuit'
       type: object
       required:
         - name
@@ -231,7 +237,7 @@ components:
           items:
             $ref: '#/components/schemas/CircuitSchedule'
 
-    Endpoint:
+    Endpoint: # Can be referenced via '#/components/schemas/Endpoint'
       type: object
       required:
         - interface_id
@@ -241,7 +247,8 @@ components:
           format: '00:00:00:00:00:00:00:00:0'
         tag:
           $ref: '#/components/schemas/Tag'
-    Link:
+
+    Link: # Can be referenced via '#/components/schemas/Link'
       type: object
       required:
         - id
@@ -254,7 +261,8 @@ components:
           $ref: '#/components/schemas/Endpoint'
         endpoint_b:
           $ref: '#/components/schemas/Endpoint'
-    Path:
+
+    Path: # Can be referenced via '#/components/schemas/Path'
       type: object
       required:
         - endpoints
@@ -266,7 +274,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Endpoint'
-    Circuit:
+
+    Circuit: # Can be referenced via '#/components/schemas/Circuit'
       type: object
       required:
         - id
@@ -336,7 +345,8 @@ components:
         request_time:
           type: string
           format: date-time
-    Tag:
+
+    Tag: # Can be referenced via '#/components/schemas/Tag'
       type: object
       required:
         - tag_type
@@ -346,7 +356,8 @@ components:
           type: string
         value:
           type: string
-    CircuitSchedule:
+
+    CircuitSchedule: # Can be referenced via '#/components/schemas/CircuitSchedule'
       type: object
       properties:
         id:
@@ -361,10 +372,26 @@ components:
           type: string
         action:
           type: string
+
+  #------------------------------------------
+  # Reusable schemas for request or responses
+  #------------------------------------------
     NewCircuitSchedule:
       type: object
       properties:
         circuit_id:
+          type: integer
+          format: int32
+        schedule: {
+            "$ref": "#/components/schemas/CircuitSchedule"
+        }
+    CircuitScheduleList:
+      type: object
+      properties:
+        circuit_id:
+          type: integer
+          format: int32
+        schedule_id:
           type: integer
           format: int32
         schedule: {
