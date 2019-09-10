@@ -38,7 +38,8 @@ class Main(KytosNApp):
         # set the controller that will manager the dynamic paths
         DynamicPathManager.set_controller(self.controller)
 
-        # dictionary of EVCs created
+        # dictionary of EVCs created. It acts as a circuit buffer.
+        # Every create/update/delete must be synced to storehouse.
         self.circuits = {}
 
         # dictionary of EVCs by interface
@@ -66,6 +67,7 @@ class Main(KytosNApp):
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
         circuits = self.storehouse.get_data()
+
         try:
             result = circuits[circuit_id]
             status = 200
@@ -107,12 +109,13 @@ class Main(KytosNApp):
             return jsonify("Bad request: The request do not have a json."), 400
 
         try:
-            evc = self.evc_from_dict(data)
+            evc = self._evc_from_dict(data)
         except ValueError as exception:
+            log.error(exception)
             return jsonify("Bad request: {}".format(exception)), 400
 
         # verify duplicated evc
-        if self.is_duplicated_evc(evc):
+        if self._is_duplicated_evc(evc):
             return jsonify("Not Acceptable: This evc already exists."), 409
 
         # store circuit in dictionary
@@ -146,6 +149,7 @@ class Main(KytosNApp):
             data = request.get_json()
             evc.update(**data)
         except ValueError as exception:
+            log.error(exception)
             result = {'response': 'Bad Request: {}'.format(exception)}
             status = 400
         except TypeError:
@@ -194,7 +198,218 @@ class Main(KytosNApp):
 
         return jsonify(result), status
 
-    def is_duplicated_evc(self, evc):
+    @rest('/v2/evc/schedule', methods=['GET'])
+    def list_schedules(self):
+        """Endpoint to return all schedules stored for all circuits.
+
+        Return a JSON with the following template:
+        [{"schedule_id": <schedule_id>,
+         "circuit_id": <circuit_id>,
+         "schedule": <schedule object>}]
+        """
+        circuits = self.storehouse.get_data().values()
+        if not circuits:
+            return jsonify({}), 200
+
+        result = []
+        for circuit in circuits:
+            circuit_scheduler = circuit.get("circuit_scheduler")
+            if circuit_scheduler:
+                for scheduler in circuit_scheduler:
+                    value = {"schedule_id": scheduler.get("id"),
+                             "circuit_id": circuit.get("id"),
+                             "schedule": scheduler}
+                    result.append(value)
+
+        return jsonify(result), 200
+
+    @rest('/v2/evc/schedule/', methods=['POST'])
+    def create_schedule(self):
+        """
+        Create a new schedule for a given circuit.
+
+        This service do no check if there are conflicts with another schedule.
+        Payload example:
+            {
+              "circuit_id":"aa:bb:cc",
+              "schedule": {
+                "date": "2019-08-07T14:52:10.967Z",
+                "interval": "string",
+                "frequency": "1 * * * *",
+                "action": "create"
+              }
+            }
+        """
+        try:
+            # Try to create the circuit object
+            json_data = request.get_json()
+            result = ""
+            status = 200
+
+            circuit_id = json_data.get("circuit_id")
+            schedule_data = json_data.get("schedule")
+
+            if not json_data:
+                result = "Bad request: The request does not have a json."
+                status = 400
+                return jsonify(result), status
+            if not circuit_id:
+                result = result = "Bad request: Missing circuit_id."
+                status = 400
+                return jsonify(result), status
+            if not schedule_data:
+                result = "Bad request: Missing schedule data."
+                status = 400
+                return jsonify(result), status
+
+            # Get EVC from circuits buffer
+            circuits = self._get_circuits_buffer()
+
+            # get the circuit
+            evc = circuits.get(circuit_id)
+
+            # get the circuit
+            if not evc:
+                result = {'response': f'circuit_id {circuit_id} not found'}
+                status = 404
+                return jsonify(result), status
+            # Can not modify circuits deleted and archived
+            if evc.archived:
+                result = {'response': f'Circuit is archived.'
+                                      f'Update is forbidden.'}
+                status = 403
+                return jsonify(result), status
+
+            # new schedule from dict
+            new_schedule = CircuitSchedule.from_dict(schedule_data)
+
+            # If there is no schedule, create the list
+            if not evc.circuit_scheduler:
+                evc.circuit_scheduler = []
+
+            # Add the new schedule
+            evc.circuit_scheduler.append(new_schedule)
+
+            # Add schedule job
+            self.sched.add_circuit_job(evc, new_schedule)
+
+            # save circuit to storehouse
+            evc.sync()
+
+            result = new_schedule.as_dict()
+            status = 201
+
+        except ValueError as exception:
+            log.error(exception)
+            result = {'response': 'Bad Request: {}'.format(exception)}
+            status = 400
+        except TypeError:
+            result = {'response': 'Content-Type must be application/json'}
+            status = 415
+        except BadRequest:
+            response = 'Bad Request: The request is not a valid JSON.'
+            result = {'response': response}
+            status = 400
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/schedule/<schedule_id>', methods=['PATCH'])
+    def update_schedule(self, schedule_id):
+        """Update a schedule.
+
+        Change all attributes from the given schedule from a EVC circuit.
+        The schedule ID is preserved as default.
+        Payload example:
+            {
+              "date": "2019-08-07T14:52:10.967Z",
+              "interval": "string",
+              "frequency": "1 * * *",
+              "action": "create"
+            }
+        """
+        try:
+            # Try to find a circuit schedule
+            evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
+
+            # Can not modify circuits deleted and archived
+            if not found_schedule:
+                result = {'response': f'schedule_id {schedule_id} not found'}
+                status = 404
+                return jsonify(result), status
+            if evc.archived:
+                result = {'response': f'Circuit is archived.'
+                                      f'Update is forbidden.'}
+                status = 403
+                return jsonify(result), status
+
+            data = request.get_json()
+
+            new_schedule = CircuitSchedule.from_dict(data)
+            new_schedule.id = found_schedule.id
+            # Remove the old schedule
+            evc.circuit_scheduler.remove(found_schedule)
+            # Append the modified schedule
+            evc.circuit_scheduler.append(new_schedule)
+
+            # Cancel all schedule jobs
+            self.sched.cancel_job(found_schedule.id)
+            # Add the new circuit schedule
+            self.sched.add_circuit_job(evc, new_schedule)
+            # Save EVC to the storehouse
+            evc.sync()
+
+            result = new_schedule.as_dict()
+            status = 200
+
+        except ValueError as exception:
+            log.error(exception)
+            result = {'response': 'Bad Request: {}'.format(exception)}
+            status = 400
+        except TypeError:
+            result = {'response': 'Content-Type must be application/json'}
+            status = 415
+        except BadRequest:
+            result = {'response':
+                      'Bad Request: The request is not a valid JSON.'}
+            status = 400
+
+        return jsonify(result), status
+
+    @rest('/v2/evc/schedule/<schedule_id>', methods=['DELETE'])
+    def delete_schedule(self, schedule_id):
+        """Remove a circuit schedule.
+
+        Remove the Schedule from EVC.
+        Remove the Schedule from cron job.
+        Save the EVC to the Storehouse.
+        """
+        evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
+
+        # Can not modify circuits deleted and archived
+        if not found_schedule:
+            result = {'response': f'schedule_id {schedule_id} not found'}
+            status = 404
+            return jsonify(result), status
+
+        if evc.archived:
+            result = {'response': f'Circuit is archived. Update is forbidden.'}
+            status = 403
+            return jsonify(result), status
+
+        # Remove the old schedule
+        evc.circuit_scheduler.remove(found_schedule)
+
+        # Cancel all schedule jobs
+        self.sched.cancel_job(found_schedule.id)
+        # Save EVC to the storehouse
+        evc.sync()
+
+        result = "Schedule removed"
+        status = 200
+
+        return jsonify(result), status
+
+    def _is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
 
         Args:
@@ -257,7 +472,7 @@ class Main(KytosNApp):
         for circuit_id in self._circuits_by_interface.get(interface_id, []):
             if circuit_id in circuits and circuit_id not in self.circuits:
                 try:
-                    evc = self.evc_from_dict(circuits[circuit_id])
+                    evc = self._evc_from_dict(circuits[circuit_id])
                 except ValueError as exception:
                     log.info(
                         f'Could not load EVC {circuit_id} because {exception}')
@@ -271,7 +486,7 @@ class Main(KytosNApp):
                 self.circuits[circuit_id] = evc
                 self.sched.add(evc)
 
-    def evc_from_dict(self, evc_dict):
+    def _evc_from_dict(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
 
         This method will convert: [UNI, Link]
@@ -279,10 +494,11 @@ class Main(KytosNApp):
         data = evc_dict.copy()  # Do not modify the original dict
 
         for attribute, value in data.items():
-
+            # Get multiple attributes.
+            # Ex: uni_a, uni_z
             if 'uni' in attribute:
                 try:
-                    data[attribute] = self.uni_from_dict(value)
+                    data[attribute] = self._uni_from_dict(value)
                 except ValueError as exc:
                     raise ValueError(f'Error creating UNI: {exc}')
 
@@ -291,18 +507,27 @@ class Main(KytosNApp):
                 for schedule in value:
                     data[attribute].append(CircuitSchedule.from_dict(schedule))
 
-            if 'link' in attribute:
-                if value:
-                    data[attribute] = self.link_from_dict(value)
+            # Get multiple attributes.
+            # Ex: primary_links,
+            #     backup_links,
+            #     current_links_cache,
+            #     primary_links_cache,
+            #     backup_links_cache
+            if 'links' in attribute:
+                data[attribute] = [self._link_from_dict(link)
+                                   for link in value]
 
+            # Get multiple attributes.
+            # Ex: current_path,
+            #     primary_path,
+            #     backup_path
             if 'path' in attribute and attribute != 'dynamic_backup_path':
-                if value:
-                    data[attribute] = [self.link_from_dict(link)
-                                       for link in value]
+                data[attribute] = [self._link_from_dict(link)
+                                   for link in value]
 
         return EVC(self.controller, **data)
 
-    def uni_from_dict(self, uni_dict):
+    def _uni_from_dict(self, uni_dict):
         """Return a UNI object from python dict."""
         if uni_dict is None:
             return False
@@ -321,7 +546,7 @@ class Main(KytosNApp):
 
         return uni
 
-    def link_from_dict(self, link_dict):
+    def _link_from_dict(self, link_dict):
         """Return a Link object from python dict."""
         id_a = link_dict.get('endpoint_a').get('id')
         id_b = link_dict.get('endpoint_b').get('id')
@@ -341,3 +566,39 @@ class Main(KytosNApp):
                 raise ValueError(error_msg)
             link.update_metadata('s_vlan', tag)
         return link
+
+    def _find_evc_by_schedule_id(self, schedule_id):
+        """
+        Find an EVC and CircuitSchedule based on schedule_id.
+
+        :param schedule_id: Schedule ID
+        :return: EVC and Schedule
+        """
+        circuits = self._get_circuits_buffer()
+        found_schedule = None
+        evc = None
+
+        # pylint: disable=unused-variable
+        for c_id, circuit in circuits.items():
+            for schedule in circuit.circuit_scheduler:
+                if schedule.id == schedule_id:
+                    found_schedule = schedule
+                    evc = circuit
+                    break
+            if found_schedule:
+                break
+        return evc, found_schedule
+
+    def _get_circuits_buffer(self):
+        """
+        Return the circuit buffer.
+
+        If the buffer is empty, try to load data from storehouse.
+        """
+        if not self.circuits:
+            # Load storehouse circuits to buffer
+            circuits = self.storehouse.get_data()
+            for c_id, circuit in circuits.items():
+                evc = self._evc_from_dict(circuit)
+                self.circuits[c_id] = evc
+        return self.circuits

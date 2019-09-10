@@ -74,8 +74,9 @@ class TestCoverage(SimpleCommand):
 
     def run(self):
         """Run unittest quietly and display coverage report."""
-        cmd = 'coverage3 run -m unittest && coverage3 report'
-        check_call(cmd, shell=True)
+        call('rm .coverage coverage.xml', shell=True)
+        call('coverage3 run -m unittest', shell=True)
+        call('coverage3 report && coverage3 xml', shell=True)
 
 
 class Linter(SimpleCommand):
@@ -115,7 +116,8 @@ class KytosInstall:
             napp_path = Path('kytos', napp)
             src = ENABLED_PATH / napp_path
             dst = INSTALLED_PATH / napp_path
-            src.symlink_to(dst)  # pylint: disable=no-member
+            if not os.path.islink(src):
+                src.symlink_to(dst)  # pylint: disable=no-member
 
 
 class InstallMode(install):
@@ -174,19 +176,22 @@ class DevelopMode(develop):
         links.mkdir(parents=True, exist_ok=True)  # pylint: disable=no-member
         code = CURRENT_DIR
         src = links / 'mef_eline'
-        src.symlink_to(code)  # pylint: disable=no-member
+        if not os.path.islink(src):
+            src.symlink_to(code)  # pylint: disable=no-member
 
         # pylint: disable=no-member
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         dst = ENABLED_PATH / Path('kytos', 'mef_eline')
-        dst.symlink_to(src)  # pylint: disable=no-member
+        if not os.path.islink(dst):
+            dst.symlink_to(src)  # pylint: disable=no-member
 
     @staticmethod
     def _create_file_symlinks():
         """Symlink to required files."""
         src = ENABLED_PATH / '__init__.py'
         dst = CURRENT_DIR / 'napps' / '__init__.py'
-        src.symlink_to(dst)  # pylint: disable=no-member
+        if not os.path.islink(src):
+            src.symlink_to(dst)  # pylint: disable=no-member
 
 
 setup(name='kytos_mef_eline',
