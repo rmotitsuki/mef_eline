@@ -193,6 +193,7 @@ class Main(KytosNApp):
                 self.sched.remove(evc)
                 evc.archive()
                 evc.sync()
+                log.info(f'EVC removed. %s', evc)
                 result = {'response': f'Circuit {circuit_id} removed'}
                 status = 200
 
