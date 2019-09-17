@@ -116,8 +116,9 @@ class KytosInstall:
             napp_path = Path('kytos', napp)
             src = ENABLED_PATH / napp_path
             dst = INSTALLED_PATH / napp_path
-            if not os.path.islink(src):
-                src.symlink_to(dst)  # pylint: disable=no-member
+            if os.path.islink(src):
+                src.unlink()
+            src.symlink_to(dst)  # pylint: disable=no-member
 
 
 class InstallMode(install):
@@ -176,14 +177,16 @@ class DevelopMode(develop):
         links.mkdir(parents=True, exist_ok=True)  # pylint: disable=no-member
         code = CURRENT_DIR
         src = links / 'mef_eline'
-        if not os.path.islink(src):
-            src.symlink_to(code)  # pylint: disable=no-member
+        if os.path.islink(src):
+            src.unlink()
+        src.symlink_to(code)  # pylint: disable=no-member
 
         # pylint: disable=no-member
         (ENABLED_PATH / 'kytos').mkdir(parents=True, exist_ok=True)
         dst = ENABLED_PATH / Path('kytos', 'mef_eline')
-        if not os.path.islink(dst):
-            dst.symlink_to(src)  # pylint: disable=no-member
+        if os.path.islink(dst):
+            dst.unlink()
+        dst.symlink_to(src)  # pylint: disable=no-member
 
     @staticmethod
     def _create_file_symlinks():
