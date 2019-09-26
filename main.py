@@ -176,13 +176,14 @@ class Main(KytosNApp):
         First, the flows are removed from the switches, and then the EVC is
         disabled.
         """
+        log.debug('delete_circuit /v2/evc/%s', circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 404
         else:
-            log.info(f'Removing {circuit_id}')
+            log.info('Removing %s', evc)
             if evc.archived:
                 result = {'response': f'Circuit {circuit_id} already removed'}
                 status = 404
@@ -193,9 +194,11 @@ class Main(KytosNApp):
                 self.sched.remove(evc)
                 evc.archive()
                 evc.sync()
+                log.info('EVC removed. %s', evc)
                 result = {'response': f'Circuit {circuit_id} removed'}
                 status = 200
 
+        log.debug('delete_circuit result %s %s', result, status)
         return jsonify(result), status
 
     @rest('/v2/evc/schedule', methods=['GET'])
