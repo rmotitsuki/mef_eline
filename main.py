@@ -57,15 +57,22 @@ class Main(KytosNApp):
     @rest('/v2/evc/', methods=['GET'])
     def list_circuits(self):
         """Endpoint to return all circuits stored."""
+        log.debug('list_circuits /v2/evc')
         circuits = self.storehouse.get_data()
         if not circuits:
-            return jsonify({}), 200
+            result = {}
+            status = 200
+        else:
+            result = circuits
+            status = 200
 
-        return jsonify(circuits), 200
+        log.debug('list_circuits result %s items, %s', len(result), status)
+        return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['GET'])
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
+        log.debug('get_circuit /v2/evc/%s', circuit_id)
         circuits = self.storehouse.get_data()
 
         try:
@@ -75,6 +82,7 @@ class Main(KytosNApp):
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 404
 
+        log.debug('get_circuit result %s %s', result, status)
         return jsonify(result), status
 
     @rest('/v2/evc/', methods=['POST'])
@@ -103,20 +111,29 @@ class Main(KytosNApp):
         Finnaly, notify user of the status of its request.
         """
         # Try to create the circuit object
+        log.debug('create_circuit /v2/evc/')
         data = request.get_json()
 
         if not data:
-            return jsonify("Bad request: The request do not have a json."), 400
-
+            result = "Bad request: The request do not have a json."
+            status = 400
+            log.debug('create_circuit result %s %s', result, status)
+            return jsonify(result), status
         try:
             evc = self._evc_from_dict(data)
         except ValueError as exception:
             log.error(exception)
-            return jsonify("Bad request: {}".format(exception)), 400
+            result = "Bad request: {}".format(exception)
+            status = 400
+            log.debug('create_circuit result %s %s', result, status)
+            return jsonify(result), status
 
         # verify duplicated evc
         if self._is_duplicated_evc(evc):
-            return jsonify("Not Acceptable: This evc already exists."), 409
+            result = "Not Acceptable: This evc already exists."
+            status = 409
+            log.debug('create_circuit result %s %s', result, status)
+            return jsonify(result), status
 
         # store circuit in dictionary
         self.circuits[evc.id] = evc
@@ -136,7 +153,10 @@ class Main(KytosNApp):
                            content=evc.as_dict())
         self.controller.buffers.app.put(event)
 
-        return jsonify({"circuit_id": evc.id}), 201
+        result = {"circuit_id": evc.id}
+        status = 201
+        log.debug('create_circuit result %s %s', result, status)
+        return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['PATCH'])
     def update(self, circuit_id):
@@ -144,6 +164,7 @@ class Main(KytosNApp):
 
         The EVC required attributes (name, uni_a, uni_z) can't be updated.
         """
+        log.debug('update /v2/evc/%s', circuit_id)
         try:
             evc = self.circuits[circuit_id]
             data = request.get_json()
@@ -167,6 +188,7 @@ class Main(KytosNApp):
             result = {evc.id: evc.as_dict()}
             status = 200
 
+        log.debug('update result %s %s', result, status)
         return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
@@ -210,11 +232,15 @@ class Main(KytosNApp):
          "circuit_id": <circuit_id>,
          "schedule": <schedule object>}]
         """
+        log.debug('list_schedules /v2/evc/schedule')
         circuits = self.storehouse.get_data().values()
         if not circuits:
-            return jsonify({}), 200
+            result = {}
+            status = 200
+            return jsonify(result), status
 
         result = []
+        status = 200
         for circuit in circuits:
             circuit_scheduler = circuit.get("circuit_scheduler")
             if circuit_scheduler:
@@ -224,7 +250,8 @@ class Main(KytosNApp):
                              "schedule": scheduler}
                     result.append(value)
 
-        return jsonify(result), 200
+        log.debug('list_schedules result %s %s', result, status)
+        return jsonify(result), status
 
     @rest('/v2/evc/schedule/', methods=['POST'])
     def create_schedule(self):
@@ -243,11 +270,10 @@ class Main(KytosNApp):
               }
             }
         """
+        log.debug('create_schedule /v2/evc/schedule/')
         try:
             # Try to create the circuit object
             json_data = request.get_json()
-            result = ""
-            status = 200
 
             circuit_id = json_data.get("circuit_id")
             schedule_data = json_data.get("schedule")
@@ -255,14 +281,17 @@ class Main(KytosNApp):
             if not json_data:
                 result = "Bad request: The request does not have a json."
                 status = 400
+                log.debug('create_schedule result %s %s', result, status)
                 return jsonify(result), status
             if not circuit_id:
-                result = result = "Bad request: Missing circuit_id."
+                result = "Bad request: Missing circuit_id."
                 status = 400
+                log.debug('create_schedule result %s %s', result, status)
                 return jsonify(result), status
             if not schedule_data:
                 result = "Bad request: Missing schedule data."
                 status = 400
+                log.debug('create_schedule result %s %s', result, status)
                 return jsonify(result), status
 
             # Get EVC from circuits buffer
@@ -275,12 +304,14 @@ class Main(KytosNApp):
             if not evc:
                 result = {'response': f'circuit_id {circuit_id} not found'}
                 status = 404
+                log.debug('create_schedule result %s %s', result, status)
                 return jsonify(result), status
             # Can not modify circuits deleted and archived
             if evc.archived:
                 result = {'response': f'Circuit is archived.'
                                       f'Update is forbidden.'}
                 status = 403
+                log.debug('create_schedule result %s %s', result, status)
                 return jsonify(result), status
 
             # new schedule from dict
@@ -314,6 +345,7 @@ class Main(KytosNApp):
             result = {'response': response}
             status = 400
 
+        log.debug('create_schedule result %s %s', result, status)
         return jsonify(result), status
 
     @rest('/v2/evc/schedule/<schedule_id>', methods=['PATCH'])
@@ -330,6 +362,7 @@ class Main(KytosNApp):
               "action": "create"
             }
         """
+        log.debug('update_schedule /v2/evc/schedule/%s', schedule_id)
         try:
             # Try to find a circuit schedule
             evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
@@ -338,11 +371,13 @@ class Main(KytosNApp):
             if not found_schedule:
                 result = {'response': f'schedule_id {schedule_id} not found'}
                 status = 404
+                log.debug('update_schedule result %s %s', result, status)
                 return jsonify(result), status
             if evc.archived:
                 result = {'response': f'Circuit is archived.'
                                       f'Update is forbidden.'}
                 status = 403
+                log.debug('update_schedule result %s %s', result, status)
                 return jsonify(result), status
 
             data = request.get_json()
@@ -376,6 +411,7 @@ class Main(KytosNApp):
                       'Bad Request: The request is not a valid JSON.'}
             status = 400
 
+        log.debug('update_schedule result %s %s', result, status)
         return jsonify(result), status
 
     @rest('/v2/evc/schedule/<schedule_id>', methods=['DELETE'])
@@ -386,17 +422,20 @@ class Main(KytosNApp):
         Remove the Schedule from cron job.
         Save the EVC to the Storehouse.
         """
+        log.debug('delete_schedule /v2/evc/schedule/%s', schedule_id)
         evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
 
         # Can not modify circuits deleted and archived
         if not found_schedule:
             result = {'response': f'schedule_id {schedule_id} not found'}
             status = 404
+            log.debug('delete_schedule result %s %s', result, status)
             return jsonify(result), status
 
         if evc.archived:
             result = {'response': f'Circuit is archived. Update is forbidden.'}
             status = 403
+            log.debug('delete_schedule result %s %s', result, status)
             return jsonify(result), status
 
         # Remove the old schedule
@@ -410,6 +449,7 @@ class Main(KytosNApp):
         result = "Schedule removed"
         status = 200
 
+        log.debug('delete_schedule result %s %s', result, status)
         return jsonify(result), status
 
     def _is_duplicated_evc(self, evc):
@@ -430,6 +470,7 @@ class Main(KytosNApp):
     @listen_to('kytos/topology.link_up')
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
+        log.debug("Event handle_link_up %s", event)
         for evc in self.circuits.values():
             if evc.is_enabled() and not evc.archived:
                 evc.handle_link_up(event.content['link'])
@@ -437,6 +478,7 @@ class Main(KytosNApp):
     @listen_to('kytos/topology.link_down')
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
+        log.debug("Event handle_link_down %s", event)
         for evc in self.circuits.values():
             if evc.is_affected_by_link(event.content['link']):
                 log.info('handling evc %s' % evc)
@@ -465,6 +507,7 @@ class Main(KytosNApp):
     @listen_to('kytos/topology.port.created')
     def load_evcs(self, event):
         """Try to load the unloaded EVCs from storehouse."""
+        log.debug("Event load_evcs %s", event)
         circuits = self.storehouse.get_data()
         if not self._circuits_by_interface:
             self.load_circuits_by_interface(circuits)
