@@ -167,26 +167,33 @@ class Main(KytosNApp):
         log.debug('update /v2/evc/%s', circuit_id)
         try:
             evc = self.circuits[circuit_id]
-            data = request.get_json()
-            evc.update(**data)
-        except ValueError as exception:
-            log.error(exception)
-            result = {'response': 'Bad Request: {}'.format(exception)}
-            status = 400
-        except TypeError:
-            result = {'response': 'Content-Type must be application/json'}
-            status = 415
-        except BadRequest:
-            response = 'Bad Request: The request is not a valid JSON.'
-            result = {'response': response}
-            status = 400
         except KeyError:
             result = {'response': f'circuit_id {circuit_id} not found'}
             status = 404
         else:
-            evc.sync()
-            result = {evc.id: evc.as_dict()}
-            status = 200
+            if evc.archived:
+                result = {'response': f'Can\'t update archived EVC'}
+                status = 405
+            else:
+                try:
+                    data = request.get_json()
+                    evc.update(**data)
+                except ValueError as exception:
+                    log.error(exception)
+                    result = {'response': 'Bad Request: {}'.format(exception)}
+                    status = 400
+                except TypeError:
+                    result = {'response': 'Content-Type must be '
+                                          'application/json'}
+                    status = 415
+                except BadRequest:
+                    response = 'Bad Request: The request is not a valid JSON.'
+                    result = {'response': response}
+                    status = 400
+                else:
+                    evc.sync()
+                    result = {evc.id: evc.as_dict()}
+                    status = 200
 
         log.debug('update result %s %s', result, status)
         return jsonify(result), status
