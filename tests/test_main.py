@@ -238,6 +238,34 @@ class TestMain(TestCase):
         self.assertEqual(json.loads(response.data), expected_result)
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_with_archived_circuits_stored_1(self, storehouse_data_mock):
+        """Test if list circuits return only circuits not archived."""
+        circuits = {'1': {'name': 'circuit_1'},
+                    '2': {'name': 'circuit_2', 'archived': True}}
+        storehouse_data_mock.return_value = circuits
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        response = api.get(url)
+        expected_result = {'1': circuits['1']}
+        self.assertEqual(json.loads(response.data), expected_result)
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_list_with_archived_circuits_stored_2(self, storehouse_data_mock):
+        """Test if list circuits return all circuits."""
+        circuits = {'1': {'name': 'circuit_1'},
+                    '2': {'name': 'circuit_2', 'archived': True}}
+        storehouse_data_mock.return_value = circuits
+
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/?archived=True'
+
+        response = api.get(url)
+        expected_result = circuits
+        self.assertEqual(json.loads(response.data), expected_result)
+
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     def test_circuit_with_valid_id(self, storehouse_data_mock):
         """Test if get_circuit return the circuit attributes."""
         circuits = {'1': {'name': 'circuit_1'},
