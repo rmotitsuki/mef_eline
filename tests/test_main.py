@@ -1083,3 +1083,118 @@ class TestMain(TestCase):
         response = api.delete(url)
 
         self.assertEqual(response.status_code, 403, response.data)
+
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    def test_update_circuit(self, *args):
+        """Test update a circuit circuit."""
+        (evc_as_dict_mock, validate_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock) = args
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z', 'uni_a', 'uni_z']
+
+        api = self.get_app_test_client(self.napp)
+        payload1 = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            }
+        }
+
+        payload2 = {
+            "dynamic_backup_path": True
+        }
+
+        evc_as_dict_mock.return_value = payload1
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload1),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
+
+        evc_as_dict_mock.return_value = payload2
+        current_data = json.loads(response.data)
+        circuit_id = current_data['circuit_id']
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payload2),
+                             content_type='application/json')
+        self.assertEqual(200, response.status_code)
+
+        response = api.patch(f'{self.server_name_url}/v2/evc/1234',
+                             data=json.dumps(payload2),
+                             content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = f'circuit_id 1234 not found'
+        self.assertEqual(current_data['response'], expected_data)
+        self.assertEqual(404, response.status_code)
+
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    def test_update_circuit_invalid_json(self, *args):
+        """Test update a circuit circuit."""
+        (evc_as_dict_mock, validate_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock) = args
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni_from_dict_mock.side_effect = ['uni_a', 'uni_z', 'uni_a', 'uni_z']
+
+        api = self.get_app_test_client(self.napp)
+        payload1 = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            }
+        }
+
+        payload2 = {
+            "dynamic_backup_path": True,
+        }
+
+        evc_as_dict_mock.return_value = payload1
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload1),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
+
+        evc_as_dict_mock.return_value = payload2
+        current_data = json.loads(response.data)
+        circuit_id = current_data['circuit_id']
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=payload2,
+                             content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = f'Bad Request: The request is not a valid JSON.'
+        self.assertEqual(current_data['response'], expected_data)
+        self.assertEqual(400, response.status_code)
