@@ -542,7 +542,7 @@ class Main(KytosNApp):
                 self.circuits[circuit_id] = evc
                 self.sched.add(evc)
 
-    def _evc_from_dict(self, evc_dict):
+    def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
 
         This method will convert: [UNI, Link]
@@ -581,6 +581,10 @@ class Main(KytosNApp):
                 data[attribute] = [self._link_from_dict(link)
                                    for link in value]
 
+        return data
+
+    def _evc_from_dict(self, evc_dict):
+        data = self._evc_dict_with_instances(evc_dict)
         return EVC(self.controller, **data)
 
     def _uni_from_dict(self, uni_dict):
