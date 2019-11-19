@@ -194,7 +194,6 @@ class Main(KytosNApp):
                     result = {'response': response}
                     status = 400
                 else:
-                    evc.sync()
                     result = {evc.id: evc.as_dict()}
                     status = 200
 
