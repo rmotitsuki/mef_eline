@@ -535,11 +535,12 @@ class Main(KytosNApp):
                 log.info(f'Loading EVC {circuit_id}')
                 if evc.archived:
                     continue
-                if evc.is_enabled():
-                    log.info(f'Trying to deploy EVC {circuit_id}')
-                    evc.deploy()
-                self.circuits[circuit_id] = evc
-                self.sched.add(evc)
+                new_evc = self.circuits.setdefault(circuit_id, evc)
+                if new_evc == evc:
+                    if evc.is_enabled():
+                        log.info(f'Trying to deploy EVC {circuit_id}')
+                        evc.deploy()
+                    self.sched.add(evc)
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
