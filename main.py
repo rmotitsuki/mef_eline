@@ -56,18 +56,21 @@ class Main(KytosNApp):
 
     @rest('/v2/evc/', methods=['GET'])
     def list_circuits(self):
-        """Endpoint to return all circuits stored."""
+        """Endpoint to return circuits stored.
+
+        If archived is set to True return all circuits, else only the ones
+        not archived.
+        """
         log.debug('list_circuits /v2/evc')
+        archived = request.args.get('archived', False)
         circuits = self.storehouse.get_data()
         if not circuits:
-            result = {}
-            status = 200
-        else:
-            result = circuits
-            status = 200
-
-        log.debug('list_circuits result %s items, %s', len(result), status)
-        return jsonify(result), status
+            return jsonify({}), 200
+        if archived:
+            return jsonify(circuits), 200
+        return jsonify({circuit_id: circuit
+                        for circuit_id, circuit in circuits.items()
+                        if not circuit.get('archived', False)}), 200
 
     @rest('/v2/evc/<circuit_id>', methods=['GET'])
     def get_circuit(self, circuit_id):
