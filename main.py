@@ -10,7 +10,7 @@ from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager
+from napps.kytos.mef_eline.models import EVC, DynamicPathManager, Path
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.storehouse import StoreHouse
 
@@ -180,7 +180,7 @@ class Main(KytosNApp):
             else:
                 try:
                     data = request.get_json()
-                    evc.update(**data)
+                    evc.update(**self._evc_dict_with_instances(data))
                 except ValueError as exception:
                     log.error(exception)
                     result = {'response': 'Bad Request: {}'.format(exception)}
@@ -194,7 +194,6 @@ class Main(KytosNApp):
                     result = {'response': response}
                     status = 400
                 else:
-                    evc.sync()
                     result = {evc.id: evc.as_dict()}
                     status = 200
 
@@ -536,13 +535,14 @@ class Main(KytosNApp):
                 log.info(f'Loading EVC {circuit_id}')
                 if evc.archived:
                     continue
-                if evc.is_enabled():
-                    log.info(f'Trying to deploy EVC {circuit_id}')
-                    evc.deploy()
-                self.circuits[circuit_id] = evc
-                self.sched.add(evc)
+                new_evc = self.circuits.setdefault(circuit_id, evc)
+                if new_evc == evc:
+                    if evc.is_enabled():
+                        log.info(f'Trying to deploy EVC {circuit_id}')
+                        evc.deploy()
+                    self.sched.add(evc)
 
-    def _evc_from_dict(self, evc_dict):
+    def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
 
         This method will convert: [UNI, Link]
@@ -578,9 +578,13 @@ class Main(KytosNApp):
             #     primary_path,
             #     backup_path
             if 'path' in attribute and attribute != 'dynamic_backup_path':
-                data[attribute] = [self._link_from_dict(link)
-                                   for link in value]
+                data[attribute] = Path([self._link_from_dict(link)
+                                        for link in value])
 
+        return data
+
+    def _evc_from_dict(self, evc_dict):
+        data = self._evc_dict_with_instances(evc_dict)
         return EVC(self.controller, **data)
 
     def _uni_from_dict(self, uni_dict):
