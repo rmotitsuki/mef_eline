@@ -194,6 +194,17 @@ class Main(KytosNApp):
                     result = {'response': response}
                     status = 400
                 else:
+                    if evc.is_active():
+                        if enable is False: # disable if active
+                            evc.remove()
+                        elif path is not None: # redeploy if active
+                            evc.remove()
+                            evc.deploy()
+                    else:
+                        if enable is True: # enable if inactive
+                            evc.deploy()
+
+                    evc.sync()
                     result = {evc.id: evc.as_dict()}
                     status = 200
 
