@@ -1084,16 +1084,19 @@ class TestMain(TestCase):
 
         self.assertEqual(response.status_code, 403, response.data)
 
+    @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('kytos.core.Controller.get_interface_by_id')
     def test_update_circuit(self, *args):
         """Test update a circuit circuit."""
-        (evc_as_dict_mock, validate_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock) = args
+        (_get_inteface_by_id, evc_as_dict_mock, validate_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock, evc_deploy) = args
 
+        _get_inteface_by_id.return_value = True
         validate_mock.return_value = True
         save_evc_mock.return_value = True
         sched_add_mock.return_value = True
@@ -1102,6 +1105,7 @@ class TestMain(TestCase):
         api = self.get_app_test_client(self.napp)
         payload1 = {
             "name": "my evc1",
+            "active": True,
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
                 "tag": {
@@ -1119,7 +1123,16 @@ class TestMain(TestCase):
         }
 
         payload2 = {
-            "dynamic_backup_path": True
+            "primary_path": [
+                {
+                    "endpoint_a": {"id": "00:00:00:00:00:00:00:01:1"},
+                    "endpoint_b": {"id": "00:00:00:00:00:00:00:02:2"}
+                }
+            ]
+        }
+
+        payload3 = {
+            "priority": 3
         }
 
         evc_as_dict_mock.return_value = payload1
@@ -1128,12 +1141,22 @@ class TestMain(TestCase):
                             content_type='application/json')
         self.assertEqual(201, response.status_code)
 
+        evc_deploy.reset_mock()
         evc_as_dict_mock.return_value = payload2
         current_data = json.loads(response.data)
         circuit_id = current_data['circuit_id']
         response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
                              data=json.dumps(payload2),
                              content_type='application/json')
+        evc_deploy.assert_called_once()
+        self.assertEqual(200, response.status_code)
+
+        evc_deploy.reset_mock()
+        evc_as_dict_mock.return_value = payload3
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payload3),
+                             content_type='application/json')
+        evc_deploy.assert_not_called()
         self.assertEqual(200, response.status_code)
 
         response = api.patch(f'{self.server_name_url}/v2/evc/1234',
