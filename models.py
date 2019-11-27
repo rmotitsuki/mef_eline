@@ -260,7 +260,7 @@ class EVCBase(GenericEntity):
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
         self.sync()
-        return enable, value
+        return enable, path
 
     def __repr__(self):
         """Repr method."""
