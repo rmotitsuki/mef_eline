@@ -240,18 +240,27 @@ class EVCBase(GenericEntity):
         This method will raises an error trying to change the following
         attributes: [name, uni_a and uni_z]
 
+        Returns:
+            the values for enable and a path attribute, if exists and None
+            otherwise
         Raises:
             ValueError: message with error detail.
 
         """
+        enable, path = (None, None)
         for attribute, value in kwargs.items():
             if attribute in self.unique_attributes:
                 raise ValueError(f'{attribute} can\'t be be updated.')
             if hasattr(self, attribute):
                 setattr(self, attribute, value)
+                if 'enable' in attribute:
+                    enable = value
+                elif 'path' in attribute:
+                    path = value
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
         self.sync()
+        return enable, value
 
     def __repr__(self):
         """Repr method."""

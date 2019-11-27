@@ -180,7 +180,7 @@ class Main(KytosNApp):
             else:
                 try:
                     data = request.get_json()
-                    evc.update(**self._evc_dict_with_instances(data))
+                    enable, path = evc.update(**self._evc_dict_with_instances(data))
                 except ValueError as exception:
                     log.error(exception)
                     result = {'response': 'Bad Request: {}'.format(exception)}
