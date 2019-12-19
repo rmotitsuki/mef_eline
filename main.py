@@ -180,7 +180,8 @@ class Main(KytosNApp):
             else:
                 try:
                     data = request.get_json()
-                    evc.update(**self._evc_dict_with_instances(data))
+                    enable, path = \
+                        evc.update(**self._evc_dict_with_instances(data))
                 except ValueError as exception:
                     log.error(exception)
                     result = {'response': 'Bad Request: {}'.format(exception)}
@@ -194,6 +195,15 @@ class Main(KytosNApp):
                     result = {'response': response}
                     status = 400
                 else:
+                    if evc.is_active():
+                        if enable is False:  # disable if active
+                            evc.remove()
+                        elif path is not None:  # redeploy if active
+                            evc.remove()
+                            evc.deploy()
+                    else:
+                        if enable is True:  # enable if inactive
+                            evc.deploy()
                     result = {evc.id: evc.as_dict()}
                     status = 200
 
