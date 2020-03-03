@@ -20,8 +20,14 @@ class TestMain(TestCase):
         Set the server_name_url_url from kytos/mef_eline
         """
         self.server_name_url = 'http://localhost:8181/api/kytos/mef_eline'
+
+        # The decorator run_on_thread is patched, so methods that listen
+        # for events do not run on threads while tested.
+        # Decorators have to be patched before the methods that are
+        # decorated with them are imported.
         patch('kytos.core.helpers.run_on_thread', lambda x: x).start()
         from napps.kytos.mef_eline.main import Main
+
         self.addCleanup(patch.stopall)
         self.napp = Main(get_controller_mock())
 
