@@ -1,4 +1,4 @@
-"""Module responsible to handle schedulers."""
+"""Module responsible for handling schedulers."""
 from uuid import uuid4
 
 from apscheduler.jobstores.base import JobLookupError
