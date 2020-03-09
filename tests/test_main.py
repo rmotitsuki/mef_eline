@@ -1,11 +1,12 @@
 """Module to test the main napp file."""
 import json
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, PropertyMock, patch, create_autospec, call
 
 from kytos.core.interface import UNI, Interface
+from kytos.core.events import KytosEvent
 
-from napps.kytos.mef_eline.main import Main
+from napps.kytos.mef_eline.models import EVC
 from tests.helpers import get_controller_mock
 
 
@@ -19,6 +20,15 @@ class TestMain(TestCase):
         Set the server_name_url_url from kytos/mef_eline
         """
         self.server_name_url = 'http://localhost:8181/api/kytos/mef_eline'
+
+        # The decorator run_on_thread is patched, so methods that listen
+        # for events do not run on threads while tested.
+        # Decorators have to be patched before the methods that are
+        # decorated with them are imported.
+        patch('kytos.core.helpers.run_on_thread', lambda x: x).start()
+        from napps.kytos.mef_eline.main import Main
+
+        self.addCleanup(patch.stopall)
         self.napp = Main(get_controller_mock())
 
     def test_get_event_listeners(self):
@@ -1129,6 +1139,9 @@ class TestMain(TestCase):
             },
             {
                 "priority": 3
+            },
+            {
+                "enable": True
             }
         ]
 
@@ -1156,6 +1169,20 @@ class TestMain(TestCase):
         evc_deploy.assert_not_called()
         self.assertEqual(200, response.status_code)
 
+        evc_deploy.reset_mock()
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data='{"priority":5,}',
+                             content_type='application/json')
+        evc_deploy.assert_not_called()
+        self.assertEqual(400, response.status_code)
+
+        evc_deploy.reset_mock()
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payloads[3]),
+                             content_type='application/json')
+        evc_deploy.assert_called_once()
+        self.assertEqual(200, response.status_code)
+
         response = api.patch(f'{self.server_name_url}/v2/evc/1234',
                              data=json.dumps(payloads[1]),
                              content_type='application/json')
@@ -1163,6 +1190,14 @@ class TestMain(TestCase):
         expected_data = f'circuit_id 1234 not found'
         self.assertEqual(current_data['response'], expected_data)
         self.assertEqual(404, response.status_code)
+
+        api.delete(f'{self.server_name_url}/v2/evc/{circuit_id}')
+        evc_deploy.reset_mock()
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payloads[1]),
+                             content_type='application/json')
+        evc_deploy.assert_not_called()
+        self.assertEqual(405, response.status_code)
 
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
@@ -1218,3 +1253,26 @@ class TestMain(TestCase):
         expected_data = f'Bad Request: The request is not a valid JSON.'
         self.assertEqual(current_data['response'], expected_data)
         self.assertEqual(400, response.status_code)
+
+    def test_handle_link_up(self):
+        """Test handle_link_up method."""
+        evc_mock = create_autospec(EVC)
+        evc_mock.is_enabled = MagicMock(side_effect=[True, False, True])
+        type(evc_mock).archived = \
+            PropertyMock(side_effect=[True, False, False])
+        evcs = [evc_mock, evc_mock, evc_mock]
+        event = KytosEvent(name='test', content={'link': 'abc'})
+        self.napp.circuits = dict(zip(['1', '2', '3'], evcs))
+        self.napp.handle_link_up(event)
+        evc_mock.handle_link_up.assert_called_once_with('abc')
+
+    def test_handle_link_down(self):
+        """Test handle_link_down method."""
+        evc_mock = create_autospec(EVC)
+        evc_mock.is_affected_by_link = \
+            MagicMock(side_effect=[True, False, True])
+        evcs = [evc_mock, evc_mock, evc_mock]
+        event = KytosEvent(name='test', content={'link': 'abc'})
+        self.napp.circuits = dict(zip(['1', '2', '3'], evcs))
+        self.napp.handle_link_down(event)
+        evc_mock.handle_link_down.assert_has_calls([call(), call()])
