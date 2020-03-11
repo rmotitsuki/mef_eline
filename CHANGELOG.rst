@@ -10,21 +10,27 @@ Added
 - Added EVC status check when deploying using schedule.
 - Serialize circuit scheduler for storehouse.
 - Fix VLAN availability on interfaces after using them.
+- Documentation about delete method.
 
 Changed
 =======
+- Updated comments on methods.
+- Updated OpenApi Models description and documentation.
 
 Deprecated
 ==========
 
 Removed
 =======
+- Removed dependencies.
 
 Fixed
 =====
+- Linter issues
 
 Security
 ========
+
 
 [2.3.1] - 2019-03-15
 ********************
