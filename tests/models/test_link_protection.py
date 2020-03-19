@@ -124,8 +124,10 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_path_down(self):
         # pylint: disable=no-self-use
-        return MockResponse({'links': {'abc': {'active': False},
-                                       'def': {'active': True}}}, 200)
+        return MockResponse({'links': {'abc': {'active': False,
+                                               'enabled': True},
+                                       'def': {'active': True,
+                                               'enabled': True}}}, 200)
 
     @patch('requests.get', side_effect=_mocked_requests_get_path_down)
     def test_deploy_to_case_3(self, requests_mocked):

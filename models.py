@@ -66,14 +66,17 @@ class Path(list, GenericEntity):
                       endpoint, api_reply.status_code)
             return None
         links = api_reply.json()['links']
+        return_status = EntityStatus.UP
         for path_link in self:
             try:
                 link = links[path_link.id]
             except KeyError:
-                return EntityStatus.DOWN
+                return EntityStatus.DISABLED
+            if link['enabled'] is False:
+                return EntityStatus.DISABLED
             if link['active'] is False:
-                return EntityStatus.DOWN
-        return EntityStatus.UP
+                return_status = EntityStatus.DOWN
+        return return_status
 
     def as_dict(self):
         """Return list comprehension of links as_dict."""
