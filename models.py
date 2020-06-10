@@ -252,11 +252,13 @@ class EVCBase(GenericEntity):
             if attribute in self.unique_attributes:
                 raise ValueError(f'{attribute} can\'t be be updated.')
             if hasattr(self, attribute):
-                setattr(self, attribute, value)
                 if 'enable' in attribute:
+                    self.enable()
                     enable = value
-                elif 'path' in attribute:
-                    path = value
+                else:
+                    setattr(self, attribute, value)
+                    if 'path' in attribute:
+                        path = value
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
         self.sync()
