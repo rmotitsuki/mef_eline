@@ -186,26 +186,27 @@ class Main(KytosNApp):
                     log.error(exception)
                     result = {'response': 'Bad Request: {}'.format(exception)}
                     status = 400
-                except TypeError:
-                    result = {'response': 'Content-Type must be '
-                                          'application/json'}
-                    status = 415
                 except BadRequest:
                     response = 'Bad Request: The request is not a valid JSON.'
                     result = {'response': response}
                     status = 400
                 else:
-                    if evc.is_active():
-                        if enable is False:  # disable if active
-                            evc.remove()
-                        elif path is not None:  # redeploy if active
-                            evc.remove()
-                            evc.deploy()
+                    if data is None:
+                        result = {'response': 'Content-Type must be '
+                                              'application/json'}
+                        status = 415
                     else:
-                        if enable is True:  # enable if inactive
-                            evc.deploy()
-                    result = {evc.id: evc.as_dict()}
-                    status = 200
+                        if evc.is_active():
+                            if enable is False:  # disable if active
+                                evc.remove()
+                            elif path is not None:  # redeploy if active
+                                evc.remove()
+                                evc.deploy()
+                        else:
+                            if enable is True:  # enable if inactive
+                                evc.deploy()
+                        result = {evc.id: evc.as_dict()}
+                        status = 200
 
         log.debug('update result %s %s', result, status)
         return jsonify(result), status
