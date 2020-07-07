@@ -3,7 +3,8 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
-from werkzeug.exceptions import BadRequest
+from werkzeug.exceptions import (BadRequest, Conflict, NotFound,
+                                 MethodNotAllowed, UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
@@ -80,11 +81,12 @@ class Main(KytosNApp):
 
         try:
             result = circuits[circuit_id]
-            status = 200
         except KeyError:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 404
+            result = f'circuit_id {circuit_id} not found'
+            log.debug('get_circuit result %s %s', result, 404)
+            raise NotFound(result)
 
+        status = 200
         log.debug('get_circuit result %s %s', result, status)
         return jsonify(result), status
 
@@ -115,28 +117,29 @@ class Main(KytosNApp):
         """
         # Try to create the circuit object
         log.debug('create_circuit /v2/evc/')
-        data = request.get_json()
+        try:
+            data = request.get_json()
+        except BadRequest:
+            result = 'The request body is not a well-formed JSON.'
+            log.debug('create_circuit result %s %s', result, 400)
+            raise BadRequest(result)
 
-        if not data:
-            result = "Bad request: The request do not have a json."
-            status = 400
-            log.debug('create_circuit result %s %s', result, status)
-            return jsonify(result), status
+        if data is None:
+            result = 'The request body mimetype is not application/json.'
+            log.debug('create_circuit result %s %s', result, 415)
+            raise UnsupportedMediaType(result)
         try:
             evc = self._evc_from_dict(data)
         except ValueError as exception:
-            log.error(exception)
-            result = "Bad request: {}".format(exception)
-            status = 400
-            log.debug('create_circuit result %s %s', result, status)
-            return jsonify(result), status
+            result = "{}".format(exception)
+            log.debug('create_circuit result %s %s', result, 400)
+            raise BadRequest(result)
 
         # verify duplicated evc
         if self._is_duplicated_evc(evc):
-            result = "Not Acceptable: This evc already exists."
-            status = 409
-            log.debug('create_circuit result %s %s', result, status)
-            return jsonify(result), status
+            result = "The EVC already exists."
+            log.debug('create_circuit result %s %s', result, 409)
+            raise Conflict(result)
 
         # store circuit in dictionary
         self.circuits[evc.id] = evc
@@ -171,42 +174,46 @@ class Main(KytosNApp):
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 404
+            result = f'circuit_id {circuit_id} not found'
+            log.debug('update result %s %s', result, 404)
+            raise NotFound(result)
+
+        if evc.archived:
+            result = f'Can\'t update archived EVC'
+            log.debug('update result %s %s', result, 405)
+            raise MethodNotAllowed(['GET'], result)
+
+        try:
+            data = request.get_json()
+        except BadRequest:
+            result = 'The request body is not a well-formed JSON.'
+            log.debug('update result %s %s', result, 400)
+            raise BadRequest(result)
+        if data is None:
+            result = 'The request body mimetype is not application/json.'
+            log.debug('update result %s %s', result, 415)
+            raise UnsupportedMediaType(result)
+
+        try:
+            enable, path = \
+                evc.update(**self._evc_dict_with_instances(data))
+        except ValueError as exception:
+            log.error(exception)
+            result = '{}'.format(exception)
+            log.debug('update result %s %s', result, 400)
+            raise BadRequest(exception)
+
+        if evc.is_active():
+            if enable is False:  # disable if active
+                evc.remove()
+            elif path is not None:  # redeploy if active
+                evc.remove()
+                evc.deploy()
         else:
-            if evc.archived:
-                result = {'response': f'Can\'t update archived EVC'}
-                status = 405
-            else:
-                try:
-                    data = request.get_json()
-                    enable, path = \
-                        evc.update(**self._evc_dict_with_instances(data))
-                except ValueError as exception:
-                    log.error(exception)
-                    result = {'response': 'Bad Request: {}'.format(exception)}
-                    status = 400
-                except BadRequest:
-                    response = 'Bad Request: The request is not a valid JSON.'
-                    result = {'response': response}
-                    status = 400
-                else:
-                    if data is None:
-                        result = {'response': 'Content-Type must be '
-                                              'application/json'}
-                        status = 415
-                    else:
-                        if evc.is_active():
-                            if enable is False:  # disable if active
-                                evc.remove()
-                            elif path is not None:  # redeploy if active
-                                evc.remove()
-                                evc.deploy()
-                        else:
-                            if enable is True:  # enable if inactive
-                                evc.deploy()
-                        result = {evc.id: evc.as_dict()}
-                        status = 200
+            if enable is True:  # enable if inactive
+                evc.deploy()
+        result = {evc.id: evc.as_dict()}
+        status = 200
 
         log.debug('update result %s %s', result, status)
         return jsonify(result), status
@@ -222,23 +229,25 @@ class Main(KytosNApp):
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
-            result = {'response': f'circuit_id {circuit_id} not found'}
-            status = 404
-        else:
-            log.info('Removing %s', evc)
-            if evc.archived:
-                result = {'response': f'Circuit {circuit_id} already removed'}
-                status = 404
-            else:
-                evc.remove_current_flows()
-                evc.deactivate()
-                evc.disable()
-                self.sched.remove(evc)
-                evc.archive()
-                evc.sync()
-                log.info('EVC removed. %s', evc)
-                result = {'response': f'Circuit {circuit_id} removed'}
-                status = 200
+            result = f'circuit_id {circuit_id} not found'
+            log.debug('delete_circuit result %s %s', result, 404)
+            raise NotFound(result)
+
+        if evc.archived:
+            result = f'Circuit {circuit_id} already removed'
+            log.debug('delete_circuit result %s %s', result, 404)
+            raise NotFound(result)
+
+        log.info('Removing %s', evc)
+        evc.remove_current_flows()
+        evc.deactivate()
+        evc.disable()
+        self.sched.remove(evc)
+        evc.archive()
+        evc.sync()
+        log.info('EVC removed. %s', evc)
+        result = {'response': f'Circuit {circuit_id} removed'}
+        status = 200
 
         log.debug('delete_circuit result %s %s', result, status)
         return jsonify(result), status
