@@ -3,8 +3,9 @@
 NApp to provision circuits from user request.
 """
 from flask import jsonify, request
-from werkzeug.exceptions import (BadRequest, Conflict, NotFound,
-                                 MethodNotAllowed, UnsupportedMediaType)
+from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
+                                 MethodNotAllowed, NotFound,
+                                 UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
@@ -199,9 +200,8 @@ class Main(KytosNApp):
                 evc.update(**self._evc_dict_with_instances(data))
         except ValueError as exception:
             log.error(exception)
-            result = '{}'.format(exception)
-            log.debug('update result %s %s', result, 400)
-            raise BadRequest(exception)
+            log.debug('update result %s %s', exception, 400)
+            raise BadRequest(str(exception))
 
         if evc.is_active():
             if enable is False:  # disable if active
@@ -303,76 +303,72 @@ class Main(KytosNApp):
         try:
             # Try to create the circuit object
             json_data = request.get_json()
-
-            circuit_id = json_data.get("circuit_id")
-            schedule_data = json_data.get("schedule")
-
-            if not json_data:
-                result = "Bad request: The request does not have a json."
-                status = 400
-                log.debug('create_schedule result %s %s', result, status)
-                return jsonify(result), status
-            if not circuit_id:
-                result = "Bad request: Missing circuit_id."
-                status = 400
-                log.debug('create_schedule result %s %s', result, status)
-                return jsonify(result), status
-            if not schedule_data:
-                result = "Bad request: Missing schedule data."
-                status = 400
-                log.debug('create_schedule result %s %s', result, status)
-                return jsonify(result), status
-
-            # Get EVC from circuits buffer
-            circuits = self._get_circuits_buffer()
-
-            # get the circuit
-            evc = circuits.get(circuit_id)
-
-            # get the circuit
-            if not evc:
-                result = {'response': f'circuit_id {circuit_id} not found'}
-                status = 404
-                log.debug('create_schedule result %s %s', result, status)
-                return jsonify(result), status
-            # Can not modify circuits deleted and archived
-            if evc.archived:
-                result = {'response': f'Circuit is archived.'
-                                      f'Update is forbidden.'}
-                status = 403
-                log.debug('create_schedule result %s %s', result, status)
-                return jsonify(result), status
-
-            # new schedule from dict
-            new_schedule = CircuitSchedule.from_dict(schedule_data)
-
-            # If there is no schedule, create the list
-            if not evc.circuit_scheduler:
-                evc.circuit_scheduler = []
-
-            # Add the new schedule
-            evc.circuit_scheduler.append(new_schedule)
-
-            # Add schedule job
-            self.sched.add_circuit_job(evc, new_schedule)
-
-            # save circuit to storehouse
-            evc.sync()
-
-            result = new_schedule.as_dict()
-            status = 201
-
         except ValueError as exception:
             log.error(exception)
-            result = {'response': 'Bad Request: {}'.format(exception)}
-            status = 400
-        except TypeError:
-            result = {'response': 'Content-Type must be application/json'}
-            status = 415
+            log.debug('create_schedule result %s %s', exception, 400)
+            raise BadRequest(str(exception))
         except BadRequest:
-            response = 'Bad Request: The request is not a valid JSON.'
-            result = {'response': response}
-            status = 400
+            result = 'The request is not a valid JSON.'
+            log.debug('create_schedule result %s %s', result, 400)
+            raise BadRequest(result)
+        if json_data is None:
+            result = 'Content-Type must be application/json'
+            log.debug('create_schedule result %s %s', result, 415)
+            raise UnsupportedMediaType(result)
+
+        try:
+            circuit_id = json_data['circuit_id']
+        except TypeError:
+            result = 'The payload should have a dictionary.'
+            log.debug('create_schedule result %s %s', result, 400)
+            raise BadRequest(result)
+        except KeyError:
+            result = 'Missing circuit_id.'
+            log.debug('create_schedule result %s %s', result, 400)
+            raise BadRequest(result)
+
+        try:
+            schedule_data = json_data['schedule']
+        except KeyError:
+            result = 'Missing schedule data.'
+            log.debug('create_schedule result %s %s', result, 400)
+            raise BadRequest(result)
+
+        # Get EVC from circuits buffer
+        circuits = self._get_circuits_buffer()
+
+        # get the circuit
+        evc = circuits.get(circuit_id)
+
+        # get the circuit
+        if not evc:
+            result = f'circuit_id {circuit_id} not found'
+            log.debug('create_schedule result %s %s', result, 404)
+            raise NotFound(result)
+        # Can not modify circuits deleted and archived
+        if evc.archived:
+            result = f'Circuit {circuit_id} is archived. Update is forbidden.'
+            log.debug('create_schedule result %s %s', result, 403)
+            raise Forbidden(result)
+
+        # new schedule from dict
+        new_schedule = CircuitSchedule.from_dict(schedule_data)
+
+        # If there is no schedule, create the list
+        if not evc.circuit_scheduler:
+            evc.circuit_scheduler = []
+
+        # Add the new schedule
+        evc.circuit_scheduler.append(new_schedule)
+
+        # Add schedule job
+        self.sched.add_circuit_job(evc, new_schedule)
+
+        # save circuit to storehouse
+        evc.sync()
+
+        result = new_schedule.as_dict()
+        status = 201
 
         log.debug('create_schedule result %s %s', result, status)
         return jsonify(result), status
@@ -392,53 +388,51 @@ class Main(KytosNApp):
             }
         """
         log.debug('update_schedule /v2/evc/schedule/%s', schedule_id)
+
+        # Try to find a circuit schedule
+        evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
+
+        # Can not modify circuits deleted and archived
+        if not found_schedule:
+            result = f'schedule_id {schedule_id} not found'
+            log.debug('update_schedule result %s %s', result, 404)
+            raise NotFound(result)
+        if evc.archived:
+            result = f'Circuit {evc.id} is archived. Update is forbidden.'
+            log.debug('update_schedule result %s %s', result, 403)
+            raise Forbidden(result)
+
         try:
-            # Try to find a circuit schedule
-            evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
-
-            # Can not modify circuits deleted and archived
-            if not found_schedule:
-                result = {'response': f'schedule_id {schedule_id} not found'}
-                status = 404
-                log.debug('update_schedule result %s %s', result, status)
-                return jsonify(result), status
-            if evc.archived:
-                result = {'response': f'Circuit is archived.'
-                                      f'Update is forbidden.'}
-                status = 403
-                log.debug('update_schedule result %s %s', result, status)
-                return jsonify(result), status
-
             data = request.get_json()
-
-            new_schedule = CircuitSchedule.from_dict(data)
-            new_schedule.id = found_schedule.id
-            # Remove the old schedule
-            evc.circuit_scheduler.remove(found_schedule)
-            # Append the modified schedule
-            evc.circuit_scheduler.append(new_schedule)
-
-            # Cancel all schedule jobs
-            self.sched.cancel_job(found_schedule.id)
-            # Add the new circuit schedule
-            self.sched.add_circuit_job(evc, new_schedule)
-            # Save EVC to the storehouse
-            evc.sync()
-
-            result = new_schedule.as_dict()
-            status = 200
-
         except ValueError as exception:
             log.error(exception)
-            result = {'response': 'Bad Request: {}'.format(exception)}
-            status = 400
-        except TypeError:
-            result = {'response': 'Content-Type must be application/json'}
-            status = 415
+            log.debug('update_schedule result %s %s', exception, 400)
+            raise BadRequest(str(exception))
         except BadRequest:
-            result = {'response':
-                      'Bad Request: The request is not a valid JSON.'}
-            status = 400
+            result = 'The request is not a valid JSON.'
+            log.debug('update_schedule result %s %s', result, 400)
+            raise BadRequest(result)
+        if data is None:
+            result = 'Content-Type must be application/json'
+            log.debug('create_schedule result %s %s', result, 415)
+            raise UnsupportedMediaType(result)
+
+        new_schedule = CircuitSchedule.from_dict(data)
+        new_schedule.id = found_schedule.id
+        # Remove the old schedule
+        evc.circuit_scheduler.remove(found_schedule)
+        # Append the modified schedule
+        evc.circuit_scheduler.append(new_schedule)
+
+        # Cancel all schedule jobs
+        self.sched.cancel_job(found_schedule.id)
+        # Add the new circuit schedule
+        self.sched.add_circuit_job(evc, new_schedule)
+        # Save EVC to the storehouse
+        evc.sync()
+
+        result = new_schedule.as_dict()
+        status = 200
 
         log.debug('update_schedule result %s %s', result, status)
         return jsonify(result), status
@@ -456,16 +450,14 @@ class Main(KytosNApp):
 
         # Can not modify circuits deleted and archived
         if not found_schedule:
-            result = {'response': f'schedule_id {schedule_id} not found'}
-            status = 404
-            log.debug('delete_schedule result %s %s', result, status)
-            return jsonify(result), status
+            result = f'schedule_id {schedule_id} not found'
+            log.debug('delete_schedule result %s %s', result, 404)
+            raise NotFound(result)
 
         if evc.archived:
-            result = {'response': f'Circuit is archived. Update is forbidden.'}
-            status = 403
-            log.debug('delete_schedule result %s %s', result, status)
-            return jsonify(result), status
+            result = f'Circuit {evc.id} is archived. Update is forbidden.'
+            log.debug('delete_schedule result %s %s', result, 403)
+            raise Forbidden(result)
 
         # Remove the old schedule
         evc.circuit_scheduler.remove(found_schedule)
