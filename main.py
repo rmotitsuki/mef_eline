@@ -300,22 +300,8 @@ class Main(KytosNApp):
             }
         """
         log.debug('create_schedule /v2/evc/schedule/')
-        try:
-            # Try to create the circuit object
-            json_data = request.get_json()
-        except ValueError as exception:
-            log.error(exception)
-            log.debug('create_schedule result %s %s', exception, 400)
-            raise BadRequest(str(exception))
-        except BadRequest:
-            result = 'The request is not a valid JSON.'
-            log.debug('create_schedule result %s %s', result, 400)
-            raise BadRequest(result)
-        if json_data is None:
-            result = 'Content-Type must be application/json'
-            log.debug('create_schedule result %s %s', result, 415)
-            raise UnsupportedMediaType(result)
 
+        json_data = self.json_from_request('create_schedule')
         try:
             circuit_id = json_data['circuit_id']
         except TypeError:
@@ -402,20 +388,7 @@ class Main(KytosNApp):
             log.debug('update_schedule result %s %s', result, 403)
             raise Forbidden(result)
 
-        try:
-            data = request.get_json()
-        except ValueError as exception:
-            log.error(exception)
-            log.debug('update_schedule result %s %s', exception, 400)
-            raise BadRequest(str(exception))
-        except BadRequest:
-            result = 'The request is not a valid JSON.'
-            log.debug('update_schedule result %s %s', result, 400)
-            raise BadRequest(result)
-        if data is None:
-            result = 'Content-Type must be application/json'
-            log.debug('create_schedule result %s %s', result, 415)
-            raise UnsupportedMediaType(result)
+        data = self.json_from_request('update_schedule')
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -674,3 +647,27 @@ class Main(KytosNApp):
                 evc = self._evc_from_dict(circuit)
                 self.circuits[c_id] = evc
         return self.circuits
+
+    @staticmethod
+    def json_from_request(caller):
+        """Return a json from request.
+
+        If it was not possible to get a json from the request, log, for debug,
+        who was the caller and the error that ocurred, and raise an
+        Exception.
+        """
+        try:
+            json_data = request.get_json()
+        except ValueError as exception:
+            log.error(exception)
+            log.debug(f'{caller} result {exception} 400')
+            raise BadRequest(str(exception))
+        except BadRequest:
+            result = 'The request is not a valid JSON.'
+            log.debug(f'{caller} result {result} 400')
+            raise BadRequest(result)
+        if json_data is None:
+            result = 'Content-Type must be application/json'
+            log.debug(f'{caller} result {result} 415')
+            raise UnsupportedMediaType(result)
+        return json_data
