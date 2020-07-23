@@ -7,6 +7,28 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 ********************************
 Added
 =====
+
+Changed
+=======
+
+Deprecated
+==========
+
+Removed
+=======
+
+Fixed
+=====
+
+Security
+========
+
+
+[2.4] - 2020-07-23
+******************
+
+Added
+=====
 - Added EVC status check when deploying using schedule.
 - Serialize circuit scheduler for storehouse.
 - Fix VLAN availability on interfaces after using them.
@@ -17,18 +39,17 @@ Added
 
 Changed
 =======
-- Updated comments on methods.
-- Updated OpenApi Models description and documentation.
-- Updated return messages and codes when an error happens.
-- Updated mef_eline to accept EVCs where UNI has no tag.
+- Updated HTTP return messages and codes when an error happens.
+- Accept EVCs where UNI has no tag.
 - Path status now return disabled state if any of its links is disabled.
 - Updated method to get the shortest path, now it returns more paths.
 - Changed enable/enabled to update _enabled attribute and activate/active to
   update _active attribute.
+- Updated OpenApi Models description and documentation.
 
 Deprecated
 ==========
-- Do not create a job when action is not create or remove.
+- Do not create a job when action is not ``create`` or ``remove``.
 
 Removed
 =======
@@ -37,9 +58,6 @@ Removed
 Fixed
 =====
 - Fixed enable on update EVCs.
-
-Security
-========
 
 
 [2.3.1] - 2019-03-15
