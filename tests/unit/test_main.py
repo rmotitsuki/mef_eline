@@ -298,8 +298,9 @@ class TestMain(TestCase):
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/3'
         response = api.get(url)
-        expected_result = {'response': 'circuit_id 3 not found'}
-        self.assertEqual(json.loads(response.data), expected_result)
+        expected_result = 'circuit_id 3 not found'
+        self.assertEqual(json.loads(response.data)['description'],
+                         expected_result)
 
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
@@ -405,10 +406,10 @@ class TestMain(TestCase):
 
         response = api.post(url)
         current_data = json.loads(response.data)
-        expected_data = 'Bad request: The request do not have a json.'
+        expected_data = 'The request body mimetype is not application/json.'
 
-        self.assertEqual(400, response.status_code, response.data)
-        self.assertEqual(current_data, expected_data)
+        self.assertEqual(415, response.status_code, response.data)
+        self.assertEqual(current_data['description'], expected_data)
 
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
@@ -461,8 +462,8 @@ class TestMain(TestCase):
                             data=json.dumps(payload2),
                             content_type='application/json')
         current_data = json.loads(response.data)
-        expected_data = 'Not Acceptable: This evc already exists.'
-        self.assertEqual(current_data, expected_data)
+        expected_data = 'The EVC already exists.'
+        self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(409, response.status_code)
 
     def test_load_circuits_by_interface(self):
@@ -826,10 +827,10 @@ class TestMain(TestCase):
         # Call URL
         response = api.get(url)
 
-        expected = {'response': 'circuit_id blah not found'}
+        expected = 'circuit_id blah not found'
         # Assert response not found
         self.assertEqual(response.status_code, 404, response.data)
-        self.assertEqual(expected, json.loads(response.data))
+        self.assertEqual(expected, json.loads(response.data)['description'])
 
     def _uni_from_dict_side_effect(self, uni_dict):
         interface_id = uni_dict.get("interface_id")
@@ -1190,7 +1191,7 @@ class TestMain(TestCase):
                              content_type='application/json')
         current_data = json.loads(response.data)
         expected_data = f'circuit_id 1234 not found'
-        self.assertEqual(current_data['response'], expected_data)
+        self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(404, response.status_code)
 
         api.delete(f'{self.server_name_url}/v2/evc/{circuit_id}')
@@ -1252,8 +1253,8 @@ class TestMain(TestCase):
                              data=payload2,
                              content_type='application/json')
         current_data = json.loads(response.data)
-        expected_data = f'Bad Request: The request is not a valid JSON.'
-        self.assertEqual(current_data['response'], expected_data)
+        expected_data = 'The request body is not a well-formed JSON.'
+        self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(400, response.status_code)
 
     def test_handle_link_up(self):
