@@ -7,18 +7,49 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 ********************************
 Added
 =====
+
+Changed
+=======
+
+Deprecated
+==========
+
+Removed
+=======
+
+Fixed
+=====
+
+Security
+========
+
+
+[2.4] - 2020-07-23
+******************
+
+Added
+=====
 - Added EVC status check when deploying using schedule.
 - Serialize circuit scheduler for storehouse.
 - Fix VLAN availability on interfaces after using them.
 - Documentation about delete method.
+- Added '.travis.yml' to enable Travis CI.
+- Added tags decorator to run tests by type and size.
+- Install flows when UNIs are in the same switch.
 
 Changed
 =======
-- Updated comments on methods.
+- Updated HTTP return messages and codes when an error happens.
+- Accept EVCs where UNI has no tag.
+- Path status now return disabled state if any of its links is disabled.
+- Updated method to get the shortest path, now it returns more paths.
+- Changed enable/enabled to update _enabled attribute and activate/active to
+  update _active attribute.
 - Updated OpenApi Models description and documentation.
 
 Deprecated
 ==========
+- Do not create a job when action is not ``create`` or ``remove``.
 
 Removed
 =======
@@ -26,10 +57,7 @@ Removed
 
 Fixed
 =====
-- Linter issues
-
-Security
-========
+- Fixed enable on update EVCs.
 
 
 [2.3.1] - 2019-03-15
