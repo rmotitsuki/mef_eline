@@ -132,9 +132,8 @@ class Main(KytosNApp):
         try:
             evc = self._evc_from_dict(data)
         except ValueError as exception:
-            result = "{}".format(exception)
-            log.debug('create_circuit result %s %s', result, 400)
-            raise BadRequest(result)
+            log.debug('create_circuit result %s %s', exception, 400)
+            raise BadRequest(str(exception))
 
         # verify duplicated evc
         if self._is_duplicated_evc(evc):
