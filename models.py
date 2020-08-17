@@ -590,12 +590,16 @@ class EVCDeploy(EVCBase):
         if use_path:
             self._install_nni_flows(use_path)
             self._install_uni_flows(use_path)
-            self.activate()
-            self.current_path = use_path
-            self.sync()
-            log.info(f"{self} was deployed.")
-            return True
-        return False
+        elif self.uni_a.interface.switch == self.uni_z.interface.switch:
+            self._install_direct_uni_flows()
+            use_path = Path()
+        else:
+            return False
+        self.activate()
+        self.current_path = use_path
+        self.sync()
+        log.info(f"{self} was deployed.")
+        return True
 
     def _install_direct_uni_flows(self):
         """Install flows connecting two UNIs.
