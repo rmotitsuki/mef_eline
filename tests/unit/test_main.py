@@ -1095,6 +1095,7 @@ class TestMain(TestCase):
 
         self.assertEqual(response.status_code, 403, response.data)
 
+    @patch('requests.post')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.models.EVC._validate')
