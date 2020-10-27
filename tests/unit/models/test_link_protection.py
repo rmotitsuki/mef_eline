@@ -88,13 +88,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         log_mocked.debug.assert_called_with(expected_msg)
         self.assertTrue(expected_deployed)
 
+    @patch('requests.post')
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
     @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.Path.status', EntityStatus.UP)
     def test_deploy_to_case_2(self, install_uni_flows_mocked,
                               install_nni_flows_mocked,
-                              deploy_mocked):
+                              deploy_mocked, _):
         """Test deploy with all links up."""
         deploy_mocked.return_value = True
 

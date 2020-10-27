@@ -364,6 +364,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         switch = evc.primary_links[0].endpoint_b.switch
         send_flow_mods_mock.assert_called_once_with(switch, expected_flow_mods)
 
+    @patch('requests.post')
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
@@ -375,7 +376,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (should_deploy_mock, activate_mock,
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
-         log_mock) = args
+         log_mock, _) = args
 
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -418,6 +419,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         log_mock.info.assert_called_with(f"{evc} was deployed.")
         self.assertTrue(deployed)
 
+    @patch('requests.post')
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.EVC.discover_new_paths',
            return_value=[])
@@ -433,7 +435,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (sync_mock, should_deploy_mock, activate_mock, install_uni_flows_mock,
          install_nni_flows, choose_vlans_mock,
-         discover_new_paths, log_mock) = args
+         discover_new_paths, log_mock, _) = args
 
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
                                switch_id="switch_uni_a",
@@ -470,6 +472,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(sync_mock.call_count, 1)
         self.assertFalse(deployed)
 
+    @patch('requests.post')
     @patch('napps.kytos.mef_eline.models.log')
     @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
@@ -482,7 +485,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (discover_new_paths_mocked, should_deploy_mock, activate_mock,
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
-         log_mock) = args
+         log_mock, _) = args
 
         should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
