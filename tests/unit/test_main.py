@@ -1,11 +1,10 @@
 """Module to test the main napp file."""
 import json
 from unittest import TestCase
-from unittest.mock import MagicMock, PropertyMock, patch, create_autospec, call
+from unittest.mock import MagicMock, PropertyMock, call, create_autospec, patch
 
-from kytos.core.interface import UNI, Interface
 from kytos.core.events import KytosEvent
-
+from kytos.core.interface import UNI, Interface
 from napps.kytos.mef_eline.models import EVC
 from tests.helpers import get_controller_mock, get_uni_mocked
 
@@ -26,6 +25,7 @@ class TestMain(TestCase):
         # Decorators have to be patched before the methods that are
         # decorated with them are imported.
         patch('kytos.core.helpers.run_on_thread', lambda x: x).start()
+        # pylint: disable=import-outside-toplevel
         from napps.kytos.mef_eline.main import Main
 
         self.addCleanup(patch.stopall)
@@ -1199,7 +1199,7 @@ class TestMain(TestCase):
                              data=json.dumps(payloads[1]),
                              content_type='application/json')
         current_data = json.loads(response.data)
-        expected_data = f'circuit_id 1234 not found'
+        expected_data = 'circuit_id 1234 not found'
         self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(404, response.status_code)
 

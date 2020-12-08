@@ -185,7 +185,7 @@ class Main(KytosNApp):
             raise NotFound(result)
 
         if evc.archived:
-            result = f'Can\'t update archived EVC'
+            result = "Can't update archived EVC"
             log.debug('update result %s %s', result, 405)
             raise MethodNotAllowed(['GET'], result)
 
