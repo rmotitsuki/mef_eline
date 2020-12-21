@@ -1,8 +1,12 @@
 <template>
-    <k-table title="list of EVCs"
-        :headers="headers"
-        :rows="rows">
+    <k-table v-if="this.emptyTable" title="List of EVCs"
+        :headers="this.headers"
+        :rows="this.rows">
     </k-table>
+    <div v-else>
+      <p class='empty-con-list'>No EVCs Installed.<br>
+      Close this info-panel and try again, please.</p>
+    </div>
 
 </template>
 <script>
@@ -10,88 +14,58 @@ module.exports = {
   data(){
     return {
         headers: ['Name ', 'Endpoint A' , 'Tag A' , 'Endpoint Z' , 'Tag z' , 'Enabled' , 'Active'],
-
-        rows: this.list_EVCs()
+        rows: this.listEVCs()
     }
   },
-   mounted () {
-     console.log('inside the list connections: ' )
-   },
   methods: {
+    listEVCs() {
+      var tableRows = [];
 
-    list_EVCs()
-  {
-    var tableDataArr = [];
-
-     $.ajax(
-     {
+      $.ajax({
         url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/",
         type:"GET",
         data: JSON.stringify(),
         dataType: "json",
         contentType: "application/json; charset=utf-8",
-        success: function(data, textStatus){
-            $.each(data, function(i , evc){
+        success: function(data, textStatus) {
+          $.each(data, function(i , evc) {
+            var connection = {
+              "Name": evc.name,
+              "Endpoint A": evc.uni_a.interface_id,
+              "Tag A": evc.uni_a.tag.value,
+              "Endpoint Z": evc.uni_z.interface_id,
+              "Tag Z": evc.uni_z.tag.value,
+              "Enabled": evc.enabled,
+              "Active": evc.active
+            };
 
-                var connection = {
-                    "Name" : evc.name,
-                    "Endpoint A": evc.uni_a.interface_id,
-                    "Tag A": evc.uni_a.tag.value,
-                    "Endpoint Z": evc.uni_z.interface_id,
-                    "Tag Z": evc.uni_z.tag.value,
-                    "Enabled" : evc.enabled,
-                    "Active" : evc.active
-                };
-                tableDataArr.push(connection);
-            });
-
-            console.log(tableDataArr)
-            console.table(tableDataArr)
-
+            tableRows.push(connection);
+          });
         },
-        error: function(data){
- //           console.log("GET request Error ("+data.status+"):"+ data.responseJSON.description;
-       },
-     })
+        error: function(data) {
+          /* This info-panel will show a message that there's
+          * no EVCs installed.. no need to show the req response */
+        },
+      })
 
-     return tableDataArr;
+      return tableRows;
     }
-
+  },
+  computed: { 
+    emptyTable: function() {
+      return this.listEVCs().length > 0
+    }
   }
-}
+ }
 </script>
+
+
 <style>
-.k-table {
-  text-align: center !important;
-  width: 100%;
+
+.empty-con-list {
+  margin-top: 10px;
+  color: #ccc;
+  font-size: 0.8rem;
 }
-.k-table table {
-  display: table;
-  width: 100%;
-  border: 1px solid black;
-}
-.k-table thead {
-  font-weight: bold;
-  background: #322c5d;
-  border: 1px solid black;
-}
-.k-table th {
-  padding: 12px 0;
-  border: 1px solid black;
-}
-.k-table tbody tr:nth-child(odd) {
-  background: #414141;
-  border: 1px solid black;
-}
-.k-table tbody tr:hover {
-  color: $fill-text-h
-  background-color: rgba(0, 0, 0, 0.15)
-  border: 1px solid black;
-}
-.k-info-panel{
-    width: 50%;
-}
-.k-table no-compact{
-    height: 100%
-}
+
 </style>
