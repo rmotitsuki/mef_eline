@@ -89,13 +89,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         self.assertTrue(expected_deployed)
 
     @patch('requests.post')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
     @patch('napps.kytos.mef_eline.models.EVC._install_uni_flows')
     @patch('napps.kytos.mef_eline.models.Path.status', EntityStatus.UP)
     def test_deploy_to_case_2(self, install_uni_flows_mocked,
                               install_nni_flows_mocked,
-                              deploy_mocked, _):
+                              deploy_mocked, *_):
         """Test deploy with all links up."""
         deploy_mocked.return_value = True
 
@@ -112,10 +113,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             "enabled": True
         }
         evc = EVC(**attributes)
-
-        # storehouse mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
 
         deployed = evc.deploy_to('primary_path', evc.primary_path)
         install_uni_flows_mocked.assert_called_with(evc.primary_path)
