@@ -90,7 +90,7 @@ class StoreHouse:
     def save_evc(self, evc):
         """Save a EVC using the storehouse."""
         self._lock.acquire()  # Lock to avoid race condition
-        log.info(f'Lock {self._lock} acquired.')
+        log.debug(f'Lock {self._lock} acquired.')
         self.box.data[evc.id] = evc.as_dict()
 
         content = {'namespace': self.namespace,
@@ -104,7 +104,7 @@ class StoreHouse:
     def _save_evc_callback(self, _event, data, error):
         """Display the save EVC result in the log."""
         self._lock.release()
-        log.info(f'Lock {self._lock} acquired.')
+        log.debug(f'Lock {self._lock} released.')
         if error:
             log.error(f'Can\'t update the {self.box.box_id}')
 
