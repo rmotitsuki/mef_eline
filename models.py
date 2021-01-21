@@ -579,6 +579,8 @@ class EVCDeploy(EVCBase):
                 use_path = None
         else:
             for use_path in self.discover_new_paths():
+                if use_path is None:
+                    continue
                 try:
                     use_path.choose_vlans()
                     break

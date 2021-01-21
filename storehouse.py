@@ -1,4 +1,6 @@
 """Module to handle the storehouse."""
+import threading
+
 from kytos.core import log
 from kytos.core.events import KytosEvent
 
@@ -20,6 +22,7 @@ class StoreHouse:
         """Create a storehouse instance."""
         self.controller = controller
         self.namespace = 'kytos.mef_eline.circuits'
+        self._lock = threading.Lock()
         if 'box' not in self.__dict__:
             self.box = None
         self.list_stored_boxes()
@@ -86,6 +89,8 @@ class StoreHouse:
 
     def save_evc(self, evc):
         """Save a EVC using the storehouse."""
+        self._lock.acquire()  # Lock to avoid race condition
+        log.debug(f'Lock {self._lock} acquired.')
         self.box.data[evc.id] = evc.as_dict()
 
         content = {'namespace': self.namespace,
@@ -98,6 +103,8 @@ class StoreHouse:
 
     def _save_evc_callback(self, _event, data, error):
         """Display the save EVC result in the log."""
+        self._lock.release()
+        log.debug(f'Lock {self._lock} released.')
         if error:
             log.error(f'Can\'t update the {self.box.box_id}')
 
