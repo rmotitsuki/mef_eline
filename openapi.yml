@@ -44,10 +44,12 @@ paths:
                   circuit_id: # the unique circuit id
                     type: string
         '400':
-          description: Request do not have a JSON or JSON format do not match
-            the EVC object or EVC already exists.
+          description: Request do not have a valid JSON or same necessary
+            interface does not yet exists.
         '409':
           description: Not Acceptable. This evc already exists.
+        '415':
+          description: The request body mimetype is not application/json.
 
   /v2/evc/{circuit_id}:
     get:
