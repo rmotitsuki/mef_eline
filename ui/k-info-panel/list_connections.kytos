@@ -13,7 +13,7 @@
 module.exports = {
   data(){
     return {
-        headers: ['Name ', 'Endpoint A' , 'Tag A' , 'Endpoint Z' , 'Tag z' , 'Enabled' , 'Active'],
+        headers: ['Name ', 'Endpoint A' , 'Tag A' , 'Endpoint Z' , 'Tag Z' , 'Enabled' , 'Active'],
         rows: this.listEVCs()
     }
   },
@@ -43,8 +43,8 @@ module.exports = {
           });
         },
         error: function(data) {
-          /* This info-panel will show a message that there's
-          * no EVCs installed.. no need to show the req response */
+          /* This info-panel will show a message that there are
+           * no EVCs installed - no need to show the response */
         },
       })
 
