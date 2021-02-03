@@ -40,6 +40,12 @@
                      icon="gear" :on_click="request_circuit">
                      </k-button>
          </k-accordion-item>
+
+         <k-accordion-item title="List EVCs">
+            <k-button tooltip="List installed EVC" title="List installed EVC"
+                     icon="plug" :on_click="showInfoPanel">
+                     </k-button>
+         </k-accordion-item>
       </k-accordion>
     </k-toolbar-item>
 </template>
@@ -57,34 +63,60 @@ module.exports = {
     }
   },
   methods: {
+    showInfoPanel() {
+        let listConnections = {
+            component: 'kytos-mef_eline-k-info-panel-list_connections',
+            content: {},
+            icon: "desktop",
+            title: "View Connections",
+            subtitle: "by kytos/mef_eline"
+        }
+        this.$kytos.$emit("showInfoPanel", listConnections)
+    },
+    post_success(data) {
+        let notification = {
+            icon: 'gear',
+            title: 'Circuit Created',
+            description: 'Circuit with id ' + data.circuit_id + ' was created.'
+        }
+    
+        this.$kytos.$emit("setNotification" , notification);
+    },
+    post_error(data) {
+        let notification = {
+            icon: 'gear',
+            title: 'Circuit Not Created (' + data.status + '):',
+            description: data.responseJSON.description
+        }
+    
+        this.$kytos.$emit("setNotification" , notification);
+    },
     request_circuit () {
-     var request = {
-        "name" : this.circuit_name,
-        "uni_a": {"interface_id": this.endpoint_a},
-        "uni_z": {"interface_id": this.endpoint_z}
-     }
-
-     if (this.tag_type_a != "" && this.tag_value_a != ""){
-        request.uni_a['tag'] = {tag_type: this.tag_type_a,
-                                tag_value: this.tag_value_a}
-     }
-     if (this.tag_type_z != "" && this.tag_value_z != ""){
-        request.uni_z['tag'] = {tag_type: this.tag_type_z,
-                                tag_value: this.tag_value_z}
-     }
-     $.ajax({
-       url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/",
-       type:"POST",
-       data: JSON.stringify(request),
-       dataType: "json",
-       contentType: "application/json; charset=utf-8",
-       success: function(data, textStatus){
-           console.log('Circuit with id '+data.circuit_id+" was creaded.")
-       },
-       error: function(data){
-           console.log("Error ("+data.status+"): "+ data.responseJSON)
-       },
-     })
+        var request = {
+            "name" : this.circuit_name,
+            "uni_a": {"interface_id": this.endpoint_a},
+            "uni_z": {"interface_id": this.endpoint_z}
+        }
+        
+        if (this.tag_type_a != "" && this.tag_value_a != "") {
+            request.uni_a['tag'] = {tag_type: parseInt(this.tag_type_a),
+                                    value: parseInt(this.tag_value_a)}
+        }
+        if (this.tag_type_z != "" && this.tag_value_z != "") {
+            request.uni_z['tag'] = {tag_type: parseInt(this.tag_type_z),
+                                    value: parseInt(this.tag_value_z)}
+        }
+        
+        let circuit_request = $.ajax({
+                                url: this.url,
+                                type:"POST",
+                                data: JSON.stringify(request),
+                                dataType: "json",
+                                contentType: "application/json; charset=utf-8"
+                            })
+                    
+        circuit_request.done(this.post_success)
+        circuit_request.fail(this.post_error)
     }
   }
 }

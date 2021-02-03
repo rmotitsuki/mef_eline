@@ -1,0 +1,71 @@
+<template>
+    <k-table v-if="this.emptyTable" title="List of EVCs"
+        :headers="this.headers"
+        :rows="this.rows">
+    </k-table>
+    <div v-else>
+      <p class='empty-con-list'>No EVCs Installed.<br>
+      Close this info-panel and try again, please.</p>
+    </div>
+
+</template>
+<script>
+module.exports = {
+  data(){
+    return {
+        headers: ['Name ', 'Endpoint A' , 'Tag A' , 'Endpoint Z' , 'Tag Z' , 'Enabled' , 'Active'],
+        rows: this.listEVCs()
+    }
+  },
+  methods: {
+    listEVCs() {
+      var tableRows = [];
+
+      $.ajax({
+        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/",
+        type:"GET",
+        data: JSON.stringify(),
+        dataType: "json",
+        contentType: "application/json; charset=utf-8",
+        success: function(data, textStatus) {
+          $.each(data, function(i , evc) {
+            var connection = {
+              "Name": evc.name,
+              "Endpoint A": evc.uni_a.interface_id,
+              "Tag A": evc.uni_a.tag.value,
+              "Endpoint Z": evc.uni_z.interface_id,
+              "Tag Z": evc.uni_z.tag.value,
+              "Enabled": evc.enabled,
+              "Active": evc.active
+            };
+
+            tableRows.push(connection);
+          });
+        },
+        error: function(data) {
+          /* This info-panel will show a message that there are
+           * no EVCs installed - no need to show the response */
+        },
+      })
+
+      return tableRows;
+    }
+  },
+  computed: { 
+    emptyTable: function() {
+      return this.listEVCs().length > 0
+    }
+  }
+ }
+</script>
+
+
+<style>
+
+.empty-con-list {
+  margin-top: 10px;
+  color: #ccc;
+  font-size: 0.8rem;
+}
+
+</style>
