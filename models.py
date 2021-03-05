@@ -729,7 +729,7 @@ class EVCDeploy(EVCBase):
 
     def get_cookie(self):
         """Return the cookie integer from evc id."""
-        return int(self.id, 16) + settings.COOKIE_PREFIX << 56
+        return int(self.id, 16) + (settings.COOKIE_PREFIX << 56)
 
     def _prepare_flow_mod(self, in_interface, out_interface, queue_id=None):
         """Prepare a common flow mod."""
