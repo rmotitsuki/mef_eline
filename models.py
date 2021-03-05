@@ -194,7 +194,7 @@ class EVCBase(GenericEntity):
         super().__init__()
 
         # required attributes
-        self._id = kwargs.get('id', uuid4().hex[:16])
+        self._id = kwargs.get('id', uuid4().hex)[:14]
         self.uni_a = kwargs.get('uni_a')
         self.uni_z = kwargs.get('uni_z')
         self.name = kwargs.get('name')
@@ -729,7 +729,7 @@ class EVCDeploy(EVCBase):
 
     def get_cookie(self):
         """Return the cookie integer from evc id."""
-        return int(self.id, 16)
+        return int(self.id, 16) + settings.COOKIE_PREFIX << 56
 
     def _prepare_flow_mod(self, in_interface, out_interface, queue_id=None):
         """Prepare a common flow mod."""

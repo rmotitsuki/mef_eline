@@ -11,3 +11,6 @@ TOPOLOGY_URL = 'http://localhost:8181/api/kytos/topology/v3'
 
 # EVC consistency interval
 DEPLOY_EVCS_INTERVAL = 60
+
+# Prefix this NApp has when using cookies
+COOKIE_PREFIX = 0xaa
