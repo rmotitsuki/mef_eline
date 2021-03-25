@@ -420,6 +420,56 @@ class TestMain(TestCase):
         self.assertEqual(415, response.status_code, response.data)
         self.assertEqual(current_data['description'], expected_data)
 
+    def test_create_a_circuit_case_3(self):
+        """Test create a new circuit trying to send request with an
+           invalid json."""
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        response = api.post(url, data='This is an {Invalid:} JSON',
+                            content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = 'The request body is not a well-formed JSON.'
+
+        self.assertEqual(400, response.status_code, response.data)
+        self.assertEqual(current_data['description'], expected_data)
+
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    def test_create_a_circuit_case_4(self, uni_from_dict_mock):
+        """Test create a new circuit trying to send request with an
+           invalid value."""
+        # pylint: disable=too-many-locals
+        uni_from_dict_mock.side_effect = ValueError('Could not instantiate')
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+
+        payload = {
+                   "name": "my evc1",
+                   "frequency": "* * * * *",
+                   "uni_a": {
+                     "interface_id": "00:00:00:00:00:00:00:01:76",
+                     "tag": {
+                       "tag_type": 1,
+                       "value": 80
+                     }
+                   },
+                   "uni_z": {
+                     "interface_id": "00:00:00:00:00:00:00:02:2",
+                     "tag": {
+                       "tag_type": 1,
+                       "value": 1
+                     }
+                   }
+                 }
+
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = 'Error creating UNI: Could not instantiate'
+
+        self.assertEqual(400, response.status_code, response.data)
+        self.assertEqual(current_data['description'], expected_data)
+
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
@@ -1272,6 +1322,76 @@ class TestMain(TestCase):
         expected_data = 'The request body is not a well-formed JSON.'
         self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(400, response.status_code)
+
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    def test_update_evc_no_json_mime(self, *args):
+        """Test update a circuit with wrong mimetype."""
+        # pylint: disable=too-many-locals
+        (evc_as_dict_mock, validate_mock, save_evc_mock,
+         uni_from_dict_mock, sched_add_mock) = args
+
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        uni1 = create_autospec(UNI)
+        uni2 = create_autospec(UNI)
+        uni1.interface = create_autospec(Interface)
+        uni2.interface = create_autospec(Interface)
+        uni1.interface.switch = '00:00:00:00:00:00:00:01'
+        uni2.interface.switch = '00:00:00:00:00:00:00:02'
+        uni_from_dict_mock.side_effect = [uni1, uni2, uni1, uni2]
+
+        api = self.get_app_test_client(self.napp)
+        payload1 = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            }
+        }
+
+        payload2 = {
+            "dynamic_backup_path": True
+        }
+
+        evc_as_dict_mock.return_value = payload1
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload1),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
+
+        evc_as_dict_mock.return_value = payload2
+        current_data = json.loads(response.data)
+        circuit_id = current_data['circuit_id']
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=payload2)
+        current_data = json.loads(response.data)
+        expected_data = 'The request body mimetype is not application/json.'
+        self.assertEqual(current_data['description'], expected_data)
+        self.assertEqual(415, response.status_code)
+
+    def test_delete_no_evc(self):
+        """Test delete when EVC does not exist."""
+        api = self.get_app_test_client(self.napp)
+        response = api.delete(f'{self.server_name_url}/v2/evc/123')
+        current_data = json.loads(response.data)
+        expected_data = 'circuit_id 123 not found'
+        self.assertEqual(current_data['description'], expected_data)
+        self.assertEqual(404, response.status_code)
 
     def test_handle_link_up(self):
         """Test handle_link_up method."""

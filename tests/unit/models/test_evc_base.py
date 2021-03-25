@@ -1,6 +1,7 @@
 """Module to test the EVCBase class."""
 import sys
 from unittest import TestCase
+from unittest.mock import patch
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
@@ -119,6 +120,23 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             evc = EVC(**attributes)
             evc.update(**update_dict)
         self.assertEqual(str(handle_error.exception), error_message)
+
+    @patch('napps.kytos.mef_eline.models.EVC.sync')
+    def test_update_disable(self, _sync_mock):
+        """Test if evc is disabled."""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        update_dict = {
+            "enable": False
+        }
+        evc = EVC(**attributes)
+        evc.update(**update_dict)
+        self.assertIs(evc.is_enabled(), False)
 
     def test_circuit_representation(self):
         """Test the method __repr__."""
