@@ -3,25 +3,26 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
-[UNRELEASED] - Under development
+[2.5] - Under development
 ********************************
+
 Added
 =====
+- Queue ID can be defined when creating an EVC.
+- Method to handle flow mod errors.
+- Method to check if two EVCs have a common UNI.
+- 2-byte prefix in cookie field.
 
 Changed
 =======
-
-Deprecated
-==========
-
-Removed
-=======
+- Deployment of EVCs loaded on startup delayed.
+- Required versions of python packages updated.
+- Removed user VLAN encapsulation.
+- EVC id reduced from 16 to 14 bytes.
 
 Fixed
 =====
-
-Security
-========
+- Thread locks when saving to the storehouse, avoiding race conditions.
 
 
 [2.4] - 2020-07-23
