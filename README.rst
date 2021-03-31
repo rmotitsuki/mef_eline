@@ -16,6 +16,9 @@ but it should be later kept in a permanent storage.
 Circuits will be installed at the time of request or at a predefined time, and can also have a time to be deleted.
 The Napp also will listen for PortStatus events, modifying circuits that use a port that went down.
 
+The cookie flow field is used to identify to which EVC the flow belongs. The first two bytes of the cookie is a prefix identifying the NApp using it,
+and the remaining 14 bytes are the EVC id.
+
 Requirements
 ============
 - kytos/flow_manager
