@@ -157,6 +157,7 @@ class EVCBase(GenericEntity):
 
         Args:
             id(str): EVC identifier. Whether it's None an ID will be genereted.
+                     Only the first 14 bytes passed will be used.
             name: represents an EVC name.(Required)
             uni_a (UNI): Endpoint A for User Network Interface.(Required)
             uni_z (UNI): Endpoint Z for User Network Interface.(Required)
