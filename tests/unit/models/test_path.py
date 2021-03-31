@@ -1,7 +1,7 @@
 """Module to test the Path class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 from kytos.core.common import EntityStatus
 
@@ -14,6 +14,33 @@ from tests.helpers import MockResponse, get_link_mocked  # NOQA pycodestyle
 
 class TestPath(TestCase):
     """Class to test path methods."""
+
+    def test_is_affected_by_link_1(self):
+        """Test method is affected by link."""
+        path = Path()
+        self.assertIs(path.is_affected_by_link(), False)
+
+    def test_link_affected_by_interface_1(self):
+        """Test method to get the link using an interface."""
+        link1 = Mock()
+        link1.endpoint_a = 'a'
+        link1.endpoint_b = 'b'
+        link2 = Mock()
+        link2.endpoint_a = 'c'
+        link2.endpoint_b = 'd'
+        path = Path([link1, link2])
+        self.assertIsNone(path.link_affected_by_interface())
+
+    def test_link_affected_by_interface_2(self):
+        """Test method to get the link using an interface."""
+        link1 = Mock()
+        link1.endpoint_a = 'a'
+        link1.endpoint_b = 'b'
+        link2 = Mock()
+        link2.endpoint_a = 'c'
+        link2.endpoint_b = 'd'
+        path = Path([link1, link2])
+        self.assertEqual(path.link_affected_by_interface('a'), link1)
 
     def test_status_case_1(self):
         """Test if empty link is DISABLED."""
