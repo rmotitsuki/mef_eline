@@ -172,6 +172,7 @@ class Main(KytosNApp):
         result = {"circuit_id": evc.id}
         status = 201
         log.debug('create_circuit result %s %s', result, status)
+        self.emit_event('created', evc_id=evc.id)
         return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['PATCH'])
@@ -225,6 +226,7 @@ class Main(KytosNApp):
         status = 200
 
         log.debug('update result %s %s', result, status)
+        self.emit_event('updated', evc_id=evc.id, data=data)
         return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
@@ -259,6 +261,7 @@ class Main(KytosNApp):
         status = 200
 
         log.debug('delete_circuit result %s %s', result, status)
+        self.emit_event('deleted', evc_id=evc.id)
         return jsonify(result), status
 
     @rest('/v2/evc/schedule', methods=['GET'])
@@ -487,7 +490,12 @@ class Main(KytosNApp):
             with evc.lock:
                 if evc.is_affected_by_link(event.content['link']):
                     log.debug(f'Handling evc {evc.id} on link down')
-                    evc.handle_link_down()
+                    if evc.handle_link_down():
+                        self.emit_event('redeployed_link_down', 
+                                        evc_id=evc.id)
+                    else:
+                        self.emit_event('error_redeploy_link_down', 
+                                        evc_id=evc.id)
 
     def load_circuits_by_interface(self, circuits):
         """Load circuits in storehouse for in-memory dictionary."""
@@ -697,3 +705,9 @@ class Main(KytosNApp):
             log.debug(f'{caller} result {result} 415')
             raise UnsupportedMediaType(result)
         return json_data
+
+    def emit_event(self, name, **kwargs):
+        """Send an event when something happens with an EVC"""
+        event_name = f'kytos/mef_eline.{name}'
+        event = KytosEvent(name=event_name, content=kwargs)
+        self.controller.buffers.app.put(event)
