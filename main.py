@@ -488,6 +488,8 @@ class Main(KytosNApp):
     def load_circuits_by_interface(self, circuits):
         """Load circuits in storehouse for in-memory dictionary."""
         for circuit_id, circuit in circuits.items():
+            if circuit['archived'] is True:
+                continue
             intf_a = circuit['uni_a']['interface_id']
             self.add_to_dict_of_sets(intf_a, circuit_id)
             intf_z = circuit['uni_z']['interface_id']
