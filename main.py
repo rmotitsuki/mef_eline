@@ -52,7 +52,7 @@ class Main(KytosNApp):
 
     def execute(self):
         """Execute once when the napp is running."""
-        for circuit in self.circuits.values():
+        for circuit in tuple(self.circuits.values()):
             if circuit.is_enabled() and not circuit.is_active():
                 circuit.deploy()
 
@@ -461,7 +461,7 @@ class Main(KytosNApp):
             boolean: True if the circuit is duplicated, otherwise False.
 
         """
-        for circuit in self.circuits.values():
+        for circuit in tuple(self.circuits.values()):
             if not circuit.archived and circuit.shares_uni(evc):
                 return True
         return False
