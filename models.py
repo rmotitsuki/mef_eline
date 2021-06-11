@@ -13,6 +13,7 @@ from kytos.core.interface import UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.storehouse import StoreHouse
+from napps.kytos.mef_eline.utils import emit_event
 
 
 class Path(list, GenericEntity):
@@ -227,6 +228,7 @@ class EVCBase(GenericEntity):
         self.archived = kwargs.get('archived', False)
 
         self._storehouse = StoreHouse(controller)
+        self._controller = controller
 
         if kwargs.get('active', False):
             self.activate()
@@ -500,6 +502,8 @@ class EVCDeploy(EVCBase):
         if not success:
             success = self.deploy_to_backup_path()
 
+        if success:
+            emit_event(self._controller, 'deployed', evc_id=self.id)
         return success
 
     @staticmethod
@@ -524,6 +528,7 @@ class EVCDeploy(EVCBase):
         self.remove_current_flows()
         self.disable()
         self.sync()
+        emit_event(self._controller, 'undeployed', evc_id=self.id)
 
     def remove_current_flows(self):
         """Remove all flows from current path."""
