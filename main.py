@@ -529,7 +529,7 @@ class Main(KytosNApp):
                     try:
                         evc = self._evc_from_dict(circuits[circuit_id])
                     except ValueError as exception:
-                        log.info(
+                        log.error(
                             f'Could not load EVC {circuit_id} '
                             f'because {exception}')
                         continue
