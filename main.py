@@ -58,7 +58,7 @@ class Main(KytosNApp):
         """Execute once when the napp is running."""
         for circuit in tuple(self.circuits.values()):
             if circuit.is_enabled() and not circuit.is_active():
-                with evc.lock:
+                with circuit.lock:
                     circuit.deploy()
 
     def shutdown(self):
