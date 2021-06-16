@@ -216,7 +216,8 @@ class Main(KytosNApp):
 
         if evc.is_active():
             if enable is False:  # disable if active
-                evc.remove()
+                with evc.lock:
+                    evc.remove()
             elif path is not None:  # redeploy if active
                 with evc.lock:
                     evc.remove()
