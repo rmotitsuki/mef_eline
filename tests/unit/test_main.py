@@ -1410,6 +1410,7 @@ class TestMain(TestCase):
         evc_mock.is_affected_by_link = \
             MagicMock(side_effect=[True, False, True])
         evc_mock.lock = MagicMock()
+        evc_mock.handle_link_down = MagicMock(side_effect=[True, True])
         evcs = [evc_mock, evc_mock, evc_mock]
         event = KytosEvent(name='test', content={'link': 'abc'})
         self.napp.circuits = dict(zip(['1', '2', '3'], evcs))
