@@ -54,6 +54,7 @@ class Main(KytosNApp):
         self._lock = Lock()
 
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
+        self.load_all_evcs()
 
     def execute(self):
         """Execute once when the napp is running."""
@@ -535,19 +536,32 @@ class Main(KytosNApp):
             for circuit_id in self._circuits_by_interface.get(interface_id,
                                                               []):
                 if circuit_id in circuits and circuit_id not in self.circuits:
-                    try:
-                        evc = self._evc_from_dict(circuits[circuit_id])
-                    except ValueError as exception:
-                        log.error(
-                            f'Could not load EVC {circuit_id} '
-                            f'because {exception}')
-                        continue
+                    self._load_evc(circuits[circuit_id])
 
-                    evc.deactivate()
-                    evc.current_path = Path([])
-                    evc.sync()
-                    self.circuits.setdefault(circuit_id, evc)
-                    self.sched.add(evc)
+    def load_all_evcs(self):
+        """Try to load all EVCs on startup."""
+        for circuit_id, circuit in self.storehouse.get_data().items():
+            if circuit_id not in self.circuits:
+                self._load_evc(circuit)
+
+    def _load_evc(self, circuit_dict):
+        """Load one EVC from storehouse to memory."""
+        try:
+            evc = self._evc_from_dict(circuit_dict)
+        except ValueError as exception:
+            log.error(
+                f'Could not load EVC {circuit_dict["id"]} '
+                f'because {exception}')
+            return None
+
+        if evc.archived:
+            return None
+        evc.deactivate()
+        evc.current_path = Path([])
+        evc.sync()
+        self.circuits.setdefault(evc.id, evc)
+        self.sched.add(evc)
+        return evc
 
     @listen_to('kytos/flow_manager.flow.error')
     def handle_flow_mod_error(self, event):
