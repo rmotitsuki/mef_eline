@@ -630,12 +630,11 @@ class Main(KytosNApp):
         if interface is None:
             raise ValueError(f'Could not instantiate interface {interface_id}')
 
-        try:
-            tag_dict = uni_dict["tag"]
-        except KeyError:
-            tag = None
-        else:
+        tag_dict = uni_dict.get('tag', None)
+        if tag_dict:
             tag = TAG.from_dict(tag_dict)
+        else:
+            tag = None
         uni = UNI(interface, tag)
 
         return uni
