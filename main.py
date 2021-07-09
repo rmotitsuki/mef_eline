@@ -18,6 +18,7 @@ from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.models import EVC, DynamicPathManager, Path
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.storehouse import StoreHouse
+from napps.kytos.mef_eline.utils import emit_event
 
 
 class Main(KytosNApp):
@@ -174,6 +175,7 @@ class Main(KytosNApp):
         result = {"circuit_id": evc.id}
         status = 201
         log.debug('create_circuit result %s %s', result, status)
+        emit_event(self.controller, 'created', evc_id=evc.id)
         return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['PATCH'])
@@ -230,6 +232,7 @@ class Main(KytosNApp):
         status = 200
 
         log.debug('update result %s %s', result, status)
+        emit_event(self.controller, 'updated', evc_id=evc.id, data=data)
         return jsonify(result), status
 
     @rest('/v2/evc/<circuit_id>', methods=['DELETE'])
@@ -264,6 +267,7 @@ class Main(KytosNApp):
         status = 200
 
         log.debug('delete_circuit result %s %s', result, status)
+        emit_event(self.controller, 'deleted', evc_id=evc.id)
         return jsonify(result), status
 
     @rest('/v2/evc/schedule', methods=['GET'])
@@ -492,7 +496,12 @@ class Main(KytosNApp):
             with evc.lock:
                 if evc.is_affected_by_link(event.content['link']):
                     log.debug(f'Handling evc {evc.id} on link down')
-                    evc.handle_link_down()
+                    if evc.handle_link_down():
+                        emit_event(self.controller, 'redeployed_link_down',
+                                   evc_id=evc.id)
+                    else:
+                        emit_event(self.controller, 'error_redeploy_link_down',
+                                   evc_id=evc.id)
 
     def load_circuits_by_interface(self, circuits):
         """Load circuits in storehouse for in-memory dictionary."""
