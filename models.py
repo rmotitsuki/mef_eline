@@ -12,6 +12,7 @@ from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.exceptions import FlowModException
 from napps.kytos.mef_eline.storehouse import StoreHouse
 from napps.kytos.mef_eline.utils import emit_event
 
@@ -530,13 +531,15 @@ class EVCDeploy(EVCBase):
         self.sync()
         emit_event(self._controller, 'undeployed', evc_id=self.id)
 
-    def remove_current_flows(self):
+    def remove_current_flows(self, current_path=None):
         """Remove all flows from current path."""
         switches = set()
 
         switches.add(self.uni_a.interface.switch)
         switches.add(self.uni_z.interface.switch)
-        for link in self.current_path:
+        if not current_path:
+            current_path = self.current_path
+        for link in current_path:
             switches.add(link.endpoint_a.switch)
             switches.add(link.endpoint_b.switch)
 
@@ -546,7 +549,7 @@ class EVCDeploy(EVCBase):
         for switch in switches:
             self._send_flow_mods(switch, [match], 'delete')
 
-        self.current_path.make_vlans_available()
+        current_path.make_vlans_available()
         self.current_path = Path([])
         self.deactivate()
         self.sync()
@@ -608,14 +611,20 @@ class EVCDeploy(EVCBase):
             else:
                 use_path = None
 
-        if use_path:
-            self._install_nni_flows(use_path)
-            self._install_uni_flows(use_path)
-        elif self.uni_a.interface.switch == self.uni_z.interface.switch:
-            self._install_direct_uni_flows()
-            use_path = Path()
-        else:
-            log.warn(f"{self} was not deployed. No available path was found.")
+        try:
+            if use_path:
+                self._install_nni_flows(use_path)
+                self._install_uni_flows(use_path)
+            elif self.uni_a.interface.switch == self.uni_z.interface.switch:
+                use_path = Path()
+                self._install_direct_uni_flows()
+            else:
+                log.warn(f"{self} was not deployed. "
+                         "No available path was found.")
+                return False
+        except FlowModException:
+            log.error(f'Error deploying EVC {self} when calling flow_manager.')
+            self.remove_current_flows(use_path)
             return False
         self.activate()
         self.current_path = use_path
@@ -743,7 +752,9 @@ class EVCDeploy(EVCBase):
         endpoint = f'{settings.MANAGER_URL}/{command}/{switch.id}'
 
         data = {"flows": flow_mods}
-        requests.post(endpoint, json=data)
+        response = requests.post(endpoint, json=data)
+        if response.status_code >= 400:
+            raise FlowModException
 
     def get_cookie(self):
         """Return the cookie integer from evc id."""
