@@ -42,7 +42,7 @@ class StoreHouse:
                    'data': {}}
         event = KytosEvent(name='kytos.storehouse.create', content=content)
         self.controller.buffers.app.put(event)
-        log.info('Create box from storehouse.')
+        log.debug('Create box from storehouse.')
 
     def _create_box_callback(self, _event, data, error):
         """Execute the callback to handle create_box."""
@@ -50,7 +50,7 @@ class StoreHouse:
             log.error(f'Can\'t create box with namespace {self.namespace}')
 
         self.box = data
-        log.info(f'Box {self.box.box_id} was created in {self.namespace}.')
+        log.debug(f'Box {self.box.box_id} was created in {self.namespace}.')
 
     def list_stored_boxes(self):
         """List all boxes using the current namespace."""
@@ -109,4 +109,4 @@ class StoreHouse:
         if error:
             log.error(f'Can\'t update the {self.box.box_id}')
 
-        log.info(f'Box {data.box_id} was updated.')
+        log.debug(f'Box {data.box_id} was updated.')
