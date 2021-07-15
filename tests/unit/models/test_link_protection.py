@@ -1,7 +1,7 @@
 """Module to test the LinkProtection class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from unittest.mock import Mock
 
 from kytos.core.common import EntityStatus
@@ -96,9 +96,12 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     @patch('napps.kytos.mef_eline.models.Path.status', EntityStatus.UP)
     def test_deploy_to_case_2(self, install_uni_flows_mocked,
                               install_nni_flows_mocked,
-                              deploy_mocked, *_):
+                              deploy_mocked, _, requests_mock):
         """Test deploy with all links up."""
         deploy_mocked.return_value = True
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.return_value = response
 
         primary_path = [
                  get_link_mocked(status=EntityStatus.UP),

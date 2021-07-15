@@ -1,7 +1,7 @@
 """Method to thest EVCDeploy class."""
 import sys
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from kytos.core.interface import Interface
 from kytos.core.switch import Switch
@@ -12,6 +12,7 @@ sys.path.insert(0, '/var/lib/kytos/napps/..')
 
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA
 from napps.kytos.mef_eline.settings import MANAGER_URL  # NOQA
+from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from tests.helpers import get_link_mocked,\
     get_uni_mocked, get_controller_mock  # NOQA
 
@@ -92,6 +93,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
 
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.post.return_value = response
+
         # pylint: disable=protected-access
         EVC._send_flow_mods(switch, flow_mods)
 
@@ -106,6 +111,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         """Test if you are sending flow_mods."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.post.return_value = response
 
         # pylint: disable=protected-access
         EVC._send_flow_mods(switch, flow_mods, command='delete')
@@ -369,7 +377,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (should_deploy_mock, activate_mock,
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
-         log_mock, _, _) = args
+         log_mock, _, requests_mock) = args
+
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.return_value = response
 
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
@@ -425,7 +437,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (sync_mock, should_deploy_mock, activate_mock, install_uni_flows_mock,
          install_nni_flows, choose_vlans_mock,
-         discover_new_paths, log_mock, _) = args
+         discover_new_paths, log_mock, requests_mock) = args
+
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.return_value = response
 
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,
                                switch_id="switch_uni_a",
@@ -460,6 +476,61 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(choose_vlans_mock.call_count, 0)
         self.assertEqual(log_mock.info.call_count, 0)
         self.assertEqual(sync_mock.call_count, 1)
+        self.assertFalse(deployed)
+
+    @patch('napps.kytos.mef_eline.models.log')
+    @patch('napps.kytos.mef_eline.models.EVC.discover_new_paths',
+           return_value=[])
+    @patch('napps.kytos.mef_eline.models.Path.choose_vlans')
+    @patch('napps.kytos.mef_eline.models.EVC._install_nni_flows')
+    @patch('napps.kytos.mef_eline.models.EVC.should_deploy')
+    @patch('napps.kytos.mef_eline.models.EVC.remove_current_flows')
+    @patch('napps.kytos.mef_eline.models.EVC.sync')
+    def test_deploy_error(self, *args):
+        """Test if all methods is ignored when the should_deploy is false."""
+        # pylint: disable=too-many-locals
+        (sync_mock, remove_current_flows, should_deploy_mock,
+         install_nni_flows, choose_vlans_mock,
+         discover_new_paths, log_mock) = args
+
+        install_nni_flows.side_effect = FlowModException
+        should_deploy_mock.return_value = True
+        uni_a = get_uni_mocked(interface_port=2, tag_value=82,
+                               switch_id="switch_uni_a", is_valid=True)
+        uni_z = get_uni_mocked(interface_port=3, tag_value=83,
+                               switch_id="switch_uni_z", is_valid=True)
+
+        primary_links = [
+            get_link_mocked(endpoint_a_port=9, endpoint_b_port=10,
+                            metadata={"s_vlan": 5}),
+            get_link_mocked(endpoint_a_port=11, endpoint_b_port=12,
+                            metadata={"s_vlan": 6})
+        ]
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "custom_name",
+            "uni_a": uni_a,
+            "uni_z": uni_z,
+            "primary_links": primary_links,
+            "queue_id": 5
+        }
+        # Setup path to deploy
+        path = Path()
+        path.append(primary_links[0])
+        path.append(primary_links[1])
+
+        evc = EVC(**attributes)
+
+        deployed = evc.deploy_to_path(path)
+
+        self.assertEqual(discover_new_paths.call_count, 0)
+        self.assertEqual(should_deploy_mock.call_count, 1)
+        self.assertEqual(install_nni_flows.call_count, 1)
+        self.assertEqual(choose_vlans_mock.call_count, 1)
+        self.assertEqual(log_mock.error.call_count, 1)
+        self.assertEqual(sync_mock.call_count, 0)
+        self.assertEqual(remove_current_flows.call_count, 2)
         self.assertFalse(deployed)
 
     @patch('napps.kytos.mef_eline.models.EVC.deploy_to_path')
@@ -512,7 +583,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         # pylint: disable=too-many-locals
         (discover_new_paths_mocked, should_deploy_mock, activate_mock,
          install_uni_flows_mock, install_nni_flows, chose_vlans_mock,
-         log_mock, _, _) = args
+         log_mock, _, requests_mock) = args
+
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.return_value = response
 
         should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(interface_port=2, tag_value=82,

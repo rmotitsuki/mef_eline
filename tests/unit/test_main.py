@@ -1161,7 +1161,11 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_update_circuit(self, *args):
         """Test update a circuit circuit."""
-        (evc_as_dict_mock, uni_from_dict_mock, evc_deploy, *mocks) = args
+        (evc_as_dict_mock, uni_from_dict_mock, evc_deploy,
+         *mocks, requests_mock) = args
+        response = MagicMock()
+        response.status_code = 201
+        requests_mock.return_value = response
 
         for mock in mocks:
             mock.return_value = True

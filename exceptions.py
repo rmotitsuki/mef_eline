@@ -11,3 +11,7 @@ class EVCException(MEFELineException):
 
 class ValidationException(EVCException):
     """Exception for validation errors."""
+
+
+class FlowModException(MEFELineException):
+    """Exception for FlowMod errors."""
