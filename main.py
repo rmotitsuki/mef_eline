@@ -60,7 +60,8 @@ class Main(KytosNApp):
         """Execute once when the napp is running."""
         for circuit in tuple(self.circuits.values()):
             if circuit.is_enabled() and not circuit.is_active():
-                circuit.deploy()
+                with circuit.lock:
+                    circuit.deploy()
 
     def shutdown(self):
         """Execute when your napp is unloaded.
@@ -164,7 +165,8 @@ class Main(KytosNApp):
 
         # Circuit has no schedule, deploy now
         if not evc.circuit_scheduler:
-            evc.deploy()
+            with evc.lock:
+                evc.deploy()
 
         # Notify users
         event = KytosEvent(name='kytos.mef_eline.created',
@@ -217,13 +219,16 @@ class Main(KytosNApp):
 
         if evc.is_active():
             if enable is False:  # disable if active
-                evc.remove()
+                with evc.lock:
+                    evc.remove()
             elif path is not None:  # redeploy if active
-                evc.remove()
-                evc.deploy()
+                with evc.lock:
+                    evc.remove()
+                    evc.deploy()
         else:
             if enable is True:  # enable if inactive
-                evc.deploy()
+                with evc.lock:
+                    evc.deploy()
         result = {evc.id: evc.as_dict()}
         status = 200
 
