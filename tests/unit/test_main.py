@@ -25,6 +25,7 @@ class TestMain(TestCase):
         # Decorators have to be patched before the methods that are
         # decorated with them are imported.
         patch('kytos.core.helpers.run_on_thread', lambda x: x).start()
+        # pylint: disable=import-outside-toplevel
         from napps.kytos.mef_eline.main import Main
 
         self.addCleanup(patch.stopall)
