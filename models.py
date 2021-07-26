@@ -217,7 +217,7 @@ class EVCBase(GenericEntity):
         self.dynamic_backup_path = kwargs.get('dynamic_backup_path', False)
         self.creation_time = get_time(kwargs.get('creation_time')) or now()
         self.owner = kwargs.get('owner', None)
-        self.priority = kwargs.get('priority', 0)
+        self.priority = kwargs.get('priority', -1)
         self.circuit_scheduler = kwargs.get('circuit_scheduler', [])
 
         self.current_links_cache = set()
@@ -259,13 +259,13 @@ class EVCBase(GenericEntity):
         attributes: [name, uni_a and uni_z]
 
         Returns:
-            the values for enable and a path attribute, if exists and None
+            the values for enable and a redeploy attribute, if exists and None
             otherwise
         Raises:
             ValueError: message with error detail.
 
         """
-        enable, path = (None, None)
+        enable, redeploy = (None, None)
         for attribute, value in kwargs.items():
             if attribute in self.unique_attributes:
                 raise ValueError(f'{attribute} can\'t be be updated.')
@@ -283,12 +283,12 @@ class EVCBase(GenericEntity):
                         self.deactivate()
                 else:
                     setattr(self, attribute, value)
-                    if 'path' in attribute:
-                        path = value
+                    if 'path' in attribute or 'priority' in attribute:
+                        redeploy = value
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
         self.sync()
-        return enable, path
+        return enable, redeploy
 
     def __repr__(self):
         """Repr method."""
@@ -772,6 +772,8 @@ class EVCDeploy(EVCBase):
         flow_mod = {"match": {"in_port": in_interface.port_number},
                     "cookie": self.get_cookie(),
                     "actions": default_actions}
+        if self.priority > -1:
+            flow_mod['priority'] = self.priority
 
         return flow_mod
 
