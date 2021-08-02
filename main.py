@@ -210,7 +210,7 @@ class Main(KytosNApp):
             raise UnsupportedMediaType(result)
 
         try:
-            enable, path = \
+            enable, redeploy = \
                 evc.update(**self._evc_dict_with_instances(data))
         except ValueError as exception:
             log.error(exception)
@@ -221,7 +221,7 @@ class Main(KytosNApp):
             if enable is False:  # disable if active
                 with evc.lock:
                     evc.remove()
-            elif path is not None:  # redeploy if active
+            elif redeploy is not None:  # redeploy if active
                 with evc.lock:
                     evc.remove()
                     evc.deploy()
