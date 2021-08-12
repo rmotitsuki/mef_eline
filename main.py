@@ -273,8 +273,7 @@ class Main(KytosNApp):
 
     @rest('/v2/evc/<circuit_id>/redeploy', methods=['PATCH'])
     def redeploy(self, circuit_id):
-        """Endpoint to force the redeployment of an EVC
-        """
+        """Endpoint to force the redeployment of an EVC."""
         log.debug('redeploy /v2/evc/%s/redeploy', circuit_id)
         try:
             evc = self.circuits[circuit_id]
