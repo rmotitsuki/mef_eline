@@ -153,7 +153,11 @@ class DynamicPathManager:
 class EVCBase(GenericEntity):
     """Class to represent a circuit."""
 
-    unique_attributes = ['name', 'uni_a', 'uni_z']
+    read_only_attributes = [
+        'creation_time', 'active', 'current_path',
+        'name', 'uni_a', 'uni_z'
+    ]
+    required_attributes = ['name', 'uni_a', 'uni_z']
 
     def __init__(self, controller, **kwargs):
         """Create an EVC instance with the provided parameters.
@@ -267,8 +271,8 @@ class EVCBase(GenericEntity):
         """
         enable, redeploy = (None, None)
         for attribute, value in kwargs.items():
-            if attribute in self.unique_attributes:
-                raise ValueError(f'{attribute} can\'t be be updated.')
+            if attribute in self.read_only_attributes:
+                raise ValueError(f'{attribute} can\'t be updated.')
             if hasattr(self, attribute):
                 if attribute in ('enable', 'enabled'):
                     if value:
@@ -276,11 +280,6 @@ class EVCBase(GenericEntity):
                     else:
                         self.disable()
                     enable = value
-                elif attribute in ('active', 'activate'):
-                    if value:
-                        self.activate()
-                    else:
-                        self.deactivate()
                 else:
                     setattr(self, attribute, value)
                     if 'path' in attribute or 'priority' in attribute:
@@ -304,7 +303,7 @@ class EVCBase(GenericEntity):
             ValueError: message with error detail.
 
         """
-        for attribute in self.unique_attributes:
+        for attribute in self.required_attributes:
 
             if attribute not in kwargs:
                 raise ValueError(f'{attribute} is required.')
