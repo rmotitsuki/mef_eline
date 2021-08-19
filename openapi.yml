@@ -113,6 +113,23 @@ paths:
         '200':
           description: OK
 
+  /v2/evc/{circuit_id}/redeploy:
+    patch:
+      summary: Redeploy an EVC
+      description: Redeploy an EVC removing and then recreating the flows.
+      operationId: redeploy
+      parameters:
+        - name: circuit_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted
+        '409':
+          description: Circuit disabled
+
   /v2/evc/schedule/:
     get:
       summary: List all schedules stored for all circuits .

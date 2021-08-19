@@ -60,6 +60,9 @@ class TestMain(TestCase):
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
 
+            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>/redeploy'),
+
             ({}, {'OPTIONS', 'GET', 'HEAD'},
              '/api/kytos/mef_eline/v2/evc/schedule'),
 
@@ -711,6 +714,39 @@ class TestMain(TestCase):
         self.napp.load_circuits_by_interface(stored_circuits)
         # pylint: disable=protected-access
         self.assertEqual(self.napp._circuits_by_interface, expected_result)
+
+    def test_redeploy_evc(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/1/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 202, response.data)
+
+    def test_redeploy_evc_disabled(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = False
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/1/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 409, response.data)
+
+    def test_redeploy_evc_deleted(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/3/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 404, response.data)
 
     def test_list_schedules__no_data(self):
         """Test list of schedules."""

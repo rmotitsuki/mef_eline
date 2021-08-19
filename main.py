@@ -271,6 +271,27 @@ class Main(KytosNApp):
         emit_event(self.controller, 'deleted', evc_id=evc.id)
         return jsonify(result), status
 
+    @rest('/v2/evc/<circuit_id>/redeploy', methods=['PATCH'])
+    def redeploy(self, circuit_id):
+        """Endpoint to force the redeployment of an EVC."""
+        log.debug('redeploy /v2/evc/%s/redeploy', circuit_id)
+        try:
+            evc = self.circuits[circuit_id]
+        except KeyError:
+            result = f'circuit_id {circuit_id} not found'
+            raise NotFound(result)
+        if evc.is_enabled():
+            with evc.lock:
+                evc.remove_current_flows()
+                evc.deploy()
+            result = {'response': f'Circuit {circuit_id} redeploy received.'}
+            status = 202
+        else:
+            result = {'response': f'Circuit {circuit_id} is disabled.'}
+            status = 409
+
+        return jsonify(result), status
+
     @rest('/v2/evc/schedule', methods=['GET'])
     def list_schedules(self):
         """Endpoint to return all schedules stored for all circuits.
@@ -320,7 +341,7 @@ class Main(KytosNApp):
         """
         log.debug('create_schedule /v2/evc/schedule/')
 
-        json_data = self.json_from_request('create_schedule')
+        json_data = self._json_from_request('create_schedule')
         try:
             circuit_id = json_data['circuit_id']
         except TypeError:
@@ -407,7 +428,7 @@ class Main(KytosNApp):
             log.debug('update_schedule result %s %s', result, 403)
             raise Forbidden(result)
 
-        data = self.json_from_request('update_schedule')
+        data = self._json_from_request('update_schedule')
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -702,7 +723,7 @@ class Main(KytosNApp):
         return self.circuits
 
     @staticmethod
-    def json_from_request(caller):
+    def _json_from_request(caller):
         """Return a json from request.
 
         If it was not possible to get a json from the request, log, for debug,
