@@ -79,9 +79,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_z": get_uni_mocked(is_valid=True)
         }
         update_attr = [
-            ("name", "circuit_name_2"),
-            ("uni_a", get_uni_mocked(is_valid=True)),
-            ("uni_z", get_uni_mocked(is_valid=True)),
+            ("archived", True),
+            ("_id", True),
             ("active", True),
             ("current_path", []),
             ("creation_time", "date")

@@ -155,7 +155,7 @@ class EVCBase(GenericEntity):
 
     read_only_attributes = [
         'creation_time', 'active', 'current_path',
-        'name', 'uni_a', 'uni_z'
+        '_id', 'archived'
     ]
     required_attributes = ['name', 'uni_a', 'uni_z']
 

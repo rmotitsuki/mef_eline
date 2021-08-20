@@ -1161,6 +1161,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_update_circuit(self, *args):
         """Test update a circuit circuit."""
+        # pylint: disable=too-many-locals
         (evc_as_dict_mock, uni_from_dict_mock, evc_deploy,
          *mocks, requests_mock) = args
         response = MagicMock()
