@@ -112,6 +112,23 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         evc.update(**update_dict)
         self.assertIs(evc.is_enabled(), False)
 
+    @patch('napps.kytos.mef_eline.models.EVC.sync')
+    def test_update_queue(self, _sync_mock):
+        """Test if evc is set to redeploy."""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        update_dict = {
+            "queue_id": 3
+        }
+        evc = EVC(**attributes)
+        _, redeploy = evc.update(**update_dict)
+        self.assertTrue(redeploy)
+
     def test_circuit_representation(self):
         """Test the method __repr__."""
         attributes = {

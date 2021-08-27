@@ -157,6 +157,10 @@ class EVCBase(GenericEntity):
         'creation_time', 'active', 'current_path',
         '_id', 'archived'
     ]
+    attributes_requiring_redeploy = [
+        'primary_path', 'backup_path', 'dynamic_backup_path', 'queue_id',
+        'priority'
+    ]
     required_attributes = ['name', 'uni_a', 'uni_z']
 
     def __init__(self, controller, **kwargs):
@@ -282,7 +286,7 @@ class EVCBase(GenericEntity):
                     enable = value
                 else:
                     setattr(self, attribute, value)
-                    if 'path' in attribute or 'priority' in attribute:
+                    if attribute in self.attributes_requiring_redeploy:
                         redeploy = value
             else:
                 raise ValueError(f'The attribute "{attribute}" is invalid.')
