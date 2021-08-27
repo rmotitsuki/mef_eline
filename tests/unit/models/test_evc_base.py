@@ -70,56 +70,30 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             EVC(**attributes)
         self.assertEqual(str(handle_error.exception), error_message)
 
-    def test_update_name(self):
-        """Test if raises and error when trying to update the name."""
+    def test_update_read_only(self):
+        """Test if raises an error when trying to update read only attr."""
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True)
         }
-        update_dict = {
-            "name": "circuit_name_2"
-        }
-        error_message = "name can't be be updated."
-        with self.assertRaises(ValueError) as handle_error:
-            evc = EVC(**attributes)
-            evc.update(**update_dict)
-        self.assertEqual(str(handle_error.exception), error_message)
+        update_attr = [
+            ("archived", True),
+            ("_id", True),
+            ("active", True),
+            ("current_path", []),
+            ("creation_time", "date")
+        ]
 
-    def test_update_uni_a(self):
-        """Test if raises and error when trying to update the uni_a."""
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_name",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True)
-        }
-        update_dict = {
-            "uni_a": get_uni_mocked(is_valid=True)
-        }
-        error_message = "uni_a can't be be updated."
-        with self.assertRaises(ValueError) as handle_error:
-            evc = EVC(**attributes)
-            evc.update(**update_dict)
-        self.assertEqual(str(handle_error.exception), error_message)
-
-    def test_update_uni_z(self):
-        """Test if raises and error when trying to update the uni_z."""
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_name",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True)
-        }
-        update_dict = {
-            "uni_z": get_uni_mocked(is_valid=True)
-        }
-        error_message = "uni_z can't be be updated."
-        with self.assertRaises(ValueError) as handle_error:
-            evc = EVC(**attributes)
-            evc.update(**update_dict)
-        self.assertEqual(str(handle_error.exception), error_message)
+        for name, value in update_attr:
+            with self.subTest(name=name, value=value):
+                update_dict = {name: value}
+                error_message = f"{name} can't be updated."
+                with self.assertRaises(ValueError) as handle_error:
+                    evc = EVC(**attributes)
+                    evc.update(**update_dict)
+                self.assertEqual(str(handle_error.exception), error_message)
 
     @patch('napps.kytos.mef_eline.models.EVC.sync')
     def test_update_disable(self, _sync_mock):
