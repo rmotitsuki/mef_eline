@@ -60,6 +60,9 @@ class TestMain(TestCase):
             ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
              '/api/kytos/mef_eline/v2/evc/<circuit_id>'),
 
+            ({'circuit_id': '[circuit_id]'}, {'OPTIONS', 'PATCH'},
+             '/api/kytos/mef_eline/v2/evc/<circuit_id>/redeploy'),
+
             ({}, {'OPTIONS', 'GET', 'HEAD'},
              '/api/kytos/mef_eline/v2/evc/schedule'),
 
@@ -304,6 +307,7 @@ class TestMain(TestCase):
         self.assertEqual(json.loads(response.data)['description'],
                          expected_result)
 
+    @patch('napps.kytos.mef_eline.models.EVC.deploy')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
@@ -314,10 +318,12 @@ class TestMain(TestCase):
         """Test create a new circuit."""
         # pylint: disable=too-many-locals
         (validate_mock, evc_as_dict_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock, storehouse_data_mock) = args
+         uni_from_dict_mock, sched_add_mock, storehouse_data_mock,
+         evc_deploy_mock) = args
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
+        evc_deploy_mock.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -347,7 +353,8 @@ class TestMain(TestCase):
                        "tag_type": 1,
                        "value": 1
                      }
-                   }
+                   },
+                   "dynamic_backup_path": True
                  }
 
         response = api.post(url, data=json.dumps(payload),
@@ -368,7 +375,8 @@ class TestMain(TestCase):
         validate_mock.assert_called_with(frequency='* * * * *',
                                          name='my evc1',
                                          uni_a=uni1,
-                                         uni_z=uni2)
+                                         uni_z=uni2,
+                                         dynamic_backup_path=True)
         # verify save method is called
         save_evc_mock.assert_called_once()
 
@@ -470,6 +478,7 @@ class TestMain(TestCase):
         self.assertEqual(400, response.status_code, response.data)
         self.assertEqual(current_data['description'], expected_data)
 
+    @patch('napps.kytos.mef_eline.models.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
@@ -477,12 +486,14 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_create_circuit_already_enabled(self, *args):
         """Test create an already created circuit."""
+        # pylint: disable=too-many-locals
         (evc_as_dict_mock, validate_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock) = args
+         uni_from_dict_mock, sched_add_mock, evc_deploy_mock) = args
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
         sched_add_mock.return_value = True
+        evc_deploy_mock.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -507,7 +518,8 @@ class TestMain(TestCase):
                     "tag_type": 1,
                     "value": 1
                 }
-            }
+            },
+            "dynamic_backup_path": True
         }
 
         evc_as_dict_mock.return_value = payload
@@ -523,6 +535,46 @@ class TestMain(TestCase):
         expected_data = 'The EVC already exists.'
         self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(409, response.status_code)
+
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    def test_create_circuit_case_5(self, uni_from_dict_mock):
+        """Test when neither primary path nor dynamic_backup_path is set."""
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/'
+        uni1 = create_autospec(UNI)
+        uni2 = create_autospec(UNI)
+        uni1.interface = create_autospec(Interface)
+        uni2.interface = create_autospec(Interface)
+        uni1.interface.switch = '00:00:00:00:00:00:00:01'
+        uni2.interface.switch = '00:00:00:00:00:00:00:02'
+        uni_from_dict_mock.side_effect = [uni1, uni2, uni1, uni2]
+
+        payload = {
+                   "name": "my evc1",
+                   "frequency": "* * * * *",
+                   "uni_a": {
+                     "interface_id": "00:00:00:00:00:00:00:01:1",
+                     "tag": {
+                       "tag_type": 1,
+                       "value": 80
+                     }
+                   },
+                   "uni_z": {
+                     "interface_id": "00:00:00:00:00:00:00:02:2",
+                     "tag": {
+                       "tag_type": 1,
+                       "value": 1
+                     }
+                   }
+                 }
+
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        current_data = json.loads(response.data)
+        expected = 'The EVC must have a primary path or allow dynamic paths.'
+
+        self.assertEqual(400, response.status_code, response.data)
+        self.assertEqual(current_data['description'], expected)
 
     def test_load_circuits_by_interface(self):
         """Test if existing circuits are correctly loaded to the cache."""
@@ -711,6 +763,39 @@ class TestMain(TestCase):
         self.napp.load_circuits_by_interface(stored_circuits)
         # pylint: disable=protected-access
         self.assertEqual(self.napp._circuits_by_interface, expected_result)
+
+    def test_redeploy_evc(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/1/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 202, response.data)
+
+    def test_redeploy_evc_disabled(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = False
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/1/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 409, response.data)
+
+    def test_redeploy_evc_deleted(self):
+        """Test endpoint to redeploy an EVC."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        self.napp.circuits = {'1': evc1,
+                              '2': MagicMock()}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/3/redeploy'
+        response = api.patch(url)
+        self.assertEqual(response.status_code, 404, response.data)
 
     def test_list_schedules__no_data(self):
         """Test list of schedules."""
@@ -1192,7 +1277,8 @@ class TestMain(TestCase):
                         "tag_type": 1,
                         "value": 1
                     }
-                }
+                },
+                "dynamic_backup_path": True
             },
             {
                 "primary_path": [
@@ -1264,6 +1350,7 @@ class TestMain(TestCase):
         evc_deploy.assert_not_called()
         self.assertEqual(405, response.status_code)
 
+    @patch('napps.kytos.mef_eline.models.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
@@ -1273,11 +1360,12 @@ class TestMain(TestCase):
         """Test update a circuit circuit."""
         # pylint: disable=too-many-locals
         (evc_as_dict_mock, validate_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock) = args
+         uni_from_dict_mock, sched_add_mock, evc_deploy_mock) = args
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
         sched_add_mock.return_value = True
+        evc_deploy_mock.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -1302,11 +1390,12 @@ class TestMain(TestCase):
                     "tag_type": 1,
                     "value": 1
                 }
-            }
+            },
+            "dynamic_backup_path": True
         }
 
         payload2 = {
-            "dynamic_backup_path": True,
+            "dynamic_backup_path": False,
         }
 
         evc_as_dict_mock.return_value = payload1
@@ -1326,6 +1415,7 @@ class TestMain(TestCase):
         self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(400, response.status_code)
 
+    @patch('napps.kytos.mef_eline.models.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
@@ -1335,11 +1425,12 @@ class TestMain(TestCase):
         """Test update a circuit with wrong mimetype."""
         # pylint: disable=too-many-locals
         (evc_as_dict_mock, validate_mock, save_evc_mock,
-         uni_from_dict_mock, sched_add_mock) = args
+         uni_from_dict_mock, sched_add_mock, evc_deploy_mock) = args
 
         validate_mock.return_value = True
         save_evc_mock.return_value = True
         sched_add_mock.return_value = True
+        evc_deploy_mock.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -1364,11 +1455,12 @@ class TestMain(TestCase):
                     "tag_type": 1,
                     "value": 1
                 }
-            }
+            },
+            "dynamic_backup_path": True
         }
 
         payload2 = {
-            "dynamic_backup_path": True
+            "dynamic_backup_path": False
         }
 
         evc_as_dict_mock.return_value = payload1
