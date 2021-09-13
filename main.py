@@ -226,7 +226,6 @@ class Main(KytosNApp):
             log.debug('update result %s %s', exception, 400)
             raise BadRequest(str(exception))
 
-        log.info(f'enable: {enable}, redeploy: {redeploy}')
         if evc.is_active():
             if enable is False:  # disable if active
                 with evc.lock:
