@@ -93,7 +93,7 @@ module.exports = {
             title: "View Connections",
             subtitle: "by kytos/mef_eline"
         }
-        this.$kytos.$emit("showInfoPanel", listConnections)
+        this.$kytos.$emit("showInfoPanel", listConnections);
     },
     post_success(data) {
         let notification = {
