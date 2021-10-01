@@ -16,7 +16,13 @@
               <tr v-for="(row, rindex) in data_rows" @click="rowClicked(row['id'])">
                 <th scope="row" style="width: 45px">{{ rindex }}</th>
                 <template v-for="(column, cindex) in row"> 
-                  <td v-if="cindex != 'id'">{{ column }}</td>
+                  <td v-if="cindex != 'id'">
+                    <span v-if="cindex == 'Enabled' || cindex == 'Active'">
+                      <i class="material-icons" style="color:#c00000" v-if="column">close</i>
+                      <i class="material-icons" style="color:green" v-else>done</i>
+                    </span>
+                    <span v-else>{{ column }}</span>
+                  </td>
                 </template>
               </tr>
               </tbody>
@@ -111,6 +117,8 @@ module.exports = {
 </script>
 
 <style>
+/* Import icons */
+@import "https://fonts.googleapis.com/icon?family=Material+Icons";
 
 .empty-con-list {
   margin-top: 10px;
