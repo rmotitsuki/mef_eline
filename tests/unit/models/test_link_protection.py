@@ -196,6 +196,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         evc = EVC(**attributes)
 
         evc.current_path = evc.primary_path
+        evc.activate()
         current_handle_link_down = evc.handle_link_down()
         self.assertEqual(deploy_mocked.call_count, 0)
         deploy_to_mocked.assert_called_once()
