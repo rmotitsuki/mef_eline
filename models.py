@@ -4,6 +4,7 @@ from threading import Lock
 from uuid import uuid4
 
 import requests
+from glom import glom
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
@@ -14,7 +15,7 @@ from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import FlowModException
 from napps.kytos.mef_eline.storehouse import StoreHouse
-from napps.kytos.mef_eline.utils import emit_event
+from napps.kytos.mef_eline.utils import compare_endpoint_trace, emit_event
 
 
 class Path(list, GenericEntity):
@@ -844,6 +845,48 @@ class EVCDeploy(EVCBase):
         new_action = {"action_type": "pop_vlan"}
         flow_mod["actions"].insert(0, new_action)
         return flow_mod
+
+    @staticmethod
+    def run_sdntrace(uni):
+        """Run SDN trace on control plane starting from EVC UNIs."""
+        endpoint = f'{settings.SDN_TRACE_CP_URL}/trace'
+        data_uni = {
+            'trace': {
+                'switch': {
+                    'dpid': uni.interface.switch.dpid,
+                    'in_port': uni.interface.port_number
+                }
+            }
+        }
+        if uni.user_tag:
+            data_uni['trace']['eth'] = {
+                'dl_type': 0x8100,
+                'dl_vlan': uni.user_tag.value
+            }
+        return requests.put(endpoint, json=data_uni)
+
+    def check_traces(self):
+        """Check if current_path is deployed comparing with SDN traces."""
+        trace_a = self.run_sdntrace(self.uni_a).json()['result']
+        if len(trace_a) != len(self.current_path) + 1:
+            return False
+        trace_z = self.run_sdntrace(self.uni_z).json()['result']
+        if len(trace_z) != len(self.current_path) + 1:
+            return False
+
+        for link, trace1, trace2 in zip(self.current_path,
+                                        trace_a[1:],
+                                        trace_z[:0:-1]):
+            if compare_endpoint_trace(
+               link.endpoint_a,
+               glom(link.metadata, 's_vlan.value'), trace2) is False:
+                return False
+            if compare_endpoint_trace(
+               link.endpoint_b,
+               glom(link.metadata, 's_vlan.value'), trace1) is False:
+                return False
+
+        return True
 
 
 class LinkProtection(EVCDeploy):
