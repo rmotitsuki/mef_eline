@@ -12,7 +12,6 @@ from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from kytos.core.link import Link
-
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import FlowModException
 from napps.kytos.mef_eline.storehouse import StoreHouse
