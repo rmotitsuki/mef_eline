@@ -18,8 +18,8 @@
             <template v-for="(column, cindex) in flags"> 
               <tr><th>{{cindex}}</th>
               <td>
-                <i class="material-icons" style="color:#c00000" v-if="column">close</i>
-                <i class="material-icons" style="color:green" v-else>done</i>
+                <i class="material-icons" style="color:green" v-if="column">done</i>
+                <i class="material-icons" style="color:#c00000" v-else>close</i>
               </td></tr>
             </template>
           </table>
