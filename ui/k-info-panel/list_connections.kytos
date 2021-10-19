@@ -30,6 +30,7 @@
               </thead>
               <tbody>
                 <tr v-for="(row, rindex) in rowsOfPage"
+                  v-bind:class="{ inactive: !row['Active'] }"
                   @click="rowClicked(row['id'])">
                   <th scope="row" style="width: 45px">{{ rindex + 1 }}</th>
                   <template v-for="(column, cindex) in row"> 
@@ -302,6 +303,9 @@ module.exports = {
 .mef-table tbody tr:hover {
     color: #eee;
     background-color: #666;
+}
+.mef-table tbody tr.inactive {
+  background-color: #600000;
 }
 .mef-table-divisor {
   height: 190px;
