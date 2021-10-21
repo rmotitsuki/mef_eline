@@ -45,7 +45,6 @@ class Path(list, GenericEntity):
         """Choose the VLANs to be used for the circuit."""
         for link in self:
             tag = link.get_next_available_tag()
-            link.use_tag(tag)
             link.add_metadata('s_vlan', tag)
 
     def make_vlans_available(self):
