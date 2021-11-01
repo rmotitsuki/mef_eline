@@ -549,7 +549,11 @@ class EVCDeploy(EVCBase):
                  'cookie_mask': 18446744073709551615}
 
         for switch in switches:
-            self._send_flow_mods(switch, [match], 'delete')
+            try:
+                self._send_flow_mods(switch, [match], 'delete')
+            except FlowModException:
+                log.error(f'Error removing flows from switch {switch.id} for'
+                          f'EVC {self}')
 
         current_path.make_vlans_available()
         self.current_path = Path([])
