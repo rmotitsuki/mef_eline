@@ -61,14 +61,20 @@ class Main(KytosNApp):
     def execute(self):
         """Execute once when the napp is running."""
         for circuit in tuple(self.circuits.values()):
-            if circuit.is_enabled() and not circuit.is_active():
+            if (
+                circuit.is_enabled() and
+                not circuit.is_active() and
+                not circuit.lock.locked()
+            ):
                 if circuit.check_traces():
-                    circuit.activate()
-                    circuit.sync()
+                    with circuit.lock:
+                        circuit.activate()
+                        circuit.sync()
                 else:
                     running_for = time.time() - self.load_time
                     if running_for > settings.WAIT_FOR_OLD_PATH:
-                        circuit.deploy()
+                        with circuit.lock:
+                            circuit.deploy()
 
     def shutdown(self):
         """Execute when your napp is unloaded.
