@@ -104,7 +104,7 @@
               </div>
               <div class="modal-body">
                 <slot name="body">
-                  Delete circuit? 
+                  Delete EVC? 
                 </slot>
               </div>
               <div class="modal-footer">
