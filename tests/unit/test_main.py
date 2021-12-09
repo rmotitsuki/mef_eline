@@ -92,6 +92,24 @@ class TestMain(TestCase):
         urls = self.get_napp_urls(self.napp)
         self.assertCountEqual(expected_urls, urls)
 
+    @patch('napps.kytos.mef_eline.main.settings')
+    def test_execute_wait_for(self, mock_settings):
+        """Test execute and wait for setting."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        evc1.is_active.return_value = False
+        evc1.lock.locked.return_value = False
+        evc1.check_traces.return_value = False
+        evc1.deploy.call_count = 0
+        self.napp.circuits = {'1': evc1}
+        self.napp.execution_rounds = 0
+        mock_settings.WAIT_FOR_OLD_PATH = 1
+
+        self.napp.execute()
+        self.assertEqual(evc1.deploy.call_count, 0)
+        self.napp.execute()
+        self.assertEqual(evc1.deploy.call_count, 1)
+
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.models.evc.EVCBase._validate')
     def test_evc_from_dict(self, _validate_mock, uni_from_dict_mock):
