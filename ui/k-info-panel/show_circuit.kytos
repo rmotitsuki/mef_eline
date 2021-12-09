@@ -14,7 +14,10 @@
           </k-button>
         </div>
       </div>
-
+      <div class="mef-save-button">
+        <k-button tooltip="Save EVC" title="Save EVC" :on_click="saveEvc">
+        </k-button>
+      </div>
       <div class="mef-table no-compact">
         <div class="mef-circuit-table">
          <table class="table">
@@ -262,7 +265,11 @@ module.exports = {
         _this.showInfoPanel();
       });
       request.fail(function( jqXHR, textStatus ) {
-        alert( "Delete request failed: " + textStatus );
+        let notification = {
+            title: 'Error deleting EVC.',
+            description: "Request failed: " + textStatus
+        }
+        _this.$kytos.$emit("setNotification" , notification);
       });
     },
     buidEvcView: function(data) {
