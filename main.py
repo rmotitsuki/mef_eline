@@ -60,10 +60,10 @@ class Main(KytosNApp):
         """Execute once when the napp is running."""
         if self._lock.locked():
             return
-        log.info("Starting consistency routine")
+        log.debug("Starting consistency routine")
         with self._lock:
             self.execute_consistency()
-        log.info("Finished consistency routine")
+        log.debug("Finished consistency routine")
 
     def execute_consistency(self):
         """Execute consistency routine."""
