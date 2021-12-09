@@ -97,7 +97,7 @@ class TestMain(TestCase):
         """Test execute."""
         self.napp.execute()
         mock_execute_consistency.assert_called()
-        self.assertEqual(mock_log.info.call_count, 2)
+        self.assertEqual(mock_log.debug.call_count, 2)
 
         # Test locked should return
         mock_execute_consistency.call_count = 0
