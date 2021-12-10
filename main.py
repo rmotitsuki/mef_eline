@@ -684,10 +684,9 @@ class Main(KytosNApp):
         command = event.content.get('error_command')
         if command != 'add':
             return
-        evc_id = f'{flow.cookie:x}'
-        evc = self.circuits.get(evc_id)
+        evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
-            evc.remove_current_flows()
+            evc.remove()
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
