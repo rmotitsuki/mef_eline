@@ -229,3 +229,17 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
             self.assertEqual(value, actual)
+
+    def test_get_id_from_cookie(self):
+        """Test get_id_from_cookie."""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        evc = EVC(**attributes)
+        evc_id = evc.id
+        assert evc_id
+        assert evc.get_id_from_cookie(evc.get_cookie()) == evc_id
