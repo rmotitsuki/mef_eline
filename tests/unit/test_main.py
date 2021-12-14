@@ -1304,7 +1304,30 @@ class TestMain(TestCase):
                 "priority": 3
             },
             {
+                # It works only with 'enable' and not with 'enabled'
                 "enable": True
+            },
+            {
+                "name": "my evc1",
+                "active": True,
+                "enable": True,
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:01:1",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 80
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:02:2",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 1
+                    }
+                },
+                "priority": 3,
+                "bandwidth": 1000,
+                "dynamic_backup_path": True
             }
         ]
 
@@ -1330,6 +1353,14 @@ class TestMain(TestCase):
                              data=json.dumps(payloads[2]),
                              content_type='application/json')
         evc_deploy.assert_not_called()
+        self.assertEqual(200, response.status_code)
+
+        evc_deploy.reset_mock()
+        evc_as_dict_mock.return_value = payloads[3]
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payloads[3]),
+                             content_type='application/json')
+        evc_deploy.assert_called_once()
         self.assertEqual(200, response.status_code)
 
         evc_deploy.reset_mock()
