@@ -230,7 +230,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             actual = actual_dict.get(name)
             self.assertEqual(value, actual)
 
-    def test_get_id_from_cookie(self):
+    @staticmethod
+    def test_get_id_from_cookie():
         """Test get_id_from_cookie."""
         attributes = {
             "controller": get_controller_mock(),
