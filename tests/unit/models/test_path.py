@@ -8,6 +8,7 @@ from kytos.core.common import EntityStatus
 # pylint: disable=wrong-import-position
 sys.path.insert(0, '/var/lib/kytos/napps/..')
 # pylint: enable=wrong-import-position
+from napps.kytos.mef_eline.exceptions import InvalidPath  # NOQA pycodestyle
 from napps.kytos.mef_eline.models import Path  # NOQA pycodestyle
 from tests.helpers import MockResponse, get_link_mocked  # NOQA pycodestyle
 
@@ -175,3 +176,41 @@ class TestPath(TestCase):
         current_path = Path(links)
         expected_dict = [{"id": 3}, {"id": 2}]
         self.assertEqual(expected_dict, current_path.as_dict())
+
+    def test_is_valid(self):
+        """Test is_valid method."""
+        switch1 = '00:00:00:00:00:00:00:01'
+        switch2 = '00:00:00:00:00:00:00:02'
+        switch3 = '00:00:00:00:00:00:00:03'
+        switch4 = '00:00:00:00:00:00:00:04'
+        switch5 = '00:00:00:00:00:00:00:05'
+        switch6 = '00:00:00:00:00:00:00:06'
+
+        links1 = [
+            get_link_mocked(switch_a=switch1, switch_b=switch2),
+            get_link_mocked(switch_a=switch2, switch_b=switch3),
+            get_link_mocked(switch_a=switch3, switch_b=switch4),
+            get_link_mocked(switch_a=switch4, switch_b=switch5),
+            get_link_mocked(switch_a=switch5, switch_b=switch6),
+        ]
+
+        links2 = [
+            get_link_mocked(switch_a=switch1, switch_b=switch2),
+            get_link_mocked(switch_a=switch3, switch_b=switch2),
+            get_link_mocked(switch_a=switch3, switch_b=switch4)
+        ]
+
+        for links, switch_a, switch_z, expected in (
+                (links1, switch1, switch6, True),
+                (links2, switch1, switch4, False),
+                (links1, switch2, switch6, False)
+                ):
+            with self.subTest(links=links, switch_a=switch_a,
+                              switch_z=switch_z, expected=expected):
+                path = Path(links)
+                if expected:
+                    self.assertEqual(path.is_valid(switch_a, switch_z),
+                                     expected)
+                else:
+                    with self.assertRaises(InvalidPath):
+                        path.is_valid(switch_a, switch_z)

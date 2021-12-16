@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, PropertyMock, call, create_autospec, patch
 
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
+from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
 from tests.helpers import get_controller_mock, get_uni_mocked
 
@@ -141,7 +142,7 @@ class TestMain(TestCase):
         mock_load_evc.assert_called_with(stored_circuits['3'])
 
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
-    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVCBase._validate')
     def test_evc_from_dict(self, _validate_mock, uni_from_dict_mock):
         """
         Test the helper method that create an EVN from dict.
@@ -182,7 +183,7 @@ class TestMain(TestCase):
         self.assertIsNotNone(evc_response.queue_id)
 
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
-    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVCBase._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
     def test_evc_from_dict_paths(self, _get_interface_by_id_mock,
                                  _validate_mock, uni_from_dict_mock):
@@ -230,7 +231,7 @@ class TestMain(TestCase):
         self.assertEqual(len(evc_response.primary_path), 1)
 
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
-    @patch('napps.kytos.mef_eline.models.EVCBase._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVCBase._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
     def test_evc_from_dict_links(self, _get_interface_by_id_mock,
                                  _validate_mock, uni_from_dict_mock):
@@ -366,13 +367,13 @@ class TestMain(TestCase):
         self.assertEqual(json.loads(response.data)['description'],
                          expected_result)
 
-    @patch('napps.kytos.mef_eline.models.EVC.deploy')
+    @patch('napps.kytos.mef_eline.models.evc.EVC.deploy')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_create_a_circuit_case_1(self, *args):
         """Test create a new circuit."""
         # pylint: disable=too-many-locals
@@ -537,11 +538,11 @@ class TestMain(TestCase):
         self.assertEqual(400, response.status_code, response.data)
         self.assertEqual(current_data['description'], expected_data)
 
-    @patch('napps.kytos.mef_eline.models.EVC.deploy')
+    @patch('napps.kytos.mef_eline.models.evc.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_create_circuit_already_enabled(self, *args):
         """Test create an already created circuit."""
@@ -856,7 +857,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_create_schedule(self, *args):  # pylint: disable=too-many-locals
         """Test create a circuit schedule."""
         (validate_mock, evc_as_dict_mock, save_evc_mock,
@@ -905,7 +906,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_update_schedule(self, *args):  # pylint: disable=too-many-locals
         """Test create a circuit schedule."""
         (validate_mock, evc_as_dict_mock, save_evc_mock,
@@ -973,7 +974,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_update_schedule_archived(self, *args):
         """Test create a circuit schedule."""
         # pylint: disable=too-many-locals
@@ -1020,7 +1021,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_delete_schedule(self, *args):
         """Test create a circuit schedule."""
         (validate_mock, evc_as_dict_mock, save_evc_mock,
@@ -1074,7 +1075,7 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     def test_delete_schedule_archived(self, *args):
         """Test create a circuit schedule."""
         (validate_mock, evc_as_dict_mock,
@@ -1110,9 +1111,10 @@ class TestMain(TestCase):
     @patch('requests.post')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
-    @patch('napps.kytos.mef_eline.models.EVCDeploy.deploy')
+    @patch('napps.kytos.mef_eline.models.path.Path.is_valid')
+    @patch('napps.kytos.mef_eline.models.evc.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_update_circuit(self, *args):
@@ -1163,7 +1165,30 @@ class TestMain(TestCase):
                 "priority": 3
             },
             {
+                # It works only with 'enable' and not with 'enabled'
                 "enable": True
+            },
+            {
+                "name": "my evc1",
+                "active": True,
+                "enable": True,
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:01:1",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 80
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:02:2",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 1
+                    }
+                },
+                "priority": 3,
+                "bandwidth": 1000,
+                "dynamic_backup_path": True
             }
         ]
 
@@ -1189,6 +1214,14 @@ class TestMain(TestCase):
                              data=json.dumps(payloads[2]),
                              content_type='application/json')
         evc_deploy.assert_not_called()
+        self.assertEqual(200, response.status_code)
+
+        evc_deploy.reset_mock()
+        evc_as_dict_mock.return_value = payloads[3]
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payloads[3]),
+                             content_type='application/json')
+        evc_deploy.assert_called_once()
         self.assertEqual(200, response.status_code)
 
         evc_deploy.reset_mock()
@@ -1221,11 +1254,11 @@ class TestMain(TestCase):
         evc_deploy.assert_not_called()
         self.assertEqual(405, response.status_code)
 
-    @patch('napps.kytos.mef_eline.models.EVC.deploy')
+    @patch('napps.kytos.mef_eline.models.evc.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_update_circuit_invalid_json(self, *args):
         """Test update a circuit circuit."""
@@ -1286,11 +1319,86 @@ class TestMain(TestCase):
         self.assertEqual(current_data['description'], expected_data)
         self.assertEqual(400, response.status_code)
 
-    @patch('napps.kytos.mef_eline.models.EVC.deploy')
+    @patch('napps.kytos.mef_eline.models.evc.EVC.deploy')
+    @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    @patch('napps.kytos.mef_eline.main.Main._link_from_dict')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
+    @patch('napps.kytos.mef_eline.main.EVC.as_dict')
+    @patch('napps.kytos.mef_eline.models.path.Path.is_valid')
+    def test_update_circuit_invalid_path(self, *args):
+        """Test update a circuit circuit."""
+        # pylint: disable=too-many-locals
+        (is_valid_mock, evc_as_dict_mock, validate_mock, save_evc_mock,
+         link_from_dict_mock, uni_from_dict_mock, sched_add_mock,
+         evc_deploy_mock) = args
+
+        is_valid_mock.side_effect = InvalidPath('error')
+        validate_mock.return_value = True
+        save_evc_mock.return_value = True
+        sched_add_mock.return_value = True
+        evc_deploy_mock.return_value = True
+        link_from_dict_mock.return_value = 1
+        uni1 = create_autospec(UNI)
+        uni2 = create_autospec(UNI)
+        uni1.interface = create_autospec(Interface)
+        uni2.interface = create_autospec(Interface)
+        uni1.interface.switch = '00:00:00:00:00:00:00:01'
+        uni2.interface.switch = '00:00:00:00:00:00:00:02'
+        uni_from_dict_mock.side_effect = [uni1, uni2, uni1, uni2]
+
+        api = self.get_app_test_client(self.napp)
+        payload1 = {
+            "name": "my evc1",
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 80
+                }
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 1
+                }
+            },
+            "dynamic_backup_path": True
+        }
+
+        payload2 = {
+            "primary_path": [
+                    {
+                        "endpoint_a": {"id": "00:00:00:00:00:00:00:01:1"},
+                        "endpoint_b": {"id": "00:00:00:00:00:00:00:02:2"}
+                    }
+                ]
+        }
+
+        evc_as_dict_mock.return_value = payload1
+        response = api.post(f'{self.server_name_url}/v2/evc/',
+                            data=json.dumps(payload1),
+                            content_type='application/json')
+        self.assertEqual(201, response.status_code)
+
+        evc_as_dict_mock.return_value = payload2
+        current_data = json.loads(response.data)
+        circuit_id = current_data['circuit_id']
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payload2),
+                             content_type='application/json')
+        current_data = json.loads(response.data)
+        expected_data = 'primary_path is not a valid path: error'
+        self.assertEqual(400, response.status_code)
+        self.assertEqual(current_data['description'], expected_data)
+
+    @patch('napps.kytos.mef_eline.models.evc.EVC.deploy')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
-    @patch('napps.kytos.mef_eline.models.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     def test_update_evc_no_json_mime(self, *args):
         """Test update a circuit with wrong mimetype."""

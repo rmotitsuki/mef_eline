@@ -16,6 +16,7 @@ from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC, DynamicPathManager, Path
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.storehouse import StoreHouse
@@ -174,6 +175,21 @@ class Main(KytosNApp):
         except ValueError as exception:
             log.debug('create_circuit result %s %s', exception, 400)
             raise BadRequest(str(exception))
+
+        if evc.primary_path:
+            try:
+                evc.primary_path.is_valid(evc.uni_a.interface.switch,
+                                          evc.uni_z.interface.switch,
+                                          bool(evc.circuit_scheduler))
+            except InvalidPath as exception:
+                raise BadRequest(f'primary_path is not valid: {exception}')
+        if evc.backup_path:
+            try:
+                evc.backup_path.is_valid(evc.uni_a.interface.switch,
+                                         evc.uni_z.interface.switch,
+                                         bool(evc.circuit_scheduler))
+            except InvalidPath as exception:
+                raise BadRequest(f'backup_path is not valid: {exception}')
 
         # verify duplicated evc
         if self._is_duplicated_evc(evc):
