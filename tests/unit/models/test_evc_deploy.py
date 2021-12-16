@@ -101,7 +101,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         EVC._send_flow_mods(switch, flow_mods)
 
         expected_endpoint = f"{MANAGER_URL}/flows/{switch.id}"
-        expected_data = {"flows": flow_mods}
+        expected_data = {"flows": flow_mods, "force": False}
         self.assertEqual(requests_mock.post.call_count, 1)
         requests_mock.post.assert_called_once_with(expected_endpoint,
                                                    json=expected_data)
@@ -116,10 +116,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         requests_mock.post.return_value = response
 
         # pylint: disable=protected-access
-        EVC._send_flow_mods(switch, flow_mods, command='delete')
+        EVC._send_flow_mods(switch, flow_mods, command='delete', force=True)
 
         expected_endpoint = f"{MANAGER_URL}/delete/{switch.id}"
-        expected_data = {"flows": flow_mods}
+        expected_data = {"flows": flow_mods, "force": True}
         self.assertEqual(requests_mock.post.call_count, 1)
         requests_mock.post.assert_called_once_with(expected_endpoint,
                                                    json=expected_data)
@@ -671,5 +671,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                  'cookie_mask': 18446744073709551615}]
         switch_1 = evc.primary_links[0].endpoint_a.switch
         switch_2 = evc.primary_links[0].endpoint_b.switch
-        send_flow_mods_mocked.assert_any_call(switch_1, flows, 'delete')
-        send_flow_mods_mocked.assert_any_call(switch_2, flows, 'delete')
+        send_flow_mods_mocked.assert_any_call(switch_1, flows, 'delete',
+                                              force=True)
+        send_flow_mods_mocked.assert_any_call(switch_2, flows, 'delete',
+                                              force=True)

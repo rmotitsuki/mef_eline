@@ -414,7 +414,7 @@ class EVCDeploy(EVCBase):
         self.sync()
         emit_event(self._controller, 'undeployed', evc_id=self.id)
 
-    def remove_current_flows(self, current_path=None):
+    def remove_current_flows(self, current_path=None, force=True):
         """Remove all flows from current path."""
         switches = set()
 
@@ -431,7 +431,7 @@ class EVCDeploy(EVCBase):
 
         for switch in switches:
             try:
-                self._send_flow_mods(switch, [match], 'delete')
+                self._send_flow_mods(switch, [match], 'delete', force=force)
             except FlowModException:
                 log.error(f'Error removing flows from switch {switch.id} for'
                           f'EVC {self}')
@@ -627,18 +627,19 @@ class EVCDeploy(EVCBase):
         self._send_flow_mods(self.uni_z.interface.switch, flows_z)
 
     @staticmethod
-    def _send_flow_mods(switch, flow_mods, command='flows'):
+    def _send_flow_mods(switch, flow_mods, command='flows', force=False):
         """Send a flow_mod list to a specific switch.
 
         Args:
             switch(Switch): The target of flows.
             flow_mods(dict): Python dictionary with flow_mods.
             command(str): By default is 'flows'. To remove a flow is 'remove'.
+            force(bool): True to send via consistency check in case of conn errors
 
         """
         endpoint = f'{settings.MANAGER_URL}/{command}/{switch.id}'
 
-        data = {"flows": flow_mods}
+        data = {"flows": flow_mods, "force": force}
         response = requests.post(endpoint, json=data)
         if response.status_code >= 400:
             raise FlowModException

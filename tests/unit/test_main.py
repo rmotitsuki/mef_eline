@@ -92,6 +92,73 @@ class TestMain(TestCase):
         urls = self.get_napp_urls(self.napp)
         self.assertCountEqual(expected_urls, urls)
 
+    @patch('napps.kytos.mef_eline.main.log')
+    @patch('napps.kytos.mef_eline.main.Main.execute_consistency')
+    def test_execute(self, mock_execute_consistency, mock_log):
+        """Test execute."""
+        self.napp.execute()
+        mock_execute_consistency.assert_called()
+        self.assertEqual(mock_log.debug.call_count, 2)
+
+        # Test locked should return
+        mock_execute_consistency.call_count = 0
+        mock_log.info.call_count = 0
+        # pylint: disable=protected-access
+        self.napp._lock = MagicMock()
+        self.napp._lock.locked.return_value = True
+        # pylint: enable=protected-access
+        self.napp.execute()
+        mock_execute_consistency.assert_not_called()
+        mock_log.info.assert_not_called()
+
+    @patch('napps.kytos.mef_eline.main.settings')
+    @patch('napps.kytos.mef_eline.main.Main._load_evc')
+    @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
+    def test_execute_consistency(self, *args):
+        """Test execute_consistency."""
+        (mock_get_data, mock_load_evc, mock_settings) = args
+
+        stored_circuits = {'1': {'name': 'circuit_1'},
+                           '2': {'name': 'circuit_2'},
+                           '3': {'name': 'circuit_3'}}
+        mock_get_data.return_value = stored_circuits
+        mock_settings.WAIT_FOR_OLD_PATH = -1
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        evc1.is_active.return_value = False
+        evc1.lock.locked.return_value = False
+        evc1.check_traces.return_value = True
+        evc2 = MagicMock()
+        evc2.is_enabled.return_value = True
+        evc2.is_active.return_value = False
+        evc2.lock.locked.return_value = False
+        evc2.check_traces.return_value = False
+        self.napp.circuits = {'1': evc1, '2': evc2}
+
+        self.napp.execute_consistency()
+        self.assertEqual(evc1.activate.call_count, 1)
+        self.assertEqual(evc1.sync.call_count, 1)
+        self.assertEqual(evc2.deploy.call_count, 1)
+        mock_load_evc.assert_called_with(stored_circuits['3'])
+
+    @patch('napps.kytos.mef_eline.main.settings')
+    def test_execute_consistency_wait_for(self, mock_settings):
+        """Test execute and wait for setting."""
+        evc1 = MagicMock()
+        evc1.is_enabled.return_value = True
+        evc1.is_active.return_value = False
+        evc1.lock.locked.return_value = False
+        evc1.check_traces.return_value = False
+        evc1.deploy.call_count = 0
+        self.napp.circuits = {'1': evc1}
+        self.napp.execution_rounds = 0
+        mock_settings.WAIT_FOR_OLD_PATH = 1
+
+        self.napp.execute_consistency()
+        self.assertEqual(evc1.deploy.call_count, 0)
+        self.napp.execute_consistency()
+        self.assertEqual(evc1.deploy.call_count, 1)
+
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.models.evc.EVCBase._validate')
     def test_evc_from_dict(self, _validate_mock, uni_from_dict_mock):
@@ -586,194 +653,6 @@ class TestMain(TestCase):
 
         self.assertEqual(400, response.status_code, response.data)
         self.assertEqual(current_data['description'], expected)
-
-    def test_load_circuits_by_interface(self):
-        """Test if existing circuits are correctly loaded to the cache."""
-        stored_circuits = {
-            "182f5bac84074017a262a2321195dbb4": {
-                "active": False,
-                "archived": True,
-                "backup_links": [],
-                "backup_path": [],
-                "bandwidth": 0,
-                "circuit_scheduler": [
-                    {
-                        "action": "create",
-                        "frequency": "*/3 * * * *",
-                        "id": "db7f8a301e2b4ff69a2ad9a6267430e2"
-                    },
-                    {
-                        "action": "remove",
-                        "frequency": "2-59/3 * * * *",
-                        "id": "b8a8bbe85bc144b0afc65181e4c069a1"
-                    }
-                ],
-                "creation_time": "2019-08-09T19:25:06",
-                "current_path": [],
-                "dynamic_backup_path": True,
-                "enabled": False,
-                "end_date": "2018-12-29T15:16:50",
-                "id": "182f5bac84074017a262a2321195dbb4",
-                "name": "Teste2",
-                "owner": None,
-                "primary_links": [],
-                "primary_path": [],
-                "priority": 0,
-                "request_time": "2019-08-09T19:25:06",
-                "start_date": "2019-08-09T19:25:06",
-                "uni_a": {
-                    "interface_id": "00:00:00:00:00:00:00:03:12",
-                    "tag": {
-                        "tag_type": 1,
-                        "value": 321
-                    }
-                },
-                "uni_z": {
-                    "interface_id": "00:00:00:00:00:00:00:06:11",
-                    "tag": {
-                        "tag_type": 1,
-                        "value": 612
-                    }
-                }
-            },
-            "65c4582cc8f249c2a5947ef500c19e37": {
-                "active": False,
-                "archived": False,
-                "backup_links": [],
-                "backup_path": [],
-                "bandwidth": 0,
-                "circuit_scheduler": [
-                    {
-                        "action": "create",
-                        "frequency": "*/3 * * * *",
-                        "id": "0939dedf66ce431f85beb53daf578d73"
-                    },
-                    {
-                        "action": "remove",
-                        "frequency": "2-59/3 * * * *",
-                        "id": "6cdcab31a11f44708e23776b4dad7893"
-                    }
-                ],
-                "creation_time": "2019-07-22T16:01:24",
-                "current_path": [],
-                "dynamic_backup_path": True,
-                "enabled": False,
-                "end_date": "2018-12-29T15:16:50",
-                "id": "65c4582cc8f249c2a5947ef500c19e37",
-                "name": "Teste2",
-                "owner": None,
-                "primary_links": [],
-                "primary_path": [
-                    {
-                        "active": False,
-                        "enabled": True,
-                        "endpoint_a": {
-                            "active": False,
-                            "enabled": True,
-                            "id": "00:00:00:00:00:00:00:03:3",
-                            "link": "0e2b5d7bc858b9f38db11b69",
-                            "mac": "ae:6e:d3:96:83:5a",
-                            "metadata": {},
-                            "name": "s3-eth3",
-                            "nni": True,
-                            "port_number": 3,
-                            "speed": 1250000000.0,
-                            "switch": "00:00:00:00:00:00:00:03",
-                            "type": "interface",
-                            "uni": False
-                        },
-                        "endpoint_b": {
-                            "active": False,
-                            "enabled": True,
-                            "id": "00:00:00:00:00:00:00:05:2",
-                            "link": "0e2b5d7bc858b9f38db11b69",
-                            "mac": "de:eb:d0:b0:14:cf",
-                            "metadata": {},
-                            "name": "s5-eth2",
-                            "nni": True,
-                            "port_number": 2,
-                            "speed": 1250000000.0,
-                            "switch": "00:00:00:00:00:00:00:05",
-                            "type": "interface",
-                            "uni": False
-                        },
-                        "id": "0e2b5d7bc858b9f38db11b69",
-                        "metadata": {}
-                    },
-                    {
-                        "active": False,
-                        "enabled": True,
-                        "endpoint_a": {
-                            "active": False,
-                            "enabled": True,
-                            "id": "00:00:00:00:00:00:00:05:4",
-                            "link": "53bd36ff55a5aa2029bd5d50",
-                            "mac": "6e:c2:ea:c4:18:12",
-                            "metadata": {},
-                            "name": "s5-eth4",
-                            "nni": True,
-                            "port_number": 4,
-                            "speed": 1250000000.0,
-                            "switch": "00:00:00:00:00:00:00:05",
-                            "type": "interface",
-                            "uni": False
-                        },
-                        "endpoint_b": {
-                            "active": False,
-                            "enabled": True,
-                            "id": "00:00:00:00:00:00:00:06:2",
-                            "link": "53bd36ff55a5aa2029bd5d50",
-                            "mac": "5a:25:7b:7c:0d:ac",
-                            "metadata": {},
-                            "name": "s6-eth2",
-                            "nni": True,
-                            "port_number": 2,
-                            "speed": 1250000000.0,
-                            "switch": "00:00:00:00:00:00:00:06",
-                            "type": "interface",
-                            "uni": False
-                        },
-                        "id": "53bd36ff55a5aa2029bd5d50",
-                        "metadata": {}
-                    }
-                ],
-                "priority": 0,
-                "request_time": "2019-07-22T16:01:24",
-                "start_date": "2019-07-22T16:01:24",
-                "uni_a": {
-                    "interface_id": "00:00:00:00:00:00:00:03:12",
-                    "tag": {
-                        "tag_type": 1,
-                        "value": 321
-                    }
-                },
-                "uni_z": {
-                    "interface_id": "00:00:00:00:00:00:00:06:11",
-                    "tag": {
-                        "tag_type": 1,
-                        "value": 612
-                    }
-                }
-            }
-        }
-
-        expected_result = {
-            '00:00:00:00:00:00:00:03:12':
-                {'65c4582cc8f249c2a5947ef500c19e37'},
-            '00:00:00:00:00:00:00:06:11':
-                {'65c4582cc8f249c2a5947ef500c19e37'},
-            '00:00:00:00:00:00:00:03:3':
-                {'65c4582cc8f249c2a5947ef500c19e37'},
-            '00:00:00:00:00:00:00:05:2':
-                {'65c4582cc8f249c2a5947ef500c19e37'},
-            '00:00:00:00:00:00:00:05:4':
-                {'65c4582cc8f249c2a5947ef500c19e37'},
-            '00:00:00:00:00:00:00:06:2':
-                {'65c4582cc8f249c2a5947ef500c19e37'}
-        }
-        self.napp.load_circuits_by_interface(stored_circuits)
-        # pylint: disable=protected-access
-        self.assertEqual(self.napp._circuits_by_interface, expected_result)
 
     def test_redeploy_evc(self):
         """Test endpoint to redeploy an EVC."""
@@ -1304,7 +1183,30 @@ class TestMain(TestCase):
                 "priority": 3
             },
             {
+                # It works only with 'enable' and not with 'enabled'
                 "enable": True
+            },
+            {
+                "name": "my evc1",
+                "active": True,
+                "enable": True,
+                "uni_a": {
+                    "interface_id": "00:00:00:00:00:00:00:01:1",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 80
+                    }
+                },
+                "uni_z": {
+                    "interface_id": "00:00:00:00:00:00:00:02:2",
+                    "tag": {
+                        "tag_type": 1,
+                        "value": 1
+                    }
+                },
+                "priority": 3,
+                "bandwidth": 1000,
+                "dynamic_backup_path": True
             }
         ]
 
@@ -1330,6 +1232,14 @@ class TestMain(TestCase):
                              data=json.dumps(payloads[2]),
                              content_type='application/json')
         evc_deploy.assert_not_called()
+        self.assertEqual(200, response.status_code)
+
+        evc_deploy.reset_mock()
+        evc_as_dict_mock.return_value = payloads[3]
+        response = api.patch(f'{self.server_name_url}/v2/evc/{circuit_id}',
+                             data=json.dumps(payloads[3]),
+                             content_type='application/json')
+        evc_deploy.assert_called_once()
         self.assertEqual(200, response.status_code)
 
         evc_deploy.reset_mock()

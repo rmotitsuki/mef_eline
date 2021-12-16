@@ -3,6 +3,14 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
+[2.6.0] - 2021-05-28
+********************
+
+Added
+=====
+- Parametrized ``force`` option as ``True`` when removing flows for reliability
+
+
 [2.5.1] - 2021-05-28
 ********************
 
