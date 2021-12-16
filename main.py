@@ -2,7 +2,6 @@
 
 NApp to provision circuits from user request.
 """
-import time
 from threading import Lock
 
 from flask import jsonify, request
@@ -54,7 +53,7 @@ class Main(KytosNApp):
         self._lock = Lock()
 
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
-        self.load_time = time.time()
+        self.execution_rounds = 0
         self.load_all_evcs()
 
     def execute(self):
@@ -68,6 +67,7 @@ class Main(KytosNApp):
 
     def execute_consistency(self):
         """Execute consistency routine."""
+        self.execution_rounds += 1
         stored_circuits = self.storehouse.get_data().copy()
         for circuit in tuple(self.circuits.values()):
             stored_circuits.pop(circuit.id, None)
@@ -82,8 +82,7 @@ class Main(KytosNApp):
                         circuit.activate()
                         circuit.sync()
                 else:
-                    running_for = time.time() - self.load_time
-                    if running_for > settings.WAIT_FOR_OLD_PATH:
+                    if self.execution_rounds > settings.WAIT_FOR_OLD_PATH:
                         log.info(f"{circuit} enabled but inactive - redeploy")
                         with circuit.lock:
                             circuit.deploy()
