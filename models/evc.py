@@ -744,15 +744,21 @@ class EVCDeploy(EVCBase):
                 'dl_type': 0x8100,
                 'dl_vlan': uni.user_tag.value
             }
-        return requests.put(endpoint, json=data_uni)
+        response = requests.put(endpoint, json=data_uni)
+        if response.status_code >= 400:
+            log.error(f"Failed to run sdntrace-cp: {response.text}")
+            return []
+        return response.json().get('result', [])
 
     def check_traces(self):
         """Check if current_path is deployed comparing with SDN traces."""
-        trace_a = self.run_sdntrace(self.uni_a).json()['result']
+        trace_a = self.run_sdntrace(self.uni_a)
         if len(trace_a) != len(self.current_path) + 1:
+            log.warn(f"Invalid trace from uni_a: {trace_a}")
             return False
-        trace_z = self.run_sdntrace(self.uni_z).json()['result']
+        trace_z = self.run_sdntrace(self.uni_z)
         if len(trace_z) != len(self.current_path) + 1:
+            log.warn(f"Invalid trace from uni_z: {trace_z}")
             return False
 
         for link, trace1, trace2 in zip(self.current_path,
@@ -761,10 +767,12 @@ class EVCDeploy(EVCBase):
             if compare_endpoint_trace(
                link.endpoint_a,
                glom(link.metadata, 's_vlan.value'), trace2) is False:
+                log.warn(f"Invalid trace from uni_a: {trace_a}")
                 return False
             if compare_endpoint_trace(
                link.endpoint_b,
                glom(link.metadata, 's_vlan.value'), trace1) is False:
+                log.warn(f"Invalid trace from uni_z: {trace_z}")
                 return False
 
         return True
