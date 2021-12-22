@@ -918,6 +918,90 @@ class TestMain(TestCase):
                          response_json["action"])
         self.assertIsNotNone(response_json["id"])
 
+        # Case 2: there is no schedule
+        payload = {
+              "circuit_id": "cc:cc:cc",
+              "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+              }
+            }
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 201)
+
+    def test_create_schedule_invalid_request(self):
+        """Test create schedule API with invalid request."""
+        evc1 = MagicMock()
+        self.napp.circuits = {'bb:bb:bb': evc1}
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule/'
+
+        # case 1: empty post
+        response = api.post(url, data="")
+        self.assertEqual(response.status_code, 415)
+
+        # case 2: content-type not specified
+        payload = {
+            "circuit_id": "bb:bb:bb",
+            "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+            }
+        }
+        response = api.post(url, data=json.dumps(payload))
+        self.assertEqual(response.status_code, 415)
+
+        # case 3: not a dictionary
+        payload = []
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+        # case 4: missing circuit id
+        payload = {
+            "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+            }
+        }
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+        # case 5: missing schedule
+        payload = {
+            "circuit_id": "bb:bb:bb"
+        }
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
+        # case 6: invalid circuit
+        payload = {
+            "circuit_id": "xx:xx:xx",
+            "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+            }
+        }
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 404)
+
+        # case 7: archived or deleted evc
+        evc1.archived.return_value = True
+        payload = {
+            "circuit_id": "bb:bb:bb",
+            "schedule": {
+                "frequency": "1 * * * *",
+                "action": "create"
+            }
+        }
+        response = api.post(url, data=json.dumps(payload),
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 403)
+
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.get_data')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
@@ -1125,6 +1209,15 @@ class TestMain(TestCase):
         response = api.delete(url)
 
         self.assertEqual(response.status_code, 403, response.data)
+
+    @patch('napps.kytos.mef_eline.main.Main._find_evc_by_schedule_id')
+    def test_delete_schedule_not_found(self, mock_find_evc_by_sched):
+        """Test delete a circuit schedule - unexisting."""
+        mock_find_evc_by_sched.return_value = (None, False)
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/schedule/1'
+        response = api.delete(url)
+        self.assertEqual(response.status_code, 404)
 
     @patch('requests.post')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
