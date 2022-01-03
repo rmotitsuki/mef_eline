@@ -4,8 +4,7 @@ info:
   title: Kytos Circuit Provisioning
   description: Kytos NApp for provisioning of SDN circuits.
 servers:
-  - url: http://localhost:8181/api/kytos/mef_eline
-    description: Local server (uses test data)
+  - url: /api/kytos/mef_eline
 paths:
   /v2/evc/:
     get:
@@ -286,8 +285,11 @@ components:
         - name
         - uni_a
         - uni_z
+      additionalProperties: false
       properties:
         name:
+          type: string
+        frequency:
           type: string
         uni_a:
           $ref: '#/components/schemas/Endpoint'
@@ -310,10 +312,21 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Path'
+        primary_path:
+          type: array
+          items:
+            $ref: '#/components/schemas/Path'
+        dynamic_backup_path:
+          type: boolean
         circuit_scheduler:
           type: array
           items:
             $ref: '#/components/schemas/CircuitSchedule'
+        priority:
+          type: integer
+          format: int64
+        enabled:
+          type: boolean
 
     Endpoint: # Can be referenced via '#/components/schemas/Endpoint'
       type: object
@@ -322,7 +335,9 @@ components:
       properties:
         interface_id:
           type: string
-          format: '00:00:00:00:00:00:00:00:0'
+          minLength: 25
+          maxLength: 30
+          pattern: '^([0-9A-Fa-f]{2}[:-]){8}(\d{1,5})$'
         tag:
           $ref: '#/components/schemas/Tag'
 
@@ -431,9 +446,11 @@ components:
         - value
       properties:
         tag_type:
-          type: string
+          type: integer
+          format: int32
         value:
-          type: string
+          type: integer
+          format: int32
 
     CircuitSchedule: # Can be referenced via '#/components/schemas/CircuitSchedule'
       type: object
