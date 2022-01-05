@@ -4,7 +4,6 @@
 #
 #    pip-compile --output-file requirements/dev.txt requirements/dev.in
 #
--e git+https://github.com/kytos/kytos.git#egg=kytos
+-e git+https://github.com/kytos-ng/python-openflow.git#egg=python-openflow
+-e git+https://github.com/kytos-ng/kytos.git#egg=kytos
 -e .[dev]
-eventlet==0.32.0
-openapi-core==0.14.2
