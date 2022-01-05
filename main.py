@@ -619,6 +619,10 @@ class Main(KytosNApp):
         return False
 
     @listen_to("kytos/topology.link_up")
+    def on_link_up(self, event):
+        """Change circuit when link is up or end_maintenance."""
+        self.handle_link_up(event)
+
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         log.debug("Event handle_link_up %s", event)
@@ -628,6 +632,10 @@ class Main(KytosNApp):
                     evc.handle_link_up(event.content["link"])
 
     @listen_to("kytos/topology.link_down")
+    def on_link_down(self, event):
+        """Change circuit when link is down or under_mantenance."""
+        self.handle_link_down(event)
+
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         log.debug("Event handle_link_down %s", event)
@@ -674,6 +682,10 @@ class Main(KytosNApp):
         return evc
 
     @listen_to("kytos/flow_manager.flow.error")
+    def on_flow_mod_error(self, event):
+        """Handle flow mod errors related to an EVC."""
+        self.handle_flow_mod_error(event)
+
     def handle_flow_mod_error(self, event):
         """Handle flow mod errors related to an EVC."""
         flow = event.content["flow"]
