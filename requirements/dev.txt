@@ -6,7 +6,8 @@
 #
 -e git+https://github.com/kytos-ng/kytos.git#egg=kytos
     # via -r requirements/dev.in
--e . # via -r requirements/dev.in
+-e .
+    # via -r requirements/dev.in
 -e git+https://github.com/kytos-ng/python-openflow.git#egg=python-openflow
     # via
     #   -r requirements/dev.in
@@ -15,7 +16,7 @@ apscheduler==3.8.0
     # via kytos-mef-eline
 astroid==2.9.2
     # via pylint
-attrs==21.2.0
+attrs==21.4.0
     # via
     #   glom
     #   jsonschema
@@ -30,7 +31,7 @@ boltons==21.0.0
     #   face
     #   glom
     #   kytos-mef-eline
-certifi==2019.11.28
+certifi==2021.10.8
     # via
     #   kytos-mef-eline
     #   requests
@@ -38,7 +39,7 @@ charset-normalizer==2.0.10
     # via
     #   kytos-mef-eline
     #   requests
-click==7.1.1
+click==8.0.3
     # via
     #   flask
     #   kytos
@@ -58,7 +59,7 @@ distlib==0.3.4
     # via virtualenv
 docopt==0.6.2
     # via yala
-docutils==0.17.1
+docutils==0.18.1
     # via
     #   kytos
     #   python-daemon
@@ -81,12 +82,13 @@ flask-socketio==4.2.1
     # via kytos
 glom==20.11.0
     # via kytos-mef-eline
-idna==2.9
+idna==3.3
     # via
     #   kytos-mef-eline
     #   requests
-importlib-metadata==4.8.1
+importlib-metadata==4.8.3
     # via
+    #   click
     #   jsonschema
     #   kytos-mef-eline
     #   pep517
@@ -101,7 +103,7 @@ ipython-genutils==0.2.0
     # via
     #   kytos
     #   traitlets
-isodate==0.6.0
+isodate==0.6.1
     # via
     #   kytos-mef-eline
     #   openapi-core
@@ -129,7 +131,7 @@ jsonschema==3.2.0
     #   kytos-mef-eline
     #   openapi-schema-validator
     #   openapi-spec-validator
-lazy-object-proxy==1.6.0
+lazy-object-proxy==1.7.1
     # via
     #   astroid
     #   kytos-mef-eline
@@ -144,13 +146,13 @@ markupsafe==1.1.1
     #   kytos
 mccabe==0.6.1
     # via pylint
-more-itertools==8.10.0
+more-itertools==8.12.0
     # via
     #   kytos-mef-eline
     #   openapi-core
 openapi-core==0.14.2
     # via kytos-mef-eline
-openapi-schema-validator==0.1.5
+openapi-schema-validator==0.1.6
     # via
     #   kytos-mef-eline
     #   openapi-core
@@ -203,7 +205,7 @@ py==1.11.0
     # via tox
 pycodestyle==2.8.0
     # via yala
-pygments==2.10.0
+pygments==2.11.2
     # via
     #   ipython
     #   kytos
@@ -268,7 +270,7 @@ traitlets==4.3.3
     #   kytos
 typed-ast==1.5.1
     # via astroid
-typing-extensions==3.10.0.2
+typing-extensions==4.0.1
     # via
     #   astroid
     #   importlib-metadata
@@ -278,7 +280,7 @@ tzlocal==2.1
     # via
     #   apscheduler
     #   kytos-mef-eline
-urllib3==1.25.8
+urllib3==1.26.7
     # via
     #   kytos-mef-eline
     #   requests
