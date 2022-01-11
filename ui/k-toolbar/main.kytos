@@ -95,6 +95,17 @@ module.exports = {
         }
         this.$kytos.$emit("showInfoPanel", listConnections);
     },
+    set_default_values() {
+        this.circuit_name = "";
+        this.endpoint_a = "";
+        this.endpoint_name_a = "Endpoint name:";
+        this.tag_type_a = "";
+        this.tag_value_a = "";
+        this.endpoint_z = "";
+        this.endpoint_name_z = "Endpoint name:";
+        this.tag_type_z = "";
+        this.tag_value_z = "";
+    },
     post_success(data) {
         let notification = {
             icon: 'gear',
@@ -103,6 +114,8 @@ module.exports = {
         }
     
         this.$kytos.$emit("setNotification" , notification);
+        // Clear fields if the POST is a success
+        this.set_default_values();
     },
     post_error(data) {
         let notification = {
