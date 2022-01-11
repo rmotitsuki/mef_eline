@@ -6,16 +6,17 @@
 #
 apscheduler==3.8.0
     # via -r requirements/run.in
-attrs==21.2.0
+attrs==21.4.0
     # via
     #   glom
     #   jsonschema
     #   openapi-core
+    #   openapi-schema-validator
 boltons==21.0.0
     # via
     #   face
     #   glom
-certifi==2019.11.28
+certifi==2021.10.8
     # via requests
 charset-normalizer==2.0.10
     # via requests
@@ -25,25 +26,23 @@ face==20.1.1
     # via glom
 glom==20.11.0
     # via -r requirements/run.in
-idna==2.9
+idna==3.3
     # via requests
-importlib-metadata==4.8.1
+importlib-metadata==4.8.3
     # via jsonschema
-isodate==0.6.0
-    # via
-    #   openapi-core
-    #   openapi-schema-validator
+isodate==0.6.1
+    # via openapi-core
 jsonschema==3.2.0
     # via
     #   openapi-schema-validator
     #   openapi-spec-validator
-lazy-object-proxy==1.6.0
+lazy-object-proxy==1.7.1
     # via openapi-core
-more-itertools==8.10.0
+more-itertools==8.12.0
     # via openapi-core
 openapi-core==0.14.2
     # via -r requirements/run.in
-openapi-schema-validator==0.1.5
+openapi-schema-validator==0.1.6
     # via
     #   openapi-core
     #   openapi-spec-validator
@@ -65,15 +64,13 @@ six==1.16.0
     # via
     #   apscheduler
     #   isodate
-    #   jsonschema
     #   openapi-core
-    #   openapi-schema-validator
     #   openapi-spec-validator
-typing-extensions==3.10.0.2
+typing-extensions==4.0.1
     # via importlib-metadata
 tzlocal==2.1
     # via apscheduler
-urllib3==1.25.8
+urllib3==1.26.7
     # via requests
 werkzeug==1.0.1
     # via openapi-core
