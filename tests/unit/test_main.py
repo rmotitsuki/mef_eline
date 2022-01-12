@@ -1219,6 +1219,13 @@ class TestMain(TestCase):
         response = api.delete(url)
         self.assertEqual(response.status_code, 404)
 
+    def test_get_circuit_not_found(self):
+        """Test /v2/evc/<circuit_id> 404."""
+        api = self.get_app_test_client(self.napp)
+        url = f'{self.server_name_url}/v2/evc/1234'
+        response = api.get(url)
+        self.assertEqual(response.status_code, 404)
+
     @patch('requests.post')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.storehouse.StoreHouse.save_evc')
