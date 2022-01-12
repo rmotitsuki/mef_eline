@@ -860,7 +860,7 @@ class TestMain(TestCase):
 
         expected = "circuit_id blah not found"
         # Assert response not found
-        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(response.status_code, 404, response.data)
         self.assertEqual(expected, json.loads(response.data)["description"])
 
     def _uni_from_dict_side_effect(self, uni_dict):
