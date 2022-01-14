@@ -96,6 +96,7 @@
                         title="col.name"
                         :candidates="dpids"
                         @focus="loadDpidNames"
+                        @blur="onblur_dpid"
                         v-if="compexists && (col.name=='uni_a' || col.name=='uni_z')">
                       </k-input-auto>
                       <template v-else>
@@ -282,6 +283,26 @@ module.exports = {
         _this.$kytos.$emit("setNotification" , notification);
       });
     },
+    onblur_dpid: function() {
+      /**
+       * Update dpid values on event onblur triggered in dpids fields.
+       * It split the value selected from autocomplete list.
+       * It is expected the value as "NAME - DPID".
+       **/
+      let dpid_a = this.endpoints_data["DPID"][0]["value"];
+      if(dpid_a.lastIndexOf(' ') > 0) {
+        let splitted_dpid = dpid_a.split(' ');
+        this.endpoints_data["Interface"][0]["value"] = splitted_dpid[0];
+        this.endpoints_data["DPID"][0]["value"] = splitted_dpid[2];
+      }
+      
+      let dpid_z = this.endpoints_data["DPID"][1]["value"];
+      if(dpid_z.lastIndexOf(' ') > 0) {
+        let splitted_dpid = dpid_z.split(' ');
+        this.endpoints_data["Interface"][1]["value"] = splitted_dpid[0];
+        this.endpoints_data["DPID"][1]["value"] = splitted_dpid[2];
+      }
+    },
     buidEvcView: function(data) {
       /**
       * Build new EVC object for exibition.
@@ -400,17 +421,22 @@ module.exports = {
           }
           if(sw.interfaces) {
             $.each(sw.interfaces, function(j , interface) {
-              // store autocomplete dpids
-              if(!_this.dpids.includes(interface.id)) {
-                _this.dpids.push(interface.id);
-              }
-                // store interface name data 
+              // store interface name data 
               let metadata = interface.metadata;
               _interface_data[interface.id] = {
                 "name": interface.name,
                 "link_name": (metadata && "link_name" in metadata) ? interface.metadata.link_name : "",
                 "port_name": (metadata && "port_name" in metadata) ? interface.metadata.port_name : ""
               };
+
+              // store autocomplete dpids
+              let value = interface.id;
+              if(interface.name) {
+                value = interface.name + " - " + value;
+              }
+              if(!_this.dpids.includes(value)) {
+                _this.dpids.push(value);
+              }
             });
           }
         });
@@ -679,5 +705,11 @@ module.exports = {
   #modalOK {
     color: #ffc5c5;
     background: #be0000;
+  }
+  .autocomplete-result-list {
+    width: 110% !important;
+  }
+  .autocomplete-result-list li {
+    white-space: nowrap;
   }
 </style>
