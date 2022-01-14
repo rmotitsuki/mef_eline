@@ -161,7 +161,6 @@ module.exports = {
                             if(value.name) {
                                 item = value.name + " - " + item;
                             }
-                            console.log(item);
                             dpids.push(item);
                         }
                         self.dpids = dpids;
