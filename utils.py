@@ -21,6 +21,11 @@ def emit_event(controller, name, **kwargs):
     controller.buffers.app.put(event)
 
 
+def notify_link_available_tags(controller, link):
+    """Notify link available tags."""
+    emit_event(controller, "link_available_tags", link=link)
+
+
 def compare_endpoint_trace(endpoint, vlan, trace):
     """Compare and endpoint with a trace step."""
     return (

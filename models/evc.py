@@ -14,7 +14,11 @@ from kytos.core.interface import UNI
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.storehouse import StoreHouse
-from napps.kytos.mef_eline.utils import compare_endpoint_trace, emit_event
+from napps.kytos.mef_eline.utils import (
+    compare_endpoint_trace,
+    emit_event,
+    notify_link_available_tags,
+)
 from .path import Path, DynamicPathManager
 
 
@@ -459,6 +463,8 @@ class EVCDeploy(EVCBase):
                 )
 
         current_path.make_vlans_available()
+        for link in current_path:
+            notify_link_available_tags(self._controller, link)
         self.current_path = Path([])
         self.deactivate()
         self.sync()
@@ -506,6 +512,8 @@ class EVCDeploy(EVCBase):
         if self.should_deploy(use_path):
             try:
                 use_path.choose_vlans()
+                for link in use_path:
+                    notify_link_available_tags(self._controller, link)
             except KytosNoTagAvailableError:
                 use_path = None
         else:
@@ -514,6 +522,8 @@ class EVCDeploy(EVCBase):
                     continue
                 try:
                     use_path.choose_vlans()
+                    for link in use_path:
+                        notify_link_available_tags(self._controller, link)
                     break
                 except KytosNoTagAvailableError:
                     pass
