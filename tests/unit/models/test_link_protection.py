@@ -109,6 +109,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         log_mocked.debug.assert_called_with(expected_msg)
         self.assertTrue(expected_deployed)
 
+    # pylint: disable=too-many-arguments
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("requests.post")
     @patch("napps.kytos.mef_eline.storehouse.StoreHouse.save_evc")
