@@ -777,8 +777,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         log_mock.info.assert_called_with(f"{evc} was deployed.")
         self.assertTrue(deployed)
 
+    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_remove_current_flows(self, send_flow_mods_mocked):
+    def test_remove_current_flows(self, send_flow_mods_mocked, notify_mock):
         """Test remove current flows."""
         uni_a = get_uni_mocked(
             interface_port=2,
@@ -830,6 +831,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
+        notify_mock.assert_called()
 
         self.assertEqual(send_flow_mods_mocked.call_count, 5)
         self.assertFalse(evc.is_active())
