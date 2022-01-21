@@ -318,12 +318,13 @@ class Main(KytosNApp):
             raise NotFound(result) from NotFound
 
         log.info("Removing %s", evc)
-        evc.remove_current_flows()
-        evc.deactivate()
-        evc.disable()
-        self.sched.remove(evc)
-        evc.archive()
-        evc.sync()
+        with evc.lock:
+            evc.remove_current_flows()
+            evc.deactivate()
+            evc.disable()
+            self.sched.remove(evc)
+            evc.archive()
+            evc.sync()
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
         status = 200
