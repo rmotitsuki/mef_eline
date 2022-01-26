@@ -12,6 +12,7 @@
                     placeholder="First endpoint" icon="arrow-right"
                     :candidates="dpids" 
                     @focus="fetchDpids"
+                    @blur="onblur_dpid"
 					v-if="compexists"
                     ></k-input-auto>
             <k-input id="endpoint-a-input" :value.sync="endpoint_a"
@@ -20,7 +21,9 @@
                     placeholder="First endpoint" icon="arrow-right"
 					v-else
                     ></k-input> 
-
+            <div class="k-input mef-field-label" :value.sync="endpoint_name_a"
+                    >{{endpoint_name_a}}</div> 
+            
            <k-input id="endpoint-a-tag-type" :value.sync="tag_type_a"
                     title="Tag Type A:"
                     tooltip="Enter with a Tag Type"
@@ -37,8 +40,10 @@
                     placeholder="Last endpoint" icon="arrow-left"
                     :candidates="dpids"
                     @focus="fetchDpids"
+                    @blur="onblur_dpid"
 					v-if="compexists"></k-input-auto>
-           
+            <div class="k-input mef-field-label" :value.sync="endpoint_name_z"
+                    >{{endpoint_name_z}}</div> 
            <k-input id="endpoint-z-input" :value.sync="endpoint_z"
                     title="Endpoint Z:"
                     tooltip="Endpoint Z (format: dpid:port_number)"
@@ -75,9 +80,11 @@ module.exports = {
     return {
         circuit_name: "",
         endpoint_a: "",
+        endpoint_name_a: "Endpoint name:",
         tag_type_a: "",
         tag_value_a: "",
         endpoint_z: "",
+        endpoint_name_z: "Endpoint name:",
         tag_type_z: "",
         tag_value_z: "",
         dpids: [""],
@@ -163,11 +170,35 @@ module.exports = {
                     .then(data => {
                         dpids = []
                         for ( const [key,value] of Object.entries( data.interfaces ) ) {
-                            dpids.push(key)
+                            let item = key;
+                            if(value.name) {
+                                item = value.name + " - " + item;
+                            }
+                            dpids.push(item);
                         }
-                        self.dpids = dpids
-                    })
-    }
+                        self.dpids = dpids;
+                    });
+    },
+    onblur_dpid: function() {
+        /**
+        * Update dpid values on event onblur triggered in dpids fields.
+        * It split the value selected from autocomplete list.
+        * It is expected the value as "NAME - DPID".
+        **/
+        let dpid_a = this.endpoint_a;
+        if(dpid_a.lastIndexOf(' ') > 0) {
+            let splitted_dpid = dpid_a.split(' ');
+            this.endpoint_name_a = splitted_dpid[0];
+            this.endpoint_a = splitted_dpid[2];
+        }
+        
+        let dpid_z = this.endpoint_z;
+        if(dpid_z.lastIndexOf(' ') > 0) {
+            let splitted_dpid = dpid_z.split(' ');
+            this.endpoint_name_z = splitted_dpid[0];
+            this.endpoint_z = splitted_dpid[2];
+        }
+    },
   },
   mounted() { // when the Vue app is booted up, this is run automatically.
     this.fetchDpids();
@@ -178,3 +209,17 @@ module.exports = {
   }
 }
 </script>
+<style>
+  .mef-field-label {
+    padding-left: 2.3em;
+    color: #737373;
+    height: 1.1em;
+    padding-top: 0.4em;
+  }
+  .autocomplete-result-list {
+    width: 110% !important;
+  }
+  .autocomplete-result-list li {
+    white-space: nowrap;
+  }
+</style>
