@@ -3,7 +3,17 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
-[2.6.0] - 2021-05-28
+[2022.1.0] - 2022-01-31
+***********************
+
+Added
+=====
+-  Added utils ``notify_link_available_tags``` function
+-  Publish ``kytos/mef_eline.link.available_tags`` event
+-  Hooked ``notify_link_available_tags`` when choosing or making vlans available
+
+
+[2.6.0] - 2021-11-30
 ********************
 
 Added
