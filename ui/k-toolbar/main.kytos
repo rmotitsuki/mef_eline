@@ -68,7 +68,7 @@
 
          <k-accordion-item title="List EVCs">
             <k-button tooltip="List installed EVC" title="List installed EVC"
-                     icon="plug" :on_click="showInfoPanel">
+                     icon="plug" :on_click="viewPanel">
                      </k-button>
          </k-accordion-item>
       </k-accordion>
@@ -92,6 +92,18 @@ module.exports = {
     }
   },
   methods: {
+    viewPanel() {
+        var _this = this;
+        // Clear panel
+        this.hideInfoPanel();
+        // Wait 50ms to clear the panel.
+        setTimeout(function(){
+            _this.showInfoPanel();
+        }, 50);
+    },
+    hideInfoPanel() {
+        this.$kytos.$emit("hideInfoPanel");
+    },
     showInfoPanel() {
         let listConnections = {
             component: 'kytos-mef_eline-k-info-panel-list_connections',
@@ -99,7 +111,7 @@ module.exports = {
             icon: "desktop",
             title: "View Connections",
             subtitle: "by kytos/mef_eline"
-        }
+        };
         this.$kytos.$emit("showInfoPanel", listConnections);
     },
     set_default_values() {
