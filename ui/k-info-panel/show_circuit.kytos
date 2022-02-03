@@ -333,13 +333,13 @@ module.exports = {
       };
 
       // Tag is optional, but can be edited
-      let tag_a = {'value': "", 'editable':true, 'name':'tag_a'};
-      let tag_b = {'value': "", 'editable':true, 'name':'tag_b'};
-      if(this.circuit['uni_a']['tag']) {
-        tag_a['value'] = this.circuit['uni_a']['tag']['value'];
-        tag_b['value'] = this.circuit['uni_z']['tag']['value'];
-      }
-      this.endpoints_data['Tag Value'] = [tag_a, tag_b];
+      let tag_a = {'value': this.circuit['uni_a']['tag'] ? this.circuit['uni_a']['tag']['value'] : "", 
+                   'editable':true, 
+                   'name':'tag_a'};
+      let tag_z = {'value': this.circuit['uni_z']['tag'] ? this.circuit['uni_z']['tag']['value'] : "", 
+                   'editable':true, 
+                  'name':'tag_z'};
+      this.endpoints_data['Tag Value'] = [tag_a, tag_z];
 
       this.basics = {'ID': {'value': data['id'], 'editable':false},
                      'Name': {'value': data['name'], 'editable':true, 'name':'name'}
