@@ -3,6 +3,14 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
+[2022.1.1] - 2022-02-03
+***********************
+
+Fixed
+=====
+-  Fix list button not re-rendering the content
+
+
 [2022.1.0] - 2022-01-31
 ***********************
 
