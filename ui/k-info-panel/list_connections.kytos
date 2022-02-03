@@ -52,8 +52,9 @@
       </div>
     </div>
     <div v-else>
-      <p class='empty-con-list'>No EVCs Installed.<br>
-      Close this info-panel and try again, please.</p>
+      <p class='empty-con-list' v-if="flag_loading">Loading EVCs. Please wait...</p>
+      <p class='empty-con-list' v-else>No EVCs Installed.<br>
+        Close this info-panel and try again, please.</p>
     </div>
 </template>
 
@@ -61,12 +62,13 @@
 module.exports = {
   data(){
     return {
+      flag_loading: false,
       component_key: 0,
-        data_header_id:  ['mef_dpid_id', 'mef_lst_name', 
-                        'mef_lst_sw_a', 'mef_lst_prt_a', 'mef_lst_int_a', 'mef_lst_tag_a',
-                        'mef_lst_sw_z', 'mef_lst_prt_z', 'mef_lst_int_z', 'mef_lst_tag_z', 
-                        'mef_lst_enabled',
-                        'mef_lst_active'],                         
+      data_header_id:  ['mef_dpid_id', 'mef_lst_name', 
+                      'mef_lst_sw_a', 'mef_lst_prt_a', 'mef_lst_int_a', 'mef_lst_tag_a',
+                      'mef_lst_sw_z', 'mef_lst_prt_z', 'mef_lst_int_z', 'mef_lst_tag_z', 
+                      'mef_lst_enabled',
+                      'mef_lst_active'],                         
       data_headers: ['id', 'Name', 'Switch A', 'Port A', 'Interf. A', 'Tag A', 
                       'Switch Z', 'Port Z', 'Interf. Z', 'Tag Z',
                       'Enabled', 'Active'],
@@ -189,6 +191,7 @@ module.exports = {
       /**
        * Call mef_eline REST endpoint to load EVC list.
        */
+      this.flag_loading = true;
       this.component_key = 0;
       var tableRows = [];
       var _this = this;
@@ -231,10 +234,12 @@ module.exports = {
 
         _this.data_rows = tableRows;
         _this.forceRerender(); 
+        _this.flag_loading = false;
       });
 
       request.fail(function( jqXHR, textStatus ) {
         alert( "Request failed: " + textStatus );
+        _this.flag_loading = false;
       });
       
       return tableRows;
