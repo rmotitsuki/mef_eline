@@ -3,6 +3,14 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
+[2022.1.2] - 2022-02-03
+***********************
+
+Fixed
+=====
+-  Fix to make tag fields optional and editable
+
+
 [2022.1.1] - 2022-02-03
 ***********************
 
