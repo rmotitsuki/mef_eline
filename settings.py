@@ -16,7 +16,7 @@ SDN_TRACE_CP_URL = "http://localhost:8181/api/amlight/sdntrace_cp"
 DEPLOY_EVCS_INTERVAL = 60
 
 # Time to wait for old path to become available
-WAIT_FOR_OLD_PATH = 5 * DEPLOY_EVCS_INTERVAL
+WAIT_FOR_OLD_PATH = 5
 
 # Prefix this NApp has when using cookies
 COOKIE_PREFIX = 0xAA
