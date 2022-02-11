@@ -3,6 +3,15 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
+[2022.1.3] - 2022-02-11
+***********************
+
+Fixed
+=====
+
+- Adjust default value for `settings.WAIT_FOR_OLD_PATH` since now it measured
+  in execution rounds instead of seconds
+
 [2022.1.2] - 2022-02-03
 ***********************
 
