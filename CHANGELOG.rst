@@ -3,6 +3,14 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
+[2022.1.4] - 2022-02-11
+***********************
+
+Fixed
+=====
+-  Fix UI to keep kytos panel width with default value
+
+
 [2022.1.3] - 2022-02-11
 ***********************
 
