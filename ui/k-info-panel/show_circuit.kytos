@@ -718,8 +718,11 @@ module.exports = {
     color: #ffc5c5;
     background: #be0000;
   }
-  .autocomplete-result-list {
+  #mef-unis .autocomplete-result-list {
     width: 110% !important;
+    outline: 0;
+    border: 1px #515151 solid;
+    border-radius: 3px;
   }
   .autocomplete-result-list li {
     white-space: nowrap;
