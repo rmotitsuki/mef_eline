@@ -20,8 +20,8 @@
                   <template v-for="(header, index) in data_header_id">
                     <th scope="col" v-if="header == 'mef_dpid_id'"></th>
                     <th scope="col" v-else>
-                      <input :id="header + '_search'" :id="'{header}_search'"
-                        tooltip="DPID" @keyup="filterCircuitList"
+                      <input :id="header + '_search'" v-model="search_cols[header]"
+                        tooltip="DPID"
                         v-if="!(['mef_lst_enabled', 'mef_lst_active'].includes(header))">
                       </input>
                     </th>
@@ -30,12 +30,12 @@
               </thead>
               <tbody>
                 <tr v-for="(row, rindex) in rowsOfPage"
-                  v-bind:class="{ inactive: !row['Active'] }"
-                  @click="rowClicked(row['id'])">
+                  v-bind:class="{ inactive: !row['mef_lst_active'] }"
+                  @click="rowClicked(row['mef_dpid_id'])">
                   <th scope="row" style="width: 45px">{{ rindex + 1 }}</th>
                   <template v-for="(column, cindex) in row"> 
-                    <td v-if="cindex != 'id'">
-                      <template v-if="cindex == 'Enabled' || cindex == 'Active'">
+                    <td v-if="cindex != 'mef_dpid_id'">
+                      <template v-if="cindex == 'mef_lst_enabled' || cindex == 'mef_lst_active'">
                         <i class="material-icons" style="color:green" 
                           v-if="column">done</i>
                         <i class="material-icons" style="color:#c00000" 
@@ -66,6 +66,7 @@ module.exports = {
     return {
       flag_loading: false,
       component_key: 0,
+      search_cols: [], 
       data_header_id:  ['mef_dpid_id', 'mef_lst_name', 
                       'mef_lst_sw_a', 'mef_lst_prt_a', 'mef_lst_int_a', 'mef_lst_tag_a',
                       'mef_lst_sw_z', 'mef_lst_prt_z', 'mef_lst_int_z', 'mef_lst_tag_z', 
@@ -127,62 +128,6 @@ module.exports = {
       }
       this.$kytos.$emit("showInfoPanel", content);
     },
-    filterCircuitList: function(event) {
-      /**
-      * Filter circuit list.
-      * It is triggered by keyup in every filter.
-      */
-      this.clearListFilter();
-
-      // check data headers to filter
-      // ignore the id column (x=1)
-      for(let x = 0; x < this.data_header_id.length; x++) {
-        let s_id = this.data_header_id[x] + "_search";
-        
-        let component = document.getElementById(s_id);
-        if(!component)
-          continue;
-
-        let filter = component.value.toUpperCase();
-        if(filter.length == 0)
-          continue;
-
-        // Declare variables
-        let table, tr, td, txtValue;
-        let index = x;
-
-        table = document.getElementById("mef-table-list-circuit");
-        // hide table to prepare to render the cells
-        table.style.display = "none";
-        body = table.getElementsByTagName("tbody");
-        tr = body[0].getElementsByTagName("tr");
-
-        // Loop through all table rows, and hide those who don't match the search query
-        for (let i = 0; i < tr.length; i++) {
-          // first cell in tbody is a th tag, not a td tag
-          td = tr[i].getElementsByTagName("td")[index-1];
-          
-          if (td) {
-            txtValue = td.textContent || td.innerText;
-            if (txtValue.toUpperCase().indexOf(filter) < 0)
-              tr[i].style.display = "none";
-          }
-        }
-        // show table
-        table.style.display = "";
-      }
-    },
-    clearListFilter: function() {
-      /**
-      * Clear circuit list column filters.
-      */
-      let table = document.getElementById("mef-table-list-circuit");
-      let body = table.getElementsByTagName("tbody")[0];
-      let tr = body.getElementsByTagName("tr");
-      for (let i = 0; i < tr.length; i++) {
-        tr[i].style.display = "";
-      }
-    },
     forceRerender: function() {
       /**
        * Force Vue to re-render the view.
@@ -215,20 +160,20 @@ module.exports = {
             let endpoint_z =  (evc.uni_z) ? evc.uni_z.interface_id : "";
             let endpoint_data_z = _this.getEndpointData(endpoint_z);
             let tag_z = (evc.uni_z && evc.uni_z.tag) ? evc.uni_z.tag.value : "";  
-            
+
             let connection = {
-              "id": evc.id,
-              "Name": evc.name,
-              "Switch A": endpoint_data_a.node_name,
-              "Port A": endpoint_data_a.port,
-              "Interf. A": endpoint_data_a.interface_name,
-              "Tag A": tag_a,
-              "Switch Z": endpoint_data_z.node_name,
-              "Port Z": endpoint_data_z.port,
-              "Interf. Z": endpoint_data_z.interface_name,
-              "Tag Z": tag_z,
-              "Enabled": evc.enabled,
-              "Active": evc.active
+              "mef_dpid_id": evc.id,
+              "mef_lst_name": evc.name,
+              "mef_lst_sw_a": endpoint_data_a.node_name,
+              "mef_lst_prt_a": '' + endpoint_data_a.port,
+              "mef_lst_int_a": endpoint_data_a.interface_name,
+              "mef_lst_tag_a": '' + tag_a,
+              "mef_lst_sw_z": endpoint_data_z.node_name,
+              "mef_lst_prt_z": '' + endpoint_data_z.port,
+              "mef_lst_int_z": endpoint_data_z.interface_name,
+              "mef_lst_tag_z": '' + tag_z,
+              "mef_lst_enabled": evc.enabled,
+              "mef_lst_active": evc.active
             };
             tableRows.push(connection);
           }
@@ -303,7 +248,19 @@ module.exports = {
        * Orders by ascendant or descendant of a
        * selected column
        */
-      return this.data_rows.sort((a, b) => {
+      // list all seach properties
+      let properties = Object.keys(this.search_cols);
+
+      let filtered = this.data_rows.filter((item)=>
+        {
+          // for every property check if search is not empty and item[prop] has search[prop]
+          let checks = properties.map(i => !this.search_cols[i] || item[i].includes(this.search_cols[i]));
+          // check if no property is false
+          return !checks.includes(false);
+        }
+      );
+
+      return filtered.sort((a, b) => {
         let modifier = 1,
             key_a = Object.keys(a),
             key_b = Object.keys(b);
@@ -317,7 +274,7 @@ module.exports = {
       });
     },
   },
-  mounted() {
+  created() {
       // Load DPID attributes and metadata
     this.loadDpidNames();
       // Load EVCs
@@ -327,6 +284,12 @@ module.exports = {
 
     // Initialize list sort direction
     this.currentSortDir = Array(this.data_headers.length).fill('asc');
+
+    this.search_cols = this.data_header_id.reduce((obj, item) => (obj[item] = "", obj), {});
+  },
+  mounted() {
+    // Make the panel fill the screen except the left menu width
+    this.$parent.$el.style.width = "calc(100% - 300px)";
   },
   destroyed() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
