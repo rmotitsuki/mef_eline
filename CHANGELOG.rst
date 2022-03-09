@@ -10,7 +10,8 @@ Added
 =====
 
 - Reintroduced Q-in-Q when creating the flows for an EVC.
-  
+- Optimize list of circuits filters
+
 
 [2022.1.5] - 2022-02-11
 ***********************
