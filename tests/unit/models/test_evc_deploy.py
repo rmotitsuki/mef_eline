@@ -10,7 +10,7 @@ from kytos.core.switch import Switch
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.models import EVC, Path  # NOQA
+from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
 from napps.kytos.mef_eline.settings import MANAGER_URL  # NOQA
 from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from napps.kytos.mef_eline.tests.helpers import (
@@ -22,6 +22,15 @@ from napps.kytos.mef_eline.tests.helpers import (
 
 class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
     """Tests to verify EVC class."""
+
+    def setUp(self):
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_for_tests",
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        self.evc_deploy = EVCDeploy(**attributes)
 
     def test_primary_links_zipped(self):
         """Test primary links zipped method."""
@@ -128,6 +137,24 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         requests_mock.post.assert_called_once_with(
             expected_endpoint, json=expected_data
         )
+
+    @patch("napps.kytos.mef_eline.models.evc.requests")
+    def test_send_flow_mods_error(self, requests_mock):
+        """Test flow_manager call fails."""
+        flow_mods = {"id": 20}
+        switch = Mock(spec=Switch, id=1)
+        response = MagicMock()
+        response.status_code = 415
+        requests_mock.post.return_value = response
+
+        # pylint: disable=protected-access
+        with self.assertRaises(FlowModException):
+            EVC._send_flow_mods(
+                switch,
+                flow_mods,
+                command='delete',
+                force=True
+            )
 
     def test_prepare_flow_mod(self):
         """Test prepare flow_mod method."""
@@ -853,3 +880,107 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                                               force=True)
         send_flow_mods_mocked.assert_any_call(switch_2, flows, 'delete',
                                               force=True)
+
+    @staticmethod
+    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
+    def test_deploy_direct_uni_flows(send_flow_mods_mock):
+        """Test _install_direct_uni_flows."""
+
+        switch = Mock(spec=Switch)
+        switch.dpid = 2
+        interface_a = Interface("eth0", 1, switch)
+        interface_z = Interface("eth1", 3, switch)
+        uni_a = get_uni_mocked(
+            tag_value=82,
+            is_valid=True,
+        )
+        uni_z = get_uni_mocked(
+            tag_value=84,
+            is_valid=True,
+        )
+        uni_a.interface = interface_a
+        uni_z.interface = interface_z
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "custom_name",
+            "uni_a": uni_a,
+            "uni_z": uni_z,
+            "enabled": True,
+            "active": True,
+        }
+        evc = EVC(**attributes)
+
+        # pylint: disable=protected-access
+        evc._install_direct_uni_flows()
+        send_flow_mods_mock.assert_called_once_with(
+            switch, [
+                {
+                    "match": {
+                        "in_port": 1,
+                        "dl_vlan": 82,
+                    },
+                    "cookie": evc.get_cookie(),
+                    "actions": [
+                        {
+                            "action_type": "set_vlan",
+                            "vlan_id": 84,
+                        },
+                        {
+                            "action_type": "output",
+                            "port": 3,
+                        },
+                    ]
+                },
+                {
+                    "match": {
+                        "in_port": 3,
+                        "dl_vlan": 84,
+                    },
+                    "cookie": evc.get_cookie(),
+                    "actions": [
+                        {
+                            "action_type": "set_vlan",
+                            "vlan_id": 82,
+                        },
+                        {
+                            "action_type": "output",
+                            "port": 1,
+                        },
+                    ]
+                }
+            ])
+
+    def test_is_affected_by_link(self):
+        """Test is_affected_by_link method"""
+        self.evc_deploy.current_path = Path(['a', 'b', 'c'])
+        self.assertTrue(self.evc_deploy.is_affected_by_link('b'))
+
+    def test_is_backup_path_affected_by_link(self):
+        """Test is_backup_path_affected_by_link method"""
+        self.evc_deploy.backup_path = Path(['a', 'b', 'c'])
+        self.assertFalse(self.evc_deploy.is_backup_path_affected_by_link('d'))
+
+    def test_is_primary_path_affected_by_link(self):
+        """Test is_primary_path_affected_by_link method"""
+        self.evc_deploy.primary_path = Path(['a', 'b', 'c'])
+        self.assertTrue(self.evc_deploy.is_primary_path_affected_by_link('c'))
+
+    def test_is_using_primary_path(self):
+        """Test is_using_primary_path method"""
+        self.evc_deploy.primary_path = Path(['a', 'b', 'c'])
+        self.evc_deploy.current_path = Path(['e', 'f', 'g'])
+        self.assertFalse(self.evc_deploy.is_using_primary_path())
+
+    def test_is_using_backup_path(self):
+        """Test is_using_backup_path method"""
+        self.evc_deploy.backup_path = Path(['a', 'b', 'c'])
+        self.evc_deploy.current_path = Path(['e', 'f', 'g'])
+        self.assertFalse(self.evc_deploy.is_using_backup_path())
+
+    @patch('napps.kytos.mef_eline.models.path.Path.status')
+    def test_is_using_dynamic_path(self, mock_status):
+        """Test is_using_dynamic_path method"""
+        mock_status.return_value = False
+        self.evc_deploy.backup_path = Path([])
+        self.evc_deploy.primary_path = Path([])
+        self.assertFalse(self.evc_deploy.is_using_dynamic_path())
