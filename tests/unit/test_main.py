@@ -220,7 +220,8 @@ class TestMain(TestCase):
 
         Verify object creation with circuit data and schedule data.
         """
-        _get_interface_by_id_mock.return_value = True
+
+        _get_interface_by_id_mock.return_value = get_uni_mocked().interface
         _validate_mock.return_value = True
         uni_from_dict_mock.side_effect = ["uni_a", "uni_z"]
         payload = {
@@ -269,7 +270,7 @@ class TestMain(TestCase):
 
         Verify object creation with circuit data and schedule data.
         """
-        _get_interface_by_id_mock.return_value = True
+        _get_interface_by_id_mock.return_value = get_uni_mocked().interface
         _validate_mock.return_value = True
         uni_from_dict_mock.side_effect = ["uni_a", "uni_z"]
         payload = {
@@ -866,7 +867,7 @@ class TestMain(TestCase):
     def _uni_from_dict_side_effect(self, uni_dict):
         interface_id = uni_dict.get("interface_id")
         tag_dict = uni_dict.get("tag")
-        interface = Interface(interface_id, "0", "switch")
+        interface = Interface(interface_id, "0", MagicMock(id="1"))
         return UNI(interface, tag_dict)
 
     @patch("apscheduler.schedulers.background.BackgroundScheduler.add_job")
@@ -1257,12 +1258,15 @@ class TestMain(TestCase):
             evc_as_dict_mock,
             uni_from_dict_mock,
             evc_deploy,
-            *mocks,
+            _,
+            interface_by_id_mock,
+            _,
+            _,
+            _,
             requests_mock,
         ) = args
 
-        for mock in mocks:
-            mock.return_value = True
+        interface_by_id_mock.return_value = get_uni_mocked().interface
         unis = [
             get_uni_mocked(switch_dpid="00:00:00:00:00:00:00:01"),
             get_uni_mocked(switch_dpid="00:00:00:00:00:00:00:02"),
