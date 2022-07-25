@@ -3,7 +3,6 @@ import sys
 
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
-from unittest.mock import Mock
 
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA pycodestyle
 from napps.kytos.mef_eline.tests.helpers import (
@@ -112,7 +111,7 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     # pylint: disable=too-many-arguments
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("requests.post")
-    @patch("napps.kytos.mef_eline.storehouse.StoreHouse.save_evc")
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
@@ -170,10 +169,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
             "enabled": True,
         }
         evc = EVC(**attributes)
-
-        # storehouse initialization mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
 
         deployed = evc.deploy_to("primary_path", evc.primary_path)
         self.assertFalse(deployed)
@@ -304,13 +299,14 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         msg = f"{evc} deployed after link down."
         log_mocked.debug.assert_called_once_with(msg)
 
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
     @patch(DEPLOY_TO_PRIMARY_PATH)
     @patch("napps.kytos.mef_eline.models.path.DynamicPathManager.get_paths")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.DOWN)
     def test_handle_link_down_case_3(
-        self, get_paths_mocked, deploy_to_mocked, deploy_mocked, log_mocked
+        self, get_paths_mocked, deploy_to_mocked, deploy_mocked, log_mocked, _
     ):
         """Test if circuit without dynamic path is return failed."""
         deploy_mocked.return_value = False
@@ -422,10 +418,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         evc.current_path = evc.backup_path
-
-        # storehouse mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
 
         deploy_to_mocked.reset_mock()
         current_handle_link_down = evc.handle_link_down()
@@ -601,10 +593,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
 
-        # storehouse initialization mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
-
         evc.current_path = Path([])
         deploy_to_path_mocked.reset_mock()
         current_handle_link_up = evc.handle_link_up(backup_path[0])
@@ -678,10 +666,6 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         evc.current_path = Path([])
-
-        # storehouse mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
 
         deploy_to_path_mocked.reset_mock()
         current_handle_link_up = evc.handle_link_up(backup_path[0])

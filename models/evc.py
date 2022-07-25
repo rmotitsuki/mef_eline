@@ -11,15 +11,12 @@ from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
-from napps.kytos.mef_eline import settings
+from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
-from napps.kytos.mef_eline.storehouse import StoreHouse
-from napps.kytos.mef_eline.utils import (
-    compare_endpoint_trace,
-    emit_event,
-    notify_link_available_tags,
-)
-from .path import Path, DynamicPathManager
+from napps.kytos.mef_eline.utils import (compare_endpoint_trace, emit_event,
+                                         notify_link_available_tags)
+
+from .path import DynamicPathManager, Path
 
 
 class EVCBase(GenericEntity):
@@ -116,8 +113,8 @@ class EVCBase(GenericEntity):
 
         self.metadata = kwargs.get("metadata", {})
 
-        self._storehouse = StoreHouse(controller)
         self._controller = controller
+        self._mongo_controller = controllers.ELineController()
 
         if kwargs.get("active", False):
             self.activate()
@@ -136,9 +133,8 @@ class EVCBase(GenericEntity):
         self._requested = kwargs
 
     def sync(self):
-        """Sync this EVC in the storehouse."""
-        self._storehouse.save_evc(self)
-        log.info(f"EVC {self.id} was synced to the storehouse.")
+        """Sync this EVC in the MongoDB."""
+        self._mongo_controller.upsert_evc(self.as_dict())
 
     def update(self, **kwargs):
         """Update evc attributes.
@@ -167,7 +163,7 @@ class EVCBase(GenericEntity):
                         uni_a.interface.switch, uni_z.interface.switch
                     )
                 except InvalidPath as exception:
-                    raise ValueError(
+                    raise ValueError(  # pylint: disable=raise-missing-from
                         f"{attribute} is not a " f"valid path: {exception}"
                     )
         for attribute, value in kwargs.items():
@@ -492,7 +488,7 @@ class EVCDeploy(EVCBase):
 
         return False
 
-    def deploy_to_path(self, path=None):
+    def deploy_to_path(self, path=None):  # pylint: disable=too-many-branches
         """Install the flows for this circuit.
 
         Procedures to deploy:
@@ -694,7 +690,7 @@ class EVCDeploy(EVCBase):
             switch(Switch): The target of flows.
             flow_mods(dict): Python dictionary with flow_mods.
             command(str): By default is 'flows'. To remove a flow is 'remove'.
-            force(bool): True to send via consistency check in case of conn errors
+            force(bool): True to send via consistency check in case of errors
 
         """
         endpoint = f"{settings.MANAGER_URL}/{command}/{switch.id}"
@@ -762,7 +758,7 @@ class EVCDeploy(EVCBase):
 
         """
         # assign all arguments
-        in_interface, out_interface, in_vlan, out_vlan , new_c_vlan = args
+        in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
 
         flow_mod = self._prepare_flow_mod(
             in_interface, out_interface, queue_id

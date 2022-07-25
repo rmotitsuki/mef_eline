@@ -471,7 +471,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         send_flow_mods_mock.assert_called_once_with(switch, expected_flow_mods)
 
     @patch("requests.post")
-    @patch("napps.kytos.mef_eline.storehouse.StoreHouse.save_evc")
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
@@ -724,17 +724,13 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         discover_new_paths_mocked.return_value = []
         deploy_to_path_mocked.return_value = True
 
-        # storehouse initialization mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
-
         deployed = evc.deploy_to_backup_path()
 
         deploy_to_path_mocked.assert_called_once_with()
         self.assertEqual(deployed, True)
 
     @patch("requests.post")
-    @patch("napps.kytos.mef_eline.storehouse.StoreHouse.save_evc")
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
@@ -813,9 +809,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         log_mock.info.assert_called_with(f"{evc} was deployed.")
         self.assertTrue(deployed)
 
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_remove_current_flows(self, send_flow_mods_mocked, notify_mock):
+    def test_remove_current_flows(self, send_flow_mods_mocked, notify_mock, _):
         """Test remove current flows."""
         uni_a = get_uni_mocked(
             interface_port=2,
@@ -860,10 +857,6 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
 
         evc = EVC(**attributes)
-
-        # storehouse initialization mock
-        evc._storehouse.box = Mock()  # pylint: disable=protected-access
-        evc._storehouse.box.data = {}  # pylint: disable=protected-access
 
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
