@@ -207,6 +207,7 @@ class DynamicPathManager:
             if path["disjointness"] == 0:
                 continue
             yield cls.create_path(path["hops"])
+        return None
 
     @classmethod
     def create_path(cls, path):
