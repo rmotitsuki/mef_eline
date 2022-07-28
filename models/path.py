@@ -111,12 +111,13 @@ class DynamicPathManager:
         cls.controller = controller
 
     @staticmethod
-    def get_paths(circuit):
+    def get_paths(circuit, max_paths=2):
         """Get a valid path for the circuit from the Pathfinder."""
         endpoint = settings.PATHFINDER_URL
         request_data = {
             "source": circuit.uni_a.interface.id,
             "destination": circuit.uni_z.interface.id,
+            "spf_max_paths": max_paths,
         }
         api_reply = requests.post(endpoint, json=request_data)
 
@@ -147,6 +148,64 @@ class DynamicPathManager:
     def get_best_paths(cls, circuit):
         """Return the best paths available for a circuit, if they exist."""
         for path in cls.get_paths(circuit):
+            yield cls.create_path(path["hops"])
+
+    @classmethod
+    def get_disjoint_paths(cls, circuit, unwanted_path):
+        """Computes the maximum disjoint paths from the unwanted_path for a EVC
+
+        Maximum disjoint paths from the unwanted_path are the paths from the
+        source node to the target node that share the minimum number os links
+        contained in unwanted_path. In other words, unwanted_path is the path
+        we want to avoid: we want the maximum possible disjoint path from it.
+        The disjointness of a path in regards to unwanted_path is calculated
+        by the complementary percentage of shared links between them. As an
+        example, if the unwanted_path has 3 links, a given path P1 has 1 link
+        shared with unwanted_path, and a given path P2 has 2 links shared with
+        unwanted_path, then the disjointness of P1 is 0.67 and the disjointness
+        of P2 is 0.33. In this example, P1 is preferable over P2 because it
+        offers a better disjoint path. When two paths have the same
+        disjointness they are ordered by 'cost' attributed as returned from
+        Pathfinder. When the disjointness of a path is equal to 0 (i.e., it
+        shares all the links with unwanted_path), that particular path is not
+        considered a candidate.
+
+        Parameters:
+        -----------
+
+        circuit : EVC
+            The EVC providing source node (uni_a) and target node (uni_z)
+
+        unwanted_path : Path
+            The Path which we want to avoid.
+
+        Returns:
+        --------
+        paths : generator
+            Generator of unwanted_path disjoint paths. If unwanted_path is
+            not provided or empty, we return an empty list.
+        """
+        undesired_links = [
+            (l.endpoint_a.id, l.endpoint_b.id) for l in unwanted_path
+        ]
+        if not undesired_links:
+            return []
+
+        paths = cls.get_paths(circuit, max_paths=settings.DISJOINT_PATH_CUTOFF)
+        for path in paths:
+            head = path["hops"][:-1]
+            tail = path["hops"][1:]
+            shared_edges = 0
+            for (endpoint_a, endpoint_b) in undesired_links:
+                if ((endpoint_a, endpoint_b) in zip(head, tail)) or (
+                    (endpoint_b, endpoint_a) in zip(head, tail)
+                ):
+                    shared_edges += 1
+            path["disjointness"] = 1 - shared_edges / len(undesired_links)
+        paths = sorted(paths, key = lambda x: (-x['disjointness'], x['cost']))
+        for path in paths:
+            if path["disjointness"] == 0:
+                continue
             yield cls.create_path(path["hops"])
 
     @classmethod
