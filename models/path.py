@@ -186,10 +186,10 @@ class DynamicPathManager:
             not provided or empty, we return an empty list.
         """
         unwanted_links = [
-            (l.endpoint_a.id, l.endpoint_b.id) for l in unwanted_path
+            (link.endpoint_a.id, link.endpoint_b.id) for link in unwanted_path
         ]
         if not unwanted_links:
-            return []
+            return None
 
         paths = cls.get_paths(circuit, max_paths=settings.DISJOINT_PATH_CUTOFF)
         for path in paths:
@@ -202,7 +202,7 @@ class DynamicPathManager:
                 ):
                     shared_edges += 1
             path["disjointness"] = 1 - shared_edges / len(unwanted_links)
-        paths = sorted(paths, key = lambda x: (-x['disjointness'], x['cost']))
+        paths = sorted(paths, key=lambda x: (-x['disjointness'], x['cost']))
         for path in paths:
             if path["disjointness"] == 0:
                 continue
