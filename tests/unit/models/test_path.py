@@ -1,9 +1,10 @@
 """Module to test the Path class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 from kytos.core.common import EntityStatus
+from kytos.core.link import Link
 from kytos.core.switch import Switch
 
 # pylint: disable=wrong-import-position
@@ -14,6 +15,7 @@ from napps.kytos.mef_eline.exceptions import InvalidPath  # NOQA pycodestyle
 from napps.kytos.mef_eline.models import Path, DynamicPathManager  # NOQA pycodestyle
 from napps.kytos.mef_eline.tests.helpers import (
     MockResponse,
+    id_to_interface_mock,
     get_link_mocked,
     get_mocked_requests,
 )  # NOQA pycodestyle
@@ -278,3 +280,414 @@ class TestDynamicPathManager(TestCase):
             '00:00:00:00:00:00:00:03:1',
         ]
         self.assertIsNone(DynamicPathManager.create_path(path))
+
+    @patch("requests.post")
+    def test_get_best_path(self, mock_requests_post):
+        """Test get_best_path method."""
+        controller = MagicMock()
+        controller.get_interface_by_id.side_effect = id_to_interface_mock
+        DynamicPathManager.set_controller(controller)
+
+        paths1 = {
+            "paths": [
+                {
+                    "cost": 5,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:1"
+                        ]
+                },
+            ]
+        }
+
+        expected_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
+            ),
+        ]
+
+        # test success case
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = paths1
+        mock_requests_post.return_value = mock_response
+
+        res_paths = list(DynamicPathManager.get_best_path(MagicMock()))
+        self.assertEqual(
+            [link.id for link in res_paths],
+            [link.id for link in expected_path]
+        )
+
+        # test failure when controller dont find the interface on create_path
+        controller.get_interface_by_id.side_effect = [
+            id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+            None
+        ]
+        self.assertIsNone(DynamicPathManager.get_best_path(MagicMock()))
+
+        mock_response.status_code = 400
+        mock_response.json.return_value = {}
+        mock_requests_post.return_value = mock_response
+
+        res_paths = DynamicPathManager.get_best_path(MagicMock())
+        self.assertIsNone(res_paths)
+
+    @patch("requests.post")
+    def test_get_best_paths(self, mock_requests_post):
+        """Test get_best_paths method."""
+        controller = MagicMock()
+        controller.get_interface_by_id.side_effect = id_to_interface_mock
+        DynamicPathManager.set_controller(controller)
+
+        paths1 = {
+            "paths": [
+                {
+                    "cost": 5,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:1"
+                        ]
+                },
+                {
+                    "cost": 11,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:3",
+                        "00:00:00:00:00:00:00:03:3",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:4",
+                        "00:00:00:00:00:00:00:04:4",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:1"
+                        ]
+                },
+            ]
+        }
+
+        expected_paths_0 = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
+            ),
+        ]
+
+        expected_paths_1 = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:02:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:3")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:03:4"),
+                id_to_interface_mock("00:00:00:00:00:00:00:04:4")
+            ),
+        ]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = paths1
+        mock_requests_post.return_value = mock_response
+
+        res_paths = list(DynamicPathManager.get_best_paths(MagicMock()))
+        self.assertEqual(
+            [link.id for link in res_paths[0]],
+            [link.id for link in expected_paths_0]
+        )
+        self.assertEqual(
+            [link.id for link in res_paths[1]],
+            [link.id for link in expected_paths_1]
+        )
+
+    @patch("requests.post")
+    def test_get_disjoint_paths(self, mock_requests_post):
+        """Test get_disjoint_paths method."""
+
+        controller = MagicMock()
+        controller.get_interface_by_id.side_effect = id_to_interface_mock
+        DynamicPathManager.set_controller(controller)
+
+        evc = MagicMock()
+
+        # Topo0
+        paths1 = {
+            "paths": [
+                {
+                    "cost": 11,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:3",
+                        "00:00:00:00:00:00:00:04:2",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:3",
+                        "00:00:00:00:00:00:00:05:2",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:1"
+                        ]
+                },
+                {
+                    "cost": 11,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:3",
+                        "00:00:00:00:00:00:00:03:2",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:3",
+                        "00:00:00:00:00:00:00:04:4",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:3",
+                        "00:00:00:00:00:00:00:05:2",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:1"
+                        ]
+                },
+                {
+                    "cost": 14,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:3",
+                        "00:00:00:00:00:00:00:04:2",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:5",
+                        "00:00:00:00:00:00:00:06:2",
+                        "00:00:00:00:00:00:00:06",
+                        "00:00:00:00:00:00:00:06:3",
+                        "00:00:00:00:00:00:00:05:3",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:1"
+                    ]
+                },
+                {
+                    "cost": 14,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:3",
+                        "00:00:00:00:00:00:00:03:2",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:3",
+                        "00:00:00:00:00:00:00:04:4",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:5",
+                        "00:00:00:00:00:00:00:06:2",
+                        "00:00:00:00:00:00:00:06",
+                        "00:00:00:00:00:00:00:06:3",
+                        "00:00:00:00:00:00:00:05:3",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:1"
+                    ]
+                },
+                {
+                    "cost": 17,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:3",
+                        "00:00:00:00:00:00:00:03:2",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:3",
+                        "00:00:00:00:00:00:00:04:4",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:5",
+                        "00:00:00:00:00:00:00:06:2",
+                        "00:00:00:00:00:00:00:06",
+                        "00:00:00:00:00:00:00:06:4",
+                        "00:00:00:00:00:00:00:07:2",
+                        "00:00:00:00:00:00:00:07",
+                        "00:00:00:00:00:00:00:07:3",
+                        "00:00:00:00:00:00:00:05:4",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:1"
+                    ]
+                },
+            ]
+        }
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = paths1
+
+        # when we dont have the current_path
+        mock_requests_post.return_value = mock_response
+        disjoint_paths = list(DynamicPathManager.get_disjoint_paths(evc, []))
+        self.assertEqual(disjoint_paths, [])
+
+        current_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:02:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:04:2")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:04:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:05:2")
+            ),
+        ]
+
+        # only one path available from pathfinder (precesilly the
+        # current_path), so the maximum disjoint path will be empty
+        mock_response.json.return_value = {"paths": paths1["paths"][0:1]}
+        mock_requests_post.return_value = mock_response
+        paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
+        self.assertEqual(len(paths), 0)
+
+        expected_disjoint_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:2")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:03:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:04:4")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:04:5"),
+                id_to_interface_mock("00:00:00:00:00:00:00:06:2")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:06:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:05:3")
+            ),
+        ]
+
+        # there are one alternative path
+        mock_response.json.return_value = paths1
+        mock_requests_post.return_value = mock_response
+        paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
+        self.assertEqual(len(paths), 4)
+        # for more information on the paths please refer to EP029
+        self.assertEqual(len(paths[0]), 4)  # path S-Z-W-I-D
+        self.assertEqual(len(paths[1]), 5)  # path S-Z-W-I-J-D
+        self.assertEqual(len(paths[2]), 3)  # path S-Z-W-D
+        self.assertEqual(len(paths[3]), 4)  # path S-X-W-I-D
+        self.assertEqual(
+            [link.id for link in paths[0]],
+            [link.id for link in expected_disjoint_path]
+        )
+
+        # EP029 Topo2
+        paths2 = {
+            "paths": [
+                {
+                    "cost": 14,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:1",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:03:1",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:2",
+                        "00:00:00:00:00:00:00:04:1",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:2",
+                        "00:00:00:00:00:00:00:07:2",
+                        "00:00:00:00:00:00:00:07",
+                        "00:00:00:00:00:00:00:07:1"
+                    ]
+                },
+                {
+                    "cost": 17,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:2",
+                        "00:00:00:00:00:00:00:02:1",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:3",
+                        "00:00:00:00:00:00:00:05:1",
+                        "00:00:00:00:00:00:00:05",
+                        "00:00:00:00:00:00:00:05:2",
+                        "00:00:00:00:00:00:00:06:1",
+                        "00:00:00:00:00:00:00:06",
+                        "00:00:00:00:00:00:00:06:2",
+                        "00:00:00:00:00:00:00:04:3",
+                        "00:00:00:00:00:00:00:04",
+                        "00:00:00:00:00:00:00:04:2",
+                        "00:00:00:00:00:00:00:07:2",
+                        "00:00:00:00:00:00:00:07",
+                        "00:00:00:00:00:00:00:07:1"
+                    ]
+                }
+            ]
+        }
+
+        current_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:03:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:04:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:04:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:07:2")
+            ),
+        ]
+
+        expected_disjoint_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:02:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:05:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:05:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:06:1")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:06:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:04:3")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:04:2"),
+                id_to_interface_mock("00:00:00:00:00:00:00:07:2")
+            ),
+        ]
+
+        mock_response.json.return_value = {"paths": paths2["paths"]}
+        mock_requests_post.return_value = mock_response
+        paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
+        self.assertEqual(len(paths), 1)
+        self.assertEqual(
+            [link.id for link in paths[0]],
+            [link.id for link in expected_disjoint_path]
+        )
