@@ -33,6 +33,7 @@ Requirements
 - `kytos/pathfinder <https://github.com/kytos-ng/pathfinder.git>`_
 - `kytos/topology <https://github.com/kytos-ng/topology.git>`_
 - `amlight/sdntrace_cp <https://github.com/amlight/sdntrace_cp.git>`_
+- `MongoDB <https://github.com/kytos-ng/kytos#how-to-use-with-mongodb>`_
 
 Events
 ======
@@ -40,6 +41,7 @@ Events
 Subscribed
 ----------
 
+- ``kytos/topology.topology_loaded``
 - ``kytos/topology.link_up``
 - ``kytos/topology.link_down``
 - ``kytos/flow_manager.flow.error``
