@@ -1742,19 +1742,89 @@ class TestMain(TestCase):
         self.napp.handle_link_up(event)
         evc_mock.handle_link_up.assert_called_once_with("abc")
 
-    def test_handle_link_down(self):
+    @patch("napps.kytos.mef_eline.main.send_flow_mods")
+    @patch("napps.kytos.mef_eline.main.emit_event")
+    def test_handle_link_down(self, emit_event_mock, send_flow_mods_mock):
         """Test handle_link_down method."""
-        evc_mock = create_autospec(EVC)
-        evc_mock.is_affected_by_link = MagicMock(
-            side_effect=[True, False, True]
-        )
-        evc_mock.lock = MagicMock()
-        evc_mock.handle_link_down = MagicMock(side_effect=[True, True])
-        evcs = [evc_mock, evc_mock, evc_mock]
-        event = KytosEvent(name="test", content={"link": "abc"})
-        self.napp.circuits = dict(zip(["1", "2", "3"], evcs))
+        evc1 = MagicMock(id="1")
+        evc1.is_affected_by_link.return_value = True
+        evc1.handle_link_down.return_value = True
+        evc1.failover_path = None
+        evc2 = MagicMock(id="2")
+        evc2.is_affected_by_link.return_value = False
+        evc3 = MagicMock(id="3")
+        evc3.is_affected_by_link.return_value = True
+        evc3.handle_link_down.return_value = True
+        evc3.failover_path = None
+        evc4 = MagicMock(id="4")
+        evc4.is_affected_by_link.return_value = True
+        evc4.is_failover_path_affected_by_link.return_value = False
+        evc4.failover_path = ["2"]
+        evc4.get_failover_flows.return_value = {
+            "2": ["flow1", "flow2"],
+            "3": ["flow3", "flow4"],
+        }
+        link = MagicMock(id="123")
+        event = KytosEvent(name="test", content={"link": link})
+        self.napp.circuits = {"1": evc1, "2": evc2, "3": evc3, "4": evc4}
         self.napp.handle_link_down(event)
-        evc_mock.handle_link_down.assert_has_calls([call(), call()])
+        #send_flow_mods_mock.assert_has_calls([
+        #    call('2', ['flow1', 'flow2'], 'flows', False, 'mef_eline.handle_link_down'),
+        #    call('3', ['flow3', 'flow4'], 'flows', False, 'mef_eline.handle_link_down')
+        #], any_order=True)
+        emit_event_mock.assert_has_calls([
+            call(self.napp.controller, context="kytos.flow_manager", name="flows.install", dpid="2", flow_dict={"flows": ["flow1", "flow2"]}, log_info="mef_eline.handle_link_down"),
+            call(self.napp.controller, context="kytos.flow_manager", name="flows.install", dpid="3", flow_dict={"flows": ["flow3", "flow4"]}, log_info="mef_eline.handle_link_down"),
+        ])
+        event_name = "evc_affected_by_link_down"
+        emit_event_mock.assert_has_calls([
+            call(self.napp.controller, event_name, evc_id="1", link_id="123"),
+            call(self.napp.controller, event_name, evc_id="3", link_id="123"),
+        ])
+        evc4.sync.assert_called_once()
+        event_name = "redeployed_link_down"
+        emit_event_mock.assert_has_calls([
+            call(self.napp.controller, event_name, evc_id="4"),
+        ])
+
+    @patch("napps.kytos.mef_eline.main.emit_event")
+    def test_handle_evc_affected_by_link_down(self, emit_event_mock):
+        """Test handle_evc_affected_by_link_down method."""
+        evc1 = MagicMock(id="1")
+        evc1.handle_link_down.return_value = True
+        evc2 = MagicMock(id="2")
+        evc2.handle_link_down.return_value = False
+        self.napp.circuits = {"1": evc1, "2": evc2}
+
+        event = KytosEvent(name="e1", content={"evc_id": "3", "link_id": "1"})
+        self.napp.handle_evc_affected_by_link_down(event)
+        emit_event_mock.assert_not_called()
+
+        event.content["evc_id"] = "1"
+        self.napp.handle_evc_affected_by_link_down(event)
+        emit_event_mock.assert_called_with(
+            self.napp.controller, "redeployed_link_down", evc_id="1"
+        )
+
+        event.content["evc_id"] = "2"
+        self.napp.handle_evc_affected_by_link_down(event)
+        emit_event_mock.assert_called_with(
+            self.napp.controller, "error_redeploy_link_down", evc_id="2"
+        )
+
+    def test_handle_evc_deployed(self):
+        """Test handle_evc_deployed method."""
+        evc = create_autospec(EVC, id="1")
+        evc.lock = MagicMock()
+        self.napp.circuits = {"1": evc}
+
+        event = KytosEvent(name="e1", content={"evc_id": "2"})
+        self.napp.handle_evc_deployed(event)
+        evc.setup_failover_path.assert_not_called()
+
+        event.content["evc_id"] = "1"
+        self.napp.handle_evc_deployed(event)
+        evc.setup_failover_path.assert_called()
 
     def test_add_metadata(self):
         """Test method to add metadata"""
