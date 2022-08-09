@@ -1,8 +1,6 @@
 """Utility functions."""
 import functools
-import requests
 from pathlib import Path
-from kytos.core.apm import begin_span
 
 from flask import request
 from openapi_core import create_spec
@@ -15,34 +13,12 @@ from werkzeug.exceptions import BadRequest, UnsupportedMediaType
 from kytos.core import log
 from kytos.core.events import KytosEvent
 
-from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.exceptions import FlowModException
 
-
-@begin_span
 def emit_event(controller, name, context="kytos/mef_eline", **kwargs):
     """Send an event when something happens with an EVC."""
     event_name = f"{context}.{name}"
     event = KytosEvent(name=event_name, content=kwargs)
     controller.buffers.app.put(event)
-
-
-def send_flow_mods(dpid, flow_mods, command='flows', force=False, log_info=None):
-    """Send a flow_mod list to a specific switch.
-
-    Args:
-        dpid(str): The target of flows (i.e. Switch.id).
-        flow_mods(dict): Python dictionary with flow_mods.
-        command(str): By default is 'flows'. To remove a flow is 'remove'.
-        force(bool): True to send via consistency check in case of errors
-
-    """
-    endpoint = f"{settings.MANAGER_URL}/{command}/{dpid}"
-
-    data = {"flows": flow_mods, "force": force, "log_info": log_info}
-    response = requests.post(endpoint, json=data)
-    if response.status_code >= 400:
-        raise FlowModException
 
 
 def notify_link_available_tags(controller, link, src_func=None):

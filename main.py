@@ -3,11 +3,9 @@
 
 NApp to provision circuits from user request.
 """
-from threading import Lock, Thread
 import time
+from threading import Lock
 
-from kytos.core.apm import begin_span
-from elasticapm.traces import execution_context
 from flask import jsonify, request
 from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  MethodNotAllowed, NotFound,
@@ -22,7 +20,7 @@ from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC, DynamicPathManager, Path
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import emit_event, load_spec, validate, send_flow_mods
+from napps.kytos.mef_eline.utils import emit_event, load_spec, validate
 
 
 # pylint: disable=too-many-public-methods
@@ -648,7 +646,6 @@ class Main(KytosNApp):
         """Change circuit when link is down or under_mantenance."""
         self.handle_link_down(event)
 
-    @begin_span
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         link = event.content["link"]
@@ -657,9 +654,6 @@ class Main(KytosNApp):
         evcs_with_failover = []
         evcs_normal = []
         check_failover = []
-        transaction = execution_context.get_transaction()
-        if transaction:
-            transaction.begin_span("calc_affected_evcs", "custom")
         for evc in self.circuits.values():
             if evc.is_affected_by_link(link):
                 # if there is no failover path, handles link down the
@@ -676,19 +670,6 @@ class Main(KytosNApp):
                 evcs_with_failover.append(evc)
             else:
                 check_failover.append(evc)
-        if transaction:
-            transaction.end_span()
-
-        ## TODO: handle exceptions
-        #threads = []
-        #for dpid, flows in switch_flows.items():
-        #    threads.append(
-        #        Thread(target=send_flow_mods, args=(dpid, flows, 'flows', False, "mef_eline.handle_link_down",))
-        #    )
-        #for thread in threads:
-        #    thread.start()
-        #for thread in threads:
-        #    thread.join()
 
         offset = 0
         while switch_flows:
@@ -703,14 +684,11 @@ class Main(KytosNApp):
                     flow_dict={"flows": switch_flows[dpid][:offset]},
                     log_info="mef_eline.handle_link_down",
                 )
-                if offset == 0 or offset>=len(switch_flows[dpid]):
+                if offset == 0 or offset >= len(switch_flows[dpid]):
                     del switch_flows[dpid]
                     continue
                 switch_flows[dpid] = switch_flows[dpid][offset:]
             time.sleep(settings.BATCH_INTERVAL)
-
-        # TODO: avoid concurrency
-        # time.sleep(5)
 
         for evc in evcs_with_failover:
             with evc.lock:
