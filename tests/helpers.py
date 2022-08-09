@@ -62,6 +62,7 @@ def get_link_mocked(**kwargs):
         return Mock(value=metadata.get(key))
 
     link.get_metadata = Mock(side_effect=side_effect)
+    link.metadata = metadata
 
     return link
 

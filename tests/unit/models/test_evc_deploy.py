@@ -1,7 +1,7 @@
 """Method to thest EVCDeploy class."""
 import sys
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, Mock, patch, call
 
 from kytos.core.common import EntityStatus
 from kytos.core.exceptions import KytosNoTagAvailableError
@@ -13,7 +13,7 @@ sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
 from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
-from napps.kytos.mef_eline.settings import MANAGER_URL  # NOQA
+from napps.kytos.mef_eline.settings import MANAGER_URL, SDN_TRACE_CP_URL  # NOQA
 from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
@@ -272,53 +272,22 @@ class TestEVC(TestCase):
 
         This test will verify the flows send to the send_flow_mods method.
         """
-        uni_a = get_uni_mocked(
-            interface_port=2,
-            tag_value=82,
-            switch_id="switch_uni_a",
-            is_valid=True,
-        )
-        uni_z = get_uni_mocked(
-            interface_port=3,
-            tag_value=83,
-            switch_id="switch_uni_z",
-            is_valid=True,
-        )
-
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "custom_name",
-            "uni_a": uni_a,
-            "uni_z": uni_z,
-            "primary_links": [
-                get_link_mocked(
-                    endpoint_a_port=9,
-                    endpoint_b_port=10,
-                    metadata={"s_vlan": 5},
-                ),
-                get_link_mocked(
-                    endpoint_a_port=11,
-                    endpoint_b_port=12,
-                    metadata={"s_vlan": 6},
-                ),
-            ],
-        }
-        evc = EVC(**attributes)
+        evc = TestEVC.create_evc_inter_switch()
 
         # pylint: disable=protected-access
-        evc._install_uni_flows(attributes["primary_links"])
+        evc._install_uni_flows(evc.primary_links)
 
         expected_flow_mod_a = [
             {
                 "match": {
-                    "in_port": uni_a.interface.port_number,
-                    "dl_vlan": uni_a.user_tag.value,
+                    "in_port": evc.uni_a.interface.port_number,
+                    "dl_vlan": evc.uni_a.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {
                         "action_type": "set_vlan",
-                        "vlan_id": uni_z.user_tag.value
+                        "vlan_id": evc.uni_z.user_tag.value
                     },
                     {"action_type": "push_vlan", "tag_type": "s"},
                     {
@@ -345,27 +314,27 @@ class TestEVC(TestCase):
                     {"action_type": "pop_vlan"},
                     {
                         "action_type": "output",
-                        "port": uni_a.interface.port_number,
+                        "port": evc.uni_a.interface.port_number,
                     },
                 ],
             },
         ]
 
         send_flow_mods_mock.assert_any_call(
-            uni_a.interface.switch.id, expected_flow_mod_a
+            evc.uni_a.interface.switch.id, expected_flow_mod_a
         )
 
         expected_flow_mod_z = [
             {
                 "match": {
-                    "in_port": uni_z.interface.port_number,
-                    "dl_vlan": uni_z.user_tag.value,
+                    "in_port": evc.uni_z.interface.port_number,
+                    "dl_vlan": evc.uni_z.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {
                         "action_type": "set_vlan",
-                        "vlan_id": uni_a.user_tag.value
+                        "vlan_id": evc.uni_a.user_tag.value
                     },
                     {"action_type": "push_vlan", "tag_type": "s"},
                     {
@@ -392,14 +361,14 @@ class TestEVC(TestCase):
                     {"action_type": "pop_vlan"},
                     {
                         "action_type": "output",
-                        "port": uni_z.interface.port_number,
+                        "port": evc.uni_z.interface.port_number,
                     },
                 ],
             },
         ]
 
         send_flow_mods_mock.assert_any_call(
-            uni_z.interface.switch.id, expected_flow_mod_z
+            evc.uni_z.interface.switch.id, expected_flow_mod_z
         )
 
     @staticmethod
@@ -717,12 +686,14 @@ class TestEVC(TestCase):
 
         # case 5: failed to setup failover_path - FlowMod exception
         evc2.failover_path = []
+        path_mock.choose_vlans.side_effect = None
         install_nni_flows_mock.side_effect = FlowModException("error")
         sync_mock.call_count = 0
 
         self.assertFalse(evc2.setup_failover_path())
         self.assertEqual(list(evc2.failover_path), [])
         self.assertEqual(sync_mock.call_count, 1)
+        remove_path_flows_mock.assert_called_with(path_mock)
 
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy_to_path")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
@@ -1152,3 +1123,130 @@ class TestEVC(TestCase):
             self.evc_deploy.get_path_status(path),
             EntityStatus.UP
         )
+
+    @patch("napps.kytos.mef_eline.models.evc.EVC._prepare_uni_flows")
+    def test_get_failover_flows(self, prepare_uni_flows_mock):
+        """Test get_failover_flows method."""
+        evc = self.create_evc_inter_switch()
+        evc.failover_path = Path([])
+        self.assertEqual(evc.get_failover_flows(), {})
+
+        path = MagicMock()
+        evc.failover_path = path
+        evc.get_failover_flows()
+        prepare_uni_flows_mock.assert_called_with(path, skip_out=True)
+
+    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.path.Path.make_vlans_available")
+    def test_remove_path_flows(self, *args):
+        """Test remove path flows."""
+        (
+            make_vlans_available_mock,
+            send_flow_mods_mock,
+        ) = args
+
+        evc = self.create_evc_inter_switch()
+
+        evc.remove_path_flows()
+        make_vlans_available_mock.assert_not_called()
+
+        expected_flows_1 = [
+            {
+                'cookie': 12249790986447749121,
+                'cookie_mask': 18446744073709551615,
+                'match': {'in_port': 9, 'dl_vlan':  5}
+            },
+        ]
+        expected_flows_2 = [
+            {
+                'cookie': 12249790986447749121,
+                'cookie_mask': 18446744073709551615,
+                'match': {'in_port': 10, 'dl_vlan': 5}
+            },
+            {
+                'cookie': 12249790986447749121,
+                'cookie_mask': 18446744073709551615,
+                'match': {'in_port': 11, 'dl_vlan': 6}
+            },
+        ]
+        expected_flows_3 = [
+            {
+                'cookie': 12249790986447749121,
+                'cookie_mask': 18446744073709551615,
+                'match': {'in_port': 12, 'dl_vlan': 6}
+            },
+        ]
+
+        evc.remove_path_flows(evc.primary_links)
+        send_flow_mods_mock.assert_has_calls([
+            call(1, expected_flows_1, 'delete', force=True),
+            call(2, expected_flows_2, 'delete', force=True),
+            call(3, expected_flows_3, 'delete', force=True),
+        ], any_order=True)
+
+    @patch("requests.put")
+    def test_run_sdntrace(self, put_mock):
+        """Test run_sdntrace method."""
+        evc = self.create_evc_inter_switch()
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"result": "ok"}
+        put_mock.return_value = response
+
+        expected_endpoint = f"{SDN_TRACE_CP_URL}/trace"
+        expected_payload = {
+            'trace': {
+                'switch': {'dpid': 1, 'in_port': 2},
+                'eth': {'dl_type': 0x8100, 'dl_vlan': 82}
+            }
+        }
+
+        result = evc.run_sdntrace(evc.uni_a)
+        put_mock.assert_called_with(expected_endpoint, json=expected_payload)
+        self.assertEqual(result, "ok")
+
+        response.status_code = 400
+        result = evc.run_sdntrace(evc.uni_a)
+        self.assertEqual(result, [])
+
+    @patch("napps.kytos.mef_eline.models.evc.log")
+    @patch("napps.kytos.mef_eline.models.evc.EVC.run_sdntrace")
+    def test_check_traces(self, run_sdntrace_mock, _):
+        """Test check_traces method."""
+        evc = self.create_evc_inter_switch()
+        for link in evc.primary_links:
+            link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
+        evc.current_path = evc.primary_links
+
+        trace_a = [
+            {"dpid": 1, "port": 2, "time": "t1", "type": "start", "vlan": 82},
+            {"dpid": 2, "port": 10, "time": "t2", "type": "trace", "vlan": 5},
+            {"dpid": 3, "port": 12, "time": "t3", "type": "trace", "vlan": 6},
+        ]
+        trace_z = [
+            {"dpid": 3, "port": 3, "time": "t1", "type": "start", "vlan": 83},
+            {"dpid": 2, "port": 11, "time": "t2", "type": "trace", "vlan": 6},
+            {"dpid": 1, "port": 9, "time": "t3", "type": "trace", "vlan": 5},
+        ]
+        run_sdntrace_mock.side_effect = [trace_a, trace_z]
+
+        self.assertTrue(evc.check_traces())
+
+        # case2: fail incomplete trace from uni_a
+        run_sdntrace_mock.side_effect = [trace_a[:2], trace_z]
+        self.assertFalse(evc.check_traces())
+
+        # case3: fail incomplete trace from uni_z
+        run_sdntrace_mock.side_effect = [trace_a, trace_z[:2]]
+        self.assertFalse(evc.check_traces())
+
+        # case4: fail wrong vlan id in trace from uni_a
+        trace_a[1]["vlan"] = 5
+        trace_z[1]["vlan"] = 99
+        run_sdntrace_mock.side_effect = [trace_a, trace_z]
+        self.assertFalse(evc.check_traces())
+
+        # case5: fail wrong vlan id in trace from uni_z
+        trace_a[1]["vlan"] = 99
+        run_sdntrace_mock.side_effect = [trace_a, trace_z]
+        self.assertFalse(evc.check_traces())

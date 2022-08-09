@@ -82,7 +82,6 @@ class Main(KytosNApp):
     def execute_consistency(self):
         """Execute consistency routine."""
         self.execution_rounds += 1
-        #return
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
         for circuit in tuple(self.circuits.values()):
             stored_circuits.pop(circuit.id, None)
@@ -691,30 +690,38 @@ class Main(KytosNApp):
         #for thread in threads:
         #    thread.join()
 
-        for dpid in switch_flows:
-            # TODO: test using rest
-            emit_event(
-                self.controller,
-                context="kytos.flow_manager",
-                name="flows.install",
-                dpid=dpid,
-                flow_dict={"flows": switch_flows[dpid]},
-                log_info="mef_eline.handle_link_down",
-            )
+        offset = 0
+        while switch_flows:
+            offset += settings.BATCH_SIZE
+            switches = list(switch_flows.keys())
+            for dpid in switches:
+                emit_event(
+                    self.controller,
+                    context="kytos.flow_manager",
+                    name="flows.install",
+                    dpid=dpid,
+                    flow_dict={"flows": switch_flows[dpid][:offset]},
+                    log_info="mef_eline.handle_link_down",
+                )
+                if offset == 0 or offset>=len(switch_flows[dpid]):
+                    del switch_flows[dpid]
+                    continue
+                switch_flows[dpid] = switch_flows[dpid][offset:]
+            time.sleep(settings.BATCH_INTERVAL)
 
         # TODO: avoid concurrency
-        time.sleep(5)
+        # time.sleep(5)
 
         for evc in evcs_with_failover:
             with evc.lock:
-                #evc.remove_path_flows(evc.current_path, using_event=True)
                 old_path = evc.current_path
                 evc.current_path = evc.failover_path
                 evc.failover_path = old_path
                 evc.sync()
-                # check_failover.append(evc.id)
             emit_event(self.controller, "redeployed_link_down", evc_id=evc.id)
-            log.info(f"{evc} redeployed with failover due to link down {link.id}")
+            log.info(
+                f"{evc} redeployed with failover due to link down {link.id}"
+            )
 
         for evc in evcs_normal:
             emit_event(
@@ -782,8 +789,7 @@ class Main(KytosNApp):
             evc = self._evc_from_dict(circuit_dict)
         except ValueError as exception:
             log.error(
-                f'Could not load EVC {circuit_dict["id"]} '
-                f"because {exception}"
+                f"Could not load EVC: dict={circuit_dict} error={exception}"
             )
             return None
 

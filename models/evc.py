@@ -483,10 +483,10 @@ class EVCDeploy(EVCBase):
         for switch in switches:
             try:
                 self._send_flow_mods(switch.id, [match], 'delete', force=force)
-            except FlowModException:
+            except FlowModException as err:
                 log.error(
                     f"Error removing flows from switch {switch.id} for"
-                    f"EVC {self}"
+                    f"EVC {self}: {err}"
                 )
 
         current_path.make_vlans_available()
@@ -496,7 +496,7 @@ class EVCDeploy(EVCBase):
         self.deactivate()
         self.sync()
 
-    def remove_path_flows(self, path=None, force=True, using_event=False):
+    def remove_path_flows(self, path=None, force=True):
         """Remove all flows from path."""
         if not path:
             return
@@ -505,23 +505,27 @@ class EVCDeploy(EVCBase):
         for dpid, flows in self._prepare_nni_flows(path).items():
             dpid_flows_match.setdefault(dpid, [])
             for flow in flows:
-                dpid_flows_match[dpid].append(
-                    {"cookie": flow["cookie"], "match": flow["match"], "cookie_mask": 18446744073709551615}
-                )
+                dpid_flows_match[dpid].append({
+                    "cookie": flow["cookie"],
+                    "match": flow["match"],
+                    "cookie_mask": 18446744073709551615
+                })
         for dpid, flows in self._prepare_uni_flows(path, skip_in=True).items():
             dpid_flows_match.setdefault(dpid, [])
             for flow in flows:
-                dpid_flows_match[dpid].append(
-                    {"cookie": flow["cookie"], "match": flow["match"], "cookie_mask": 18446744073709551615}
-                )
+                dpid_flows_match[dpid].append({
+                    "cookie": flow["cookie"],
+                    "match": flow["match"],
+                    "cookie_mask": 18446744073709551615
+                })
 
         for dpid, flows in dpid_flows_match.items():
             try:
-                self._send_flow_mods(dpid, flows, 'delete', force=force, using_event=using_event)
-            except FlowModException as error:
+                self._send_flow_mods(dpid, flows, 'delete', force=force)
+            except FlowModException as err:
                 log.error(
                     "Error removing failover flows: "
-                    f"dpid={dpid} evc={self} error={error}"
+                    f"dpid={dpid} evc={self} error={err}"
                 )
 
         path.make_vlans_available()
@@ -601,8 +605,10 @@ class EVCDeploy(EVCBase):
                     f"{self} was not deployed. " "No available path was found."
                 )
                 return False
-        except FlowModException:
-            log.error(f"Error deploying EVC {self} when calling flow_manager.")
+        except FlowModException as err:
+            log.error(
+                f"Error deploying EVC {self} when calling flow_manager: {err}"
+            )
             self.remove_current_flows(use_path)
             return False
         self.activate()
@@ -651,10 +657,10 @@ class EVCDeploy(EVCBase):
             if use_path:
                 self._install_nni_flows(use_path)
                 self._install_uni_flows(use_path, skip_in=True)
-        except FlowModException as error:
+        except FlowModException as err:
             reason = "Error deploying failover path"
             log.error(
-                f"{reason} for {self}. FlowManager error: {error}"
+                f"{reason} for {self}. FlowManager error: {err}"
             )
             self.remove_path_flows(use_path)
             use_path = Path([])
@@ -843,24 +849,7 @@ class EVCDeploy(EVCBase):
             self._send_flow_mods(dpid, flows)
 
     @staticmethod
-    def _send_flow_mods_event(dpid, flow_mods, command='flows', force=False):
-        """Send a flow_mod list to a specific switch via KytosEvent."""
-        if command == "flows":
-            command = "install"
-
-        emit_event(
-            self._controller,
-            context="kytos.flow_manager",
-            name=f"flows.{command}",
-            dpid=dpid,
-            flow_dict={"flows": flow_mods},
-            force=force,
-        )
-
-    @staticmethod
-    def _send_flow_mods(
-        dpid, flow_mods, command='flows', force=False, using_event=False
-    ):
+    def _send_flow_mods(dpid, flow_mods, command='flows', force=False):
         """Send a flow_mod list to a specific switch.
 
         Args:
@@ -868,11 +857,8 @@ class EVCDeploy(EVCBase):
             flow_mods(dict): Python dictionary with flow_mods.
             command(str): By default is 'flows'. To remove a flow is 'remove'.
             force(bool): True to send via consistency check in case of errors
-            using_event(bool): True to send via KytosEvent, False via REST
 
         """
-        if using_event:
-            return EVCDeploy._send_flow_mods_event(dpid, flow_mods, command, force)
 
         endpoint = f"{settings.MANAGER_URL}/{command}/{dpid}"
 

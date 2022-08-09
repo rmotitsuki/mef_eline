@@ -1773,8 +1773,22 @@ class TestMain(TestCase):
         #    call('3', ['flow3', 'flow4'], 'flows', False, 'mef_eline.handle_link_down')
         #], any_order=True)
         emit_event_mock.assert_has_calls([
-            call(self.napp.controller, context="kytos.flow_manager", name="flows.install", dpid="2", flow_dict={"flows": ["flow1", "flow2"]}, log_info="mef_eline.handle_link_down"),
-            call(self.napp.controller, context="kytos.flow_manager", name="flows.install", dpid="3", flow_dict={"flows": ["flow3", "flow4"]}, log_info="mef_eline.handle_link_down"),
+            call(
+                self.napp.controller,
+                context="kytos.flow_manager",
+                name="flows.install",
+                dpid="2",
+                flow_dict={"flows": ["flow1", "flow2"]},
+                log_info="mef_eline.handle_link_down"
+            ),
+            call(
+                self.napp.controller,
+                context="kytos.flow_manager",
+                name="flows.install",
+                dpid="3",
+                flow_dict={"flows": ["flow3", "flow4"]},
+                log_info="mef_eline.handle_link_down"
+            ),
         ])
         event_name = "evc_affected_by_link_down"
         emit_event_mock.assert_has_calls([
@@ -1958,6 +1972,34 @@ class TestMain(TestCase):
         self.napp.load_all_evcs()
         load_evc_mock.assert_has_calls([call('circuit_1'), call('circuit_4')])
 
+    @patch('napps.kytos.mef_eline.main.Main._evc_from_dict')
+    def test_load_evc(self, evc_from_dict_mock):
+        """Test _load_evc method"""
+        # pylint: disable=protected-access
+        # case 1: early return with ValueError exception
+        evc_from_dict_mock.side_effect = ValueError("err")
+        evc_dict = MagicMock()
+        self.assertEqual(self.napp._load_evc(evc_dict), None)
+
+        # case2: archived evc
+        evc = MagicMock()
+        evc.archived = True
+        evc_from_dict_mock.side_effect = None
+        evc_from_dict_mock.return_value = evc
+        self.assertEqual(self.napp._load_evc(evc_dict), None)
+
+        # case3: success creating
+        evc.archived = False
+        evc.id = 1
+        self.napp.sched = MagicMock()
+
+        result = self.napp._load_evc(evc_dict)
+        self.assertEqual(result, evc)
+        evc.deactivate.assert_called()
+        evc.sync.assert_called()
+        self.napp.sched.add.assert_called_with(evc)
+        self.assertEqual(self.napp.circuits[1], evc)
+
     def test_handle_flow_mod_error(self):
         """Test handle_flow_mod_error method"""
         flow = MagicMock()
@@ -1969,3 +2011,31 @@ class TestMain(TestCase):
         self.napp.circuits = {"00000000000011": evc}
         self.napp.handle_flow_mod_error(event)
         evc.remove_current_flows.assert_called_once()
+
+    @patch("kytos.core.Controller.get_interface_by_id")
+    def test_uni_from_dict(self, _get_interface_by_id_mock):
+        """Test _uni_from_dict method."""
+        # pylint: disable=protected-access
+        # case1: early return on empty dict
+        self.assertEqual(self.napp._uni_from_dict(None), False)
+
+        # case2: invalid interface raises ValueError
+        _get_interface_by_id_mock.return_value = None
+        uni_dict = {
+            "interface_id": "00:01:1",
+            "tag": {"tag_type": 1, "value": 81},
+        }
+        with self.assertRaises(ValueError):
+            self.napp._uni_from_dict(uni_dict)
+
+        # case3: success creation
+        uni_mock = get_uni_mocked(switch_id="00:01")
+        _get_interface_by_id_mock.return_value = uni_mock.interface
+        uni = self.napp._uni_from_dict(uni_dict)
+        self.assertEqual(uni, uni_mock)
+
+        # case4: success creation without tag
+        uni_mock.user_tag = None
+        del uni_dict["tag"]
+        uni = self.napp._uni_from_dict(uni_dict)
+        self.assertEqual(uni, uni_mock)
