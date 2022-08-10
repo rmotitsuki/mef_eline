@@ -1742,8 +1742,10 @@ class TestMain(TestCase):
         self.napp.handle_link_up(event)
         evc_mock.handle_link_up.assert_called_once_with("abc")
 
+    @patch("time.sleep", return_value=None)
+    @patch("napps.kytos.mef_eline.main.settings")
     @patch("napps.kytos.mef_eline.main.emit_event")
-    def test_handle_link_down(self, emit_event_mock):
+    def test_handle_link_down(self, emit_event_mock, settings_mock, _):
         """Test handle_link_down method."""
         evc1 = MagicMock(id="1")
         evc1.is_affected_by_link.return_value = True
@@ -1761,11 +1763,12 @@ class TestMain(TestCase):
         evc4.failover_path = ["2"]
         evc4.get_failover_flows.return_value = {
             "2": ["flow1", "flow2"],
-            "3": ["flow3", "flow4"],
+            "3": ["flow3", "flow4", "flow5", "flow6"],
         }
         link = MagicMock(id="123")
         event = KytosEvent(name="test", content={"link": link})
         self.napp.circuits = {"1": evc1, "2": evc2, "3": evc3, "4": evc4}
+        settings_mock.BATCH_SIZE = 2
         self.napp.handle_link_down(event)
         emit_event_mock.assert_has_calls([
             call(
@@ -1774,7 +1777,6 @@ class TestMain(TestCase):
                 name="flows.install",
                 dpid="2",
                 flow_dict={"flows": ["flow1", "flow2"]},
-                log_info="mef_eline.handle_link_down"
             ),
             call(
                 self.napp.controller,
@@ -1782,7 +1784,13 @@ class TestMain(TestCase):
                 name="flows.install",
                 dpid="3",
                 flow_dict={"flows": ["flow3", "flow4"]},
-                log_info="mef_eline.handle_link_down"
+            ),
+            call(
+                self.napp.controller,
+                context="kytos.flow_manager",
+                name="flows.install",
+                dpid="3",
+                flow_dict={"flows": ["flow5", "flow6"]},
             ),
         ])
         event_name = "evc_affected_by_link_down"

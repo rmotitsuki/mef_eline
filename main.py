@@ -673,7 +673,7 @@ class Main(KytosNApp):
 
         offset = 0
         while switch_flows:
-            offset += settings.BATCH_SIZE
+            offset = (offset + settings.BATCH_SIZE) or None
             switches = list(switch_flows.keys())
             for dpid in switches:
                 emit_event(
@@ -682,9 +682,8 @@ class Main(KytosNApp):
                     name="flows.install",
                     dpid=dpid,
                     flow_dict={"flows": switch_flows[dpid][:offset]},
-                    log_info="mef_eline.handle_link_down",
                 )
-                if offset == 0 or offset >= len(switch_flows[dpid]):
+                if offset is None or offset >= len(switch_flows[dpid]):
                     del switch_flows[dpid]
                     continue
                 switch_flows[dpid] = switch_flows[dpid][offset:]

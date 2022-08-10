@@ -275,6 +275,10 @@ class TestEVC(TestCase):
         evc = TestEVC.create_evc_inter_switch()
 
         # pylint: disable=protected-access
+        evc._install_uni_flows()
+        send_flow_mods_mock.assert_not_called()
+
+        # pylint: disable=protected-access
         evc._install_uni_flows(evc.primary_links)
 
         expected_flow_mod_a = [
@@ -1136,6 +1140,7 @@ class TestEVC(TestCase):
         evc.get_failover_flows()
         prepare_uni_flows_mock.assert_called_with(path, skip_out=True)
 
+    @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.path.Path.make_vlans_available")
     def test_remove_path_flows(self, *args):
@@ -1143,6 +1148,7 @@ class TestEVC(TestCase):
         (
             make_vlans_available_mock,
             send_flow_mods_mock,
+            log_mock,
         ) = args
 
         evc = self.create_evc_inter_switch()
@@ -1183,6 +1189,10 @@ class TestEVC(TestCase):
             call(2, expected_flows_2, 'delete', force=True),
             call(3, expected_flows_3, 'delete', force=True),
         ], any_order=True)
+
+        send_flow_mods_mock.side_effect = FlowModException("err")
+        evc.remove_path_flows(evc.primary_links)
+        log_mock.error.assert_called()
 
     @patch("requests.put")
     def test_run_sdntrace(self, put_mock):
@@ -1250,3 +1260,33 @@ class TestEVC(TestCase):
         trace_a[1]["vlan"] = 99
         run_sdntrace_mock.side_effect = [trace_a, trace_z]
         self.assertFalse(evc.check_traces())
+
+    @patch(
+        "napps.kytos.mef_eline.models.path.DynamicPathManager"
+        ".get_disjoint_paths"
+    )
+    def test_get_failover_path_vandidates(self, get_disjoint_paths_mock):
+        """Test get_failover_path_candidates method"""
+        self.evc_deploy.get_failover_path_candidates()
+        get_disjoint_paths_mock.assert_called_once()
+
+    def test_is_failover_path_affected_by_link(self):
+        """Test is_failover_path_affected_by_link method"""
+        link1 = get_link_mocked(endpoint_a_port=1, endpoint_b_port=2)
+        link2 = get_link_mocked(endpoint_a_port=3, endpoint_b_port=4)
+        link3 = get_link_mocked(endpoint_a_port=5, endpoint_b_port=6)
+        self.evc_deploy.failover_path = Path([link1, link2])
+        self.assertTrue(
+            self.evc_deploy.is_failover_path_affected_by_link(link1)
+        )
+        self.assertFalse(
+            self.evc_deploy.is_failover_path_affected_by_link(link3)
+        )
+
+    def test_is_eligible_for_failover_path(self):
+        """Test is_eligible_for_failover_path method"""
+        self.assertFalse(self.evc_deploy.is_eligible_for_failover_path())
+        self.evc_deploy.dynamic_backup_path = True
+        self.evc_deploy.primary_path = Path([])
+        self.evc_deploy.backup_path = Path([])
+        self.assertTrue(self.evc_deploy.is_eligible_for_failover_path())

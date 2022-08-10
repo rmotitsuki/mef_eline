@@ -32,6 +32,47 @@ GET_BEST_PATH = (
 class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
     """Tests to validate LinkProtection class."""
 
+    def setUp(self):
+        primary_path = [
+            get_link_mocked(
+                endpoint_a_port=9,
+                endpoint_b_port=10,
+                metadata={"s_vlan": 5},
+                status=EntityStatus.UP,
+            ),
+            get_link_mocked(
+                endpoint_a_port=11,
+                endpoint_b_port=12,
+                metadata={"s_vlan": 6},
+                status=EntityStatus.DOWN,
+            ),
+        ]
+        backup_path = [
+            get_link_mocked(
+                endpoint_a_port=13,
+                endpoint_b_port=14,
+                metadata={"s_vlan": 5},
+                status=EntityStatus.DOWN,
+            ),
+            get_link_mocked(
+                endpoint_a_port=11,
+                endpoint_b_port=12,
+                metadata={"s_vlan": 6},
+                status=EntityStatus.DOWN,
+            ),
+        ]
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_1",
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+            "primary_path": primary_path,
+            "backup_path": backup_path,
+            "enabled": True,
+            "dynamic_backup_path": True,
+        }
+        self.evc = EVC(**attributes)
+
     def test_is_using_backup_path(self):
         """Test test is using backup path."""
 
@@ -190,54 +231,15 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         deploy_mocked.return_value = True
         path_status_mocked.side_effect = [EntityStatus.DOWN, EntityStatus.UP]
 
-        primary_path = [
-            get_link_mocked(
-                endpoint_a_port=9,
-                endpoint_b_port=10,
-                metadata={"s_vlan": 5},
-                status=EntityStatus.DOWN,
-            ),
-            get_link_mocked(
-                endpoint_a_port=11,
-                endpoint_b_port=12,
-                metadata={"s_vlan": 6},
-                status=EntityStatus.UP,
-            ),
-        ]
-        backup_path = [
-            get_link_mocked(
-                endpoint_a_port=9,
-                endpoint_b_port=10,
-                metadata={"s_vlan": 5},
-                status=EntityStatus.UP,
-            ),
-            get_link_mocked(
-                endpoint_a_port=11,
-                endpoint_b_port=12,
-                metadata={"s_vlan": 6},
-                status=EntityStatus.UP,
-            ),
-        ]
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_6",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True),
-            "primary_path": primary_path,
-            "backup_path": backup_path,
-            "enabled": True,
-        }
-        evc = EVC(**attributes)
-
-        evc.current_path = evc.primary_path
-        evc.activate()
+        self.evc.current_path = self.evc.primary_path
+        self.evc.activate()
         deploy_to_mocked.reset_mock()
-        current_handle_link_down = evc.handle_link_down()
+        current_handle_link_down = self.evc.handle_link_down()
         self.assertEqual(deploy_mocked.call_count, 0)
         deploy_to_mocked.assert_called_once()
 
         self.assertTrue(current_handle_link_down)
-        msg = f"{evc} deployed after link down."
+        msg = f"{self.evc} deployed after link down."
         log_mocked.debug.assert_called_once_with(msg)
 
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -674,3 +676,19 @@ class TestLinkProtection(TestCase):  # pylint: disable=too-many-public-methods
         self.assertEqual(deploy_to_path_mocked.call_count, 1)
         deploy_to_path_mocked.assert_called_once_with()
         self.assertTrue(current_handle_link_up)
+
+    def test_handle_link_up_case_5(self):
+        """Test handle_link_up method."""
+        return_false_mock = MagicMock(return_value=False)
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.is_using_backup_path = MagicMock(return_value=True)
+        self.assertTrue(self.evc.handle_link_up(MagicMock()))
+
+        # not possible to deploy this evc (it will not benefit from link up)
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.dynamic_backup_path = True
+        self.evc.deploy_to_path = return_false_mock
+        self.assertTrue(self.evc.handle_link_up(MagicMock()))
