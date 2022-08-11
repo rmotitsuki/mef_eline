@@ -7,6 +7,7 @@ from kytos.core.config import KytosConfig
 from kytos.core.interface import TAG, UNI, Interface
 from kytos.core.link import Link
 from kytos.core.switch import Switch
+from kytos.lib.helpers import get_interface_mock, get_switch_mock
 
 
 def get_controller_mock():
@@ -15,6 +16,15 @@ def get_controller_mock():
     controller = Controller(options)
     controller.log = Mock()
     return controller
+
+
+def id_to_interface_mock(interface_id):
+    """Create mocked interface/switch from id."""
+    switch_id = ":".join(interface_id.split(":")[:-1])
+    port_id = int(interface_id.split(":")[-1])
+    switch = get_switch_mock(switch_id, 0x04)
+    interface = get_interface_mock(port_id, port_id, switch)
+    return interface
 
 
 def get_link_mocked(**kwargs):

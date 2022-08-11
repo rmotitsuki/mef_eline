@@ -22,3 +22,8 @@ WAIT_FOR_OLD_PATH = 5
 
 # Prefix this NApp has when using cookies
 COOKIE_PREFIX = 0xAA
+
+# Maximum number of paths to consider when calculating the disjoint paths
+# i.e., the number of paths that will be requested to pathfinder to calculate
+# the maximum disjoint paths from unwanted_path
+DISJOINT_PATH_CUTOFF = 10
