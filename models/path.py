@@ -151,7 +151,9 @@ class DynamicPathManager:
             yield cls.create_path(path["hops"])
 
     @classmethod
-    def get_disjoint_paths(cls, circuit, unwanted_path):
+    def get_disjoint_paths(
+        cls, circuit, unwanted_path, cutoff=settings.DISJOINT_PATH_CUTOFF
+    ):
         """Computes the maximum disjoint paths from the unwanted_path for a EVC
 
         Maximum disjoint paths from the unwanted_path are the paths from the
@@ -179,6 +181,10 @@ class DynamicPathManager:
         unwanted_path : Path
             The Path which we want to avoid.
 
+        cutoff: int
+            Maximum number of paths to consider when calculating the disjoint
+            paths (number of paths to request from pathfinder)
+
         Returns:
         --------
         paths : generator
@@ -191,7 +197,7 @@ class DynamicPathManager:
         if not unwanted_links:
             return None
 
-        paths = cls.get_paths(circuit, max_paths=settings.DISJOINT_PATH_CUTOFF)
+        paths = cls.get_paths(circuit, max_paths=cutoff)
         for path in paths:
             head = path["hops"][:-1]
             tail = path["hops"][1:]
