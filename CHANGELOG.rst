@@ -18,6 +18,20 @@ Added
 - Migrated persistency from kytos/storehouse to MongoDB (integration with pymongo)
 - ELineController and DB models
 - Retries to handle database ``AutoReconnect`` exception.
+- ``DynamicPathManager.get_disjoint_paths`` to calculates the maximum disjoint
+  paths from a given "unwanted_path" (typically the currently in use path) using
+  the approach described in blueprint EP029
+- Fully dynamic EVCs can now benefit from Failover Paths (``failover_path``),
+  which improves significantly the convergence performance when facing link down
+- Refactored Link Down handler to dispatch Kytos Events to handle traditional
+  EVCs (EVCs that are not eligible for failover) more efficiently.
+
+Changed
+=======
+
+- ``DynamicPathManager.get_paths`` to also supports ``max_paths`` parameter and
+  then request more paths from pathfinder (default to 2, which is also the
+  default on pathfinder)
 
 Changed
 =======

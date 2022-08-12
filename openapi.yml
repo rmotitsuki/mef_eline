@@ -431,6 +431,8 @@ components:
 
         current_path:
           $ref: '#/components/schemas/Path'
+        failover_path:
+          $ref: '#/components/schemas/Path'
         primary_path:
           $ref: '#/components/schemas/Path'
         backup_path:

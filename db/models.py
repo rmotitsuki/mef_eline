@@ -62,6 +62,7 @@ class EVCBaseDoc(DocumentBaseModel):
     primary_path: Optional[List]
     backup_path: Optional[List]
     current_path: Optional[List]
+    failover_path: Optional[List]
     primary_links: Optional[List]
     backup_links: Optional[List]
     backup_links: Optional[List]
@@ -89,6 +90,7 @@ class EVCBaseDoc(DocumentBaseModel):
             "primary_path": 1,
             "backup_path": 1,
             "current_path": 1,
+            "failover_path": 1,
             "dynamic_backup_path": 1,
             "priority": 1,
             "circuit_scheduler": 1,

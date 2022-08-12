@@ -22,3 +22,17 @@ WAIT_FOR_OLD_PATH = 5
 
 # Prefix this NApp has when using cookies
 COOKIE_PREFIX = 0xAA
+
+# Maximum number of paths to consider when calculating the disjoint paths
+# i.e., the number of paths that will be requested to pathfinder to calculate
+# the maximum disjoint paths from unwanted_path
+DISJOINT_PATH_CUTOFF = 10
+
+# BATCH_INTERVAL: time interval between batch requests that will be sent to
+# flow_manager (in seconds) - zero enable sending all the requests in a row
+BATCH_INTERVAL = 0.5
+
+# BATCH_SIZE: size of a batch request that will be sent to flow_manager, in
+# number of FlowMod requests. Use 0 (zero) to disable BATCH mode, i.e. sends
+# everything at a glance
+BATCH_SIZE = 50
