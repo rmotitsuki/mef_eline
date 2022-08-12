@@ -3,6 +3,7 @@
 
 NApp to provision circuits from user request.
 """
+import time
 from threading import Lock
 
 from flask import jsonify, request
@@ -427,7 +428,6 @@ class Main(KytosNApp):
         """
         log.debug("list_schedules /v2/evc/schedule")
         circuits = self.mongo_controller.get_circuits()['circuits'].values()
-        print(circuits)
         if not circuits:
             result = {}
             status = 200
@@ -636,7 +636,7 @@ class Main(KytosNApp):
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         log.debug("Event handle_link_up %s", event)
-        for evc in self.circuits.values():
+        for evc in self.circuits.copy().values():
             if evc.is_enabled() and not evc.archived:
                 with evc.lock:
                     evc.handle_link_up(event.content["link"])
@@ -648,23 +648,105 @@ class Main(KytosNApp):
 
     def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
-        log.debug("Event handle_link_down %s", event)
-        for evc in self.circuits.values():
+        link = event.content["link"]
+        log.info("Event handle_link_down %s", link)
+        switch_flows = {}
+        evcs_with_failover = []
+        evcs_normal = []
+        check_failover = []
+        for evc in self.circuits.copy().values():
+            if evc.is_affected_by_link(link):
+                # if there is no failover path, handles link down the
+                # tradditional way
+                if (
+                    not getattr(evc, 'failover_path', None) or
+                    evc.is_failover_path_affected_by_link(link)
+                ):
+                    evcs_normal.append(evc)
+                    continue
+                for dpid, flows in evc.get_failover_flows().items():
+                    switch_flows.setdefault(dpid, [])
+                    switch_flows[dpid].extend(flows)
+                evcs_with_failover.append(evc)
+            else:
+                check_failover.append(evc)
+
+        offset = 0
+        while switch_flows:
+            offset = (offset + settings.BATCH_SIZE) or None
+            switches = list(switch_flows.keys())
+            for dpid in switches:
+                emit_event(
+                    self.controller,
+                    context="kytos.flow_manager",
+                    name="flows.install",
+                    dpid=dpid,
+                    flow_dict={"flows": switch_flows[dpid][:offset]},
+                )
+                if offset is None or offset >= len(switch_flows[dpid]):
+                    del switch_flows[dpid]
+                    continue
+                switch_flows[dpid] = switch_flows[dpid][offset:]
+            time.sleep(settings.BATCH_INTERVAL)
+
+        for evc in evcs_with_failover:
             with evc.lock:
-                if evc.is_affected_by_link(event.content["link"]):
-                    log.debug(f"Handling evc {evc.id} on link down")
-                    if evc.handle_link_down():
-                        emit_event(
-                            self.controller,
-                            "redeployed_link_down",
-                            evc_id=evc.id,
-                        )
-                    else:
-                        emit_event(
-                            self.controller,
-                            "error_redeploy_link_down",
-                            evc_id=evc.id,
-                        )
+                old_path = evc.current_path
+                evc.current_path = evc.failover_path
+                evc.failover_path = old_path
+                evc.sync()
+            emit_event(self.controller, "redeployed_link_down", evc_id=evc.id)
+            log.info(
+                f"{evc} redeployed with failover due to link down {link.id}"
+            )
+
+        for evc in evcs_normal:
+            emit_event(
+                self.controller,
+                "evc_affected_by_link_down",
+                evc_id=evc.id,
+                link_id=link.id,
+            )
+
+        # After handling the hot path, check if new failover paths are needed.
+        # Note that EVCs affected by link down will generate a KytosEvent for
+        # deployed|redeployed, which will trigger the failover path setup.
+        # Thus, we just need to further check the check_failover list
+        for evc in check_failover:
+            if evc.is_failover_path_affected_by_link(link):
+                evc.setup_failover_path()
+
+    @listen_to("kytos/mef_eline.evc_affected_by_link_down")
+    def on_evc_affected_by_link_down(self, event):
+        """Change circuit when link is down or under_mantenance."""
+        self.handle_evc_affected_by_link_down(event)
+
+    def handle_evc_affected_by_link_down(self, event):
+        """Change circuit when link is down or under_mantenance."""
+        evc = self.circuits.get(event.content["evc_id"])
+        link_id = event.content['link_id']
+        if not evc:
+            return
+        with evc.lock:
+            result = evc.handle_link_down()
+        event_name = "error_redeploy_link_down"
+        if result:
+            log.info(f"{evc} redeployed due to link down {link_id}")
+            event_name = "redeployed_link_down"
+        emit_event(self.controller, event_name, evc_id=evc.id)
+
+    @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
+    def on_evc_deployed(self, event):
+        """Handle EVC deployed|redeployed_link_down."""
+        self.handle_evc_deployed(event)
+
+    def handle_evc_deployed(self, event):
+        """Setup failover path on evc deployed."""
+        evc = self.circuits.get(event.content["evc_id"])
+        if not evc:
+            return
+        with evc.lock:
+            evc.setup_failover_path()
 
     @listen_to("kytos/topology.topology_loaded")
     def on_topology_loaded(self, event):  # pylint: disable=unused-argument
@@ -684,8 +766,7 @@ class Main(KytosNApp):
             evc = self._evc_from_dict(circuit_dict)
         except ValueError as exception:
             log.error(
-                f'Could not load EVC {circuit_dict["id"]} '
-                f"because {exception}"
+                f"Could not load EVC: dict={circuit_dict} error={exception}"
             )
             return None
 
