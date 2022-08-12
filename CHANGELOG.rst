@@ -18,8 +18,8 @@ Added
 - ``DynamicPathManager.get_disjoint_paths`` to calculates the maximum disjoint
   paths from a given "unwanted_path" (typically the currently in use path) using
   the approach described in blueprint EP029
-- Fully dynamic EVCs can now benefit from Failover Paths, which improves
-  significantly the convergence performance when facing link down events
+- Fully dynamic EVCs can now benefit from Failover Paths (``failover_path``),
+  which improves significantly the convergence performance when facing link down
 - Refactored Link Down handler to dispatch Kytos Events to handle traditional
   EVCs (EVCs that are not eligible for failover) more efficiently.
 
