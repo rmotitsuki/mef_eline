@@ -21,7 +21,7 @@ Added
 - Fully dynamic EVCs can now benefit from Failover Paths, which improves
   significantly the convergence performance when facing link down events
 - Refactored Link Down handler to dispatch Kytos Events to handle traditional
-  EVCs (EVCs that are not eligible for failover) more efficiantly.
+  EVCs (EVCs that are not eligible for failover) more efficiently.
 
 Changed
 =======
