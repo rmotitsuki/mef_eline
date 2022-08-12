@@ -516,7 +516,7 @@ class EVCDeploy(EVCBase):
                 dpid_flows_match[dpid].append({
                     "cookie": flow["cookie"],
                     "match": flow["match"],
-                    "cookie_mask": 18446744073709551615
+                    "cookie_mask": int(0xffffffffffffffff)
                 })
 
         for dpid, flows in dpid_flows_match.items():
