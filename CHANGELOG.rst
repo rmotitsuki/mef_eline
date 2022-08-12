@@ -12,7 +12,6 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 Added
 =====
 
-- Pre-provisioned failover path approach to improve link down convergence
 - Reintroduced Q-in-Q when creating the flows for an EVC.
 - Optimize list of circuits filters
 - Migrated persistency from kytos/storehouse to MongoDB (integration with pymongo)
@@ -32,10 +31,6 @@ Changed
 - ``DynamicPathManager.get_paths`` to also supports ``max_paths`` parameter and
   then request more paths from pathfinder (default to 2, which is also the
   default on pathfinder)
-
-Changed
-=======
-- Paths are now selected based on their disjointness
 
 General Information
 ===================
