@@ -636,7 +636,7 @@ class Main(KytosNApp):
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         log.debug("Event handle_link_up %s", event)
-        for evc in self.circuits.values():
+        for evc in self.circuits.copy().values():
             if evc.is_enabled() and not evc.archived:
                 with evc.lock:
                     evc.handle_link_up(event.content["link"])
@@ -654,7 +654,7 @@ class Main(KytosNApp):
         evcs_with_failover = []
         evcs_normal = []
         check_failover = []
-        for evc in self.circuits.values():
+        for evc in self.circuits.copy().values():
             if evc.is_affected_by_link(link):
                 # if there is no failover path, handles link down the
                 # tradditional way
