@@ -6,6 +6,9 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [Unreleased]
 ************
 
+[2022.2.0] - 2022-08-12
+***********************
+
 Added
 =====
 
@@ -13,7 +16,6 @@ Added
 - Optimize list of circuits filters
 - Migrated persistency from kytos/storehouse to MongoDB (integration with pymongo)
 - ELineController and DB models
-- ``storehouse_to_mongo.py`` script to migrate data from storehouse to MongoDB
 - Retries to handle database ``AutoReconnect`` exception.
 - ``DynamicPathManager.get_disjoint_paths`` to calculates the maximum disjoint
   paths from a given "unwanted_path" (typically the currently in use path) using
@@ -29,6 +31,10 @@ Changed
 - ``DynamicPathManager.get_paths`` to also supports ``max_paths`` parameter and
   then request more paths from pathfinder (default to 2, which is also the
   default on pathfinder)
+
+General Information
+===================
+- ``scripts/storehouse_to_mongo.py`` can be used to migrate data from storehouse to MongoDB
 
 
 [2022.1.5] - 2022-02-11
