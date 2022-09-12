@@ -3,6 +3,7 @@
 Run "python3 setup.py --help-commands" to list all available commands and their
 descriptions.
 """
+import json
 import os
 import shutil
 import sys
@@ -247,6 +248,13 @@ def symlink_if_different(path, target):
         path.symlink_to(target)
 
 
+def read_version_from_json():
+    """Read the NApp version from NApp kytos.json file."""
+    file = Path('kytos.json')
+    metadata = json.loads(file.read_text(encoding="utf8"))
+    return metadata['version']
+
+
 def read_requirements(path="requirements/run.txt"):
     """Read requirements file and return a list."""
     with open(path, "r", encoding="utf8") as file:
@@ -259,7 +267,7 @@ def read_requirements(path="requirements/run.txt"):
 
 setup(
     name=f"kytos_{NAPP_NAME}",
-    version=NAPP_VERSION,
+    version=read_version_from_json(),
     description="Core NApps developed by Kytos Team",
     url="http://github.com/kytos/{NAPP_NAME}",
     author="Kytos Team",
