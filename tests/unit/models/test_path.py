@@ -76,7 +76,6 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_4(self):
-        # pylint: disable=no-self-use
         return MockResponse(
             {
                 "links": {
@@ -101,7 +100,6 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_5(self):
-        # pylint: disable=no-self-use
         return MockResponse(
             {
                 "links": {
@@ -126,7 +124,6 @@ class TestPath(TestCase):
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_6(self):
-        # pylint: disable=no-self-use
         return MockResponse(
             {
                 "links": {

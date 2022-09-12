@@ -7,6 +7,7 @@ from kytos.core.common import EntityStatus
 from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.interface import Interface
 from kytos.core.switch import Switch
+from kytos.lib.helpers import get_controller_mock
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
@@ -18,7 +19,6 @@ from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
     get_uni_mocked,
-    get_controller_mock,
 )  # NOQA
 
 

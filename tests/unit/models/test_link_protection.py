@@ -4,16 +4,15 @@ import sys
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
+from kytos.core.common import EntityStatus
+from kytos.lib.helpers import get_controller_mock
 from napps.kytos.mef_eline.models import EVC, Path  # NOQA pycodestyle
 from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
     get_uni_mocked,
-    get_controller_mock,
     get_mocked_requests,
 )  # NOQA pycodestyle
 
-
-from kytos.core.common import EntityStatus
 
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 

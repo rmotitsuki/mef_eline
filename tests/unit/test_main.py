@@ -5,12 +5,10 @@ from unittest.mock import MagicMock, PropertyMock, call, create_autospec, patch
 
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
+from kytos.lib.helpers import get_controller_mock
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
-from napps.kytos.mef_eline.tests.helpers import (
-    get_controller_mock,
-    get_uni_mocked,
-)
+from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
@@ -736,7 +734,6 @@ class TestMain(TestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(json.loads(response.data), expected_result)
 
-    # pylint: disable=no-self-use
     def _add_mongodb_schedule_data(self, data_mock):
         """Add schedule data to mongodb mock object."""
         circuits = {"circuits": {}}
