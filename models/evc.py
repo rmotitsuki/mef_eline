@@ -103,6 +103,8 @@ class EVCBase(GenericEntity):
         self.primary_path = Path(kwargs.get("primary_path", []))
         self.backup_path = Path(kwargs.get("backup_path", []))
         self.dynamic_backup_path = kwargs.get("dynamic_backup_path", False)
+        self.primary_constraints = kwargs.get("primary_constraints", {})
+        self.secondary_constraints = kwargs.get("secondary_constraints", {})
         self.creation_time = get_time(kwargs.get("creation_time")) or now()
         self.owner = kwargs.get("owner", None)
         self.priority = kwargs.get("priority", -1)
