@@ -3,7 +3,7 @@
 # pylint: disable=no-self-argument,no-name-in-module
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -48,6 +48,25 @@ class UNIDoc(BaseModel):
     interface_id: str
 
 
+class LinkConstraints(BaseModel):
+    """LinkConstraints."""
+    bandwidth: Optional[float]
+    ownership: Optional[dict[str, str]]
+    reliability: Optional[float]
+    utilization: Optional[float]
+    delay: Optional[float]
+    priority: Optional[int]
+
+
+class PathConstraints(BaseModel):
+    """Pathfinder Constraints."""
+    spf_attribute: Literal["hop", "delay", "priority"] = "hop"
+    spf_max_cost: Optional[float]
+    mandatory_metrics: Optional[LinkConstraints]
+    flexible_metrics: Optional[LinkConstraints]
+    minimul_flexible_hits: Optional[int]
+
+
 class EVCBaseDoc(DocumentBaseModel):
     """Base model for EVC documents"""
 
@@ -67,6 +86,8 @@ class EVCBaseDoc(DocumentBaseModel):
     backup_links: Optional[List]
     backup_links: Optional[List]
     dynamic_backup_path: bool
+    primary_constraints: Optional[PathConstraints]
+    secondary_constraints: Optional[PathConstraints]
     creation_time: datetime
     owner: Optional[str]
     priority: int
