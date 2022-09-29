@@ -326,13 +326,16 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CircuitSchedule'
-        priority:
+        sb_priority:
           type: integer
-          format: int64
+          format: int32
+          description: "Southbound priority value"
+          minimum: 0
         service_level:
           type: integer
           format: int32
-          description: "Service level provided for network convergence. The higher the better."
+          description: "Service level provided for network convergence. The higher the better"
+          default: 0
           minimum: 0
           maximum: 7
         enabled:
@@ -458,13 +461,16 @@ components:
 
         owner:
           type: string
-        priority:
+        sb_priority:
           type: integer
           format: int32
+          description: "Southbound priority value"
+          minimum: 0
         service_level:
           type: integer
           format: int32
-          description: "Service level provided for network convergence. The higher the better."
+          description: "Service level provided for network convergence. The higher the better"
+          default: 0
           minimum: 0
           maximum: 7
 
