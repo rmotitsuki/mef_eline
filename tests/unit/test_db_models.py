@@ -38,6 +38,14 @@ class TestDBModels(TestCase):
 
         evc = EVCBaseDoc(**self.evc_dict)
         assert evc.name == "EVC 2"
+        assert evc.uni_a.interface_id == "00:00:00:00:00:00:00:04:1"
+        assert evc.uni_z.interface_id == "00:00:00:00:00:00:00:02:3"
+        assert evc.dynamic_backup_path
+        assert evc.priority == 81
+        assert evc.service_level == 0
+        assert not evc.active
+        assert not evc.enabled
+        assert not evc.circuit_scheduler
 
     def test_evcbasedoc_error(self):
         """Test failure EVCBaseDoc model creation"""

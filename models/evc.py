@@ -76,6 +76,7 @@ class EVCBase(GenericEntity):
                                archived; default is False.
             owner(str): The EVC owner. Default is None.
             priority(int): Service level provided in the request. Default is 0.
+            service_level(int): Service level provided in the request. Default is 0.
 
         Raises:
             ValueError: raised when object attributes are invalid.
@@ -106,6 +107,7 @@ class EVCBase(GenericEntity):
         self.creation_time = get_time(kwargs.get("creation_time")) or now()
         self.owner = kwargs.get("owner", None)
         self.priority = kwargs.get("priority", -1)
+        self.service_level = kwargs.get("service_level", 0)
         self.circuit_scheduler = kwargs.get("circuit_scheduler", [])
 
         self.current_links_cache = set()
@@ -264,13 +266,6 @@ class EVCBase(GenericEntity):
         evc_dict["dynamic_backup_path"] = self.dynamic_backup_path
         evc_dict["metadata"] = self.metadata
 
-        # if self._requested:
-        #     request_dict = self._requested.copy()
-        #     request_dict['uni_a'] = request_dict['uni_a'].as_dict()
-        #     request_dict['uni_z'] = request_dict['uni_z'].as_dict()
-        #     request_dict['circuit_scheduler'] = self.circuit_scheduler
-        #     evc_dict['_requested'] = request_dict
-
         evc_dict["request_time"] = self.request_time
         if isinstance(self.request_time, datetime):
             evc_dict["request_time"] = self.request_time.strftime(time_fmt)
@@ -287,6 +282,7 @@ class EVCBase(GenericEntity):
         evc_dict["enabled"] = self.is_enabled()
         evc_dict["archived"] = self.archived
         evc_dict["priority"] = self.priority
+        evc_dict["service_level"] = self.service_level
 
         return evc_dict
 

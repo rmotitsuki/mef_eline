@@ -70,6 +70,7 @@ class EVCBaseDoc(DocumentBaseModel):
     creation_time: datetime
     owner: Optional[str]
     priority: int
+    service_level: int = 0
     circuit_scheduler: List[CircuitScheduleDoc]
     archived: bool = False
     metadata: Optional[Dict] = None
