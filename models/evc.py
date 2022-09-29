@@ -76,7 +76,8 @@ class EVCBase(GenericEntity):
                                archived; default is False.
             owner(str): The EVC owner. Default is None.
             priority(int): Service level provided in the request. Default is 0.
-            service_level(int): Service level provided in the request. Default is 0.
+            service_level(int): Service level provided. The higher the better.
+                                Default is 0.
 
         Raises:
             ValueError: raised when object attributes are invalid.

@@ -329,6 +329,12 @@ components:
         priority:
           type: integer
           format: int64
+        service_level:
+          type: integer
+          format: int32
+          description: "Service level provided for network convergence. The higher the better."
+          minimum: 0
+          maximum: 7
         enabled:
           type: boolean
     NewLink:
@@ -455,6 +461,12 @@ components:
         priority:
           type: integer
           format: int32
+        service_level:
+          type: integer
+          format: int32
+          description: "Service level provided for network convergence. The higher the better."
+          minimum: 0
+          maximum: 7
 
         circuit_scheduler:
           type: array
