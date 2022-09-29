@@ -69,7 +69,7 @@ class EVCBaseDoc(DocumentBaseModel):
     dynamic_backup_path: bool
     creation_time: datetime
     owner: Optional[str]
-    priority: int
+    sb_priority: Optional[int]
     service_level: int = 0
     circuit_scheduler: List[CircuitScheduleDoc]
     archived: bool = False
@@ -93,7 +93,8 @@ class EVCBaseDoc(DocumentBaseModel):
             "current_path": 1,
             "failover_path": 1,
             "dynamic_backup_path": 1,
-            "priority": 1,
+            "sb_priority": {"$ifNull": ["$sb_priority", "$priority", None]},
+            "service_level": 1,
             "circuit_scheduler": 1,
             "archived": 1,
             "metadata": 1,
