@@ -27,7 +27,7 @@ class TestDBModels(TestCase):
             "name": "EVC 2",
             "dynamic_backup_path": True,
             "creation_time": "2022-04-06T21:34:10",
-            "priority": 81,
+            "sb_priority": 81,
             "active": False,
             "enabled": False,
             "circuit_scheduler": []
@@ -41,7 +41,7 @@ class TestDBModels(TestCase):
         assert evc.uni_a.interface_id == "00:00:00:00:00:00:00:04:1"
         assert evc.uni_z.interface_id == "00:00:00:00:00:00:00:02:3"
         assert evc.dynamic_backup_path
-        assert evc.priority == 81
+        assert evc.sb_priority == 81
         assert evc.service_level == 0
         assert not evc.active
         assert not evc.enabled
