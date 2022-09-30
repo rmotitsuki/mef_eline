@@ -381,30 +381,18 @@ class TestMain(TestCase):
 
     def test_circuit_with_valid_id(self):
         """Test if get_circuit return the circuit attributes."""
-        circuits = {
-            "circuits": {
-                "1": {"name": "circuit_1"},
-                "2": {"name": "circuit_2"}
-            }
-        }
-        self.napp.mongo_controller.get_circuits.return_value = circuits
+        circuit = {"name": "circuit_1"}
+        self.napp.mongo_controller.get_circuit.return_value = circuit
 
         api = self.get_app_test_client(self.napp)
         url = f"{self.server_name_url}/v2/evc/1"
         response = api.get(url)
-        expected_result = circuits["circuits"]["1"]
+        expected_result = circuit
         self.assertEqual(json.loads(response.data), expected_result)
 
     def test_circuit_with_invalid_id(self):
         """Test if get_circuit return invalid circuit_id."""
-        circuits = {
-            "circuits": {
-                "1": {"name": "circuit_1"},
-                "2": {"name": "circuit_2"}
-            }
-        }
-        self.napp.mongo_controller.get_circuits.return_value = circuits
-
+        self.napp.mongo_controller.get_circuit.return_value = None
         api = self.get_app_test_client(self.napp)
         url = f"{self.server_name_url}/v2/evc/3"
         response = api.get(url)
@@ -848,6 +836,9 @@ class TestMain(TestCase):
         )
 
         requested_circuit_id = "bb:bb:bb"
+        evc = self.napp.mongo_controller.get_circuits()
+        evc = evc["circuits"][requested_circuit_id]
+        self.napp.mongo_controller.get_circuit.return_value = evc
         api = self.get_app_test_client(self.napp)
         url = f"{self.server_name_url}/v2/evc/{requested_circuit_id}"
 
@@ -868,8 +859,8 @@ class TestMain(TestCase):
     def test_get_specific_schedules_from_mongodb_not_found(self):
         """Test get specific schedule ID that does not exist."""
         requested_id = "blah"
-        self.napp.mongo_controller.get_circuits.return_value = {"circuits": {}}
         api = self.get_app_test_client(self.napp)
+        self.napp.mongo_controller.get_circuit.return_value = None
         url = f"{self.server_name_url}/v2/evc/{requested_id}"
 
         # Call URL
@@ -1268,7 +1259,7 @@ class TestMain(TestCase):
 
     def test_get_circuit_not_found(self):
         """Test /v2/evc/<circuit_id> 404."""
-        self.napp.mongo_controller.get_circuits.return_value = {"circuits": {}}
+        self.napp.mongo_controller.get_circuit.return_value = None
         api = self.get_app_test_client(self.napp)
         url = f'{self.server_name_url}/v2/evc/1234'
         response = api.get(url)
