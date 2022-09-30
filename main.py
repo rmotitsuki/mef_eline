@@ -137,17 +137,14 @@ class Main(KytosNApp):
     def get_circuit(self, circuit_id):
         """Endpoint to return a circuit based on id."""
         log.debug("get_circuit /v2/evc/%s", circuit_id)
-        circuits = self.mongo_controller.get_circuits()['circuits']
-
-        try:
-            result = circuits[circuit_id]
-        except KeyError:
+        circuit = self.mongo_controller.get_circuit(circuit_id)
+        if not circuit:
             result = f"circuit_id {circuit_id} not found"
             log.debug("get_circuit result %s %s", result, 404)
-            raise NotFound(result) from KeyError
+            raise NotFound(result)
         status = 200
-        log.debug("get_circuit result %s %s", result, status)
-        return jsonify(result), status
+        log.debug("get_circuit result %s %s", circuit, status)
+        return jsonify(circuit), status
 
     @rest("/v2/evc/", methods=["POST"])
     @validate(spec)
