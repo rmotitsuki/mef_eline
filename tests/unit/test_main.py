@@ -141,18 +141,18 @@ class TestMain(TestCase):
             "circuits": stored_circuits
         }
         mock_settings.WAIT_FOR_OLD_PATH = -1
-        evc1 = MagicMock()
+        evc1 = MagicMock(id=1, service_level=0, creation_time=1)
         evc1.is_enabled.return_value = True
         evc1.is_active.return_value = False
         evc1.lock.locked.return_value = False
         evc1.check_traces.return_value = True
-        evc2 = MagicMock()
+        evc2 = MagicMock(id=2, service_level=7, creation_time=1)
         evc2.is_enabled.return_value = True
         evc2.is_active.return_value = False
         evc2.lock.locked.return_value = False
         evc2.check_traces.return_value = False
         self.napp.circuits = {'1': evc1, '2': evc2}
-
+        assert self.napp.get_evcs_by_svc_level() == [evc2, evc1]
         self.napp.execute_consistency()
         self.assertEqual(evc1.activate.call_count, 1)
         self.assertEqual(evc1.sync.call_count, 1)
@@ -1257,6 +1257,26 @@ class TestMain(TestCase):
         response = api.delete(url)
         self.assertEqual(response.status_code, 404)
 
+    def test_get_evcs_by_svc_level(self) -> None:
+        """Test get_evcs_by_svc_level."""
+        levels = [1, 2, 4, 2, 7]
+        evcs = {i: MagicMock(service_level=v, creation_time=1)
+                for i, v in enumerate(levels)}
+        self.napp.circuits = evcs
+        expected_levels = sorted(levels, reverse=True)
+        evcs_by_level = self.napp.get_evcs_by_svc_level()
+        assert evcs_by_level
+
+        for evc, exp_level in zip(evcs_by_level, expected_levels):
+            assert evc.service_level == exp_level
+
+        evcs = {i: MagicMock(service_level=1, creation_time=i)
+                for i in reversed(range(2))}
+        self.napp.circuits = evcs
+        evcs_by_level = self.napp.get_evcs_by_svc_level()
+        for i in range(2):
+            assert evcs_by_level[i].creation_time == i
+
     def test_get_circuit_not_found(self):
         """Test /v2/evc/<circuit_id> 404."""
         self.napp.mongo_controller.get_circuit.return_value = None
@@ -1719,6 +1739,7 @@ class TestMain(TestCase):
     def test_handle_link_up(self):
         """Test handle_link_up method."""
         evc_mock = create_autospec(EVC)
+        evc_mock.service_level, evc_mock.creation_time = 0, 1
         evc_mock.is_enabled = MagicMock(side_effect=[True, False, True])
         evc_mock.lock = MagicMock()
         type(evc_mock).archived = PropertyMock(
@@ -1735,17 +1756,17 @@ class TestMain(TestCase):
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_link_down(self, emit_event_mock, settings_mock, _):
         """Test handle_link_down method."""
-        evc1 = MagicMock(id="1")
+        evc1 = MagicMock(id="1", service_level=0, creation_time=1)
         evc1.is_affected_by_link.return_value = True
         evc1.handle_link_down.return_value = True
         evc1.failover_path = None
-        evc2 = MagicMock(id="2")
+        evc2 = MagicMock(id="2", service_level=6, creation_time=1)
         evc2.is_affected_by_link.return_value = False
-        evc3 = MagicMock(id="3")
+        evc3 = MagicMock(id="3", service_level=5, creation_time=1)
         evc3.is_affected_by_link.return_value = True
         evc3.handle_link_down.return_value = True
         evc3.failover_path = None
-        evc4 = MagicMock(id="4")
+        evc4 = MagicMock(id="4", service_level=4, creation_time=1)
         evc4.is_affected_by_link.return_value = True
         evc4.is_failover_path_affected_by_link.return_value = False
         evc4.failover_path = ["2"]
@@ -1753,12 +1774,38 @@ class TestMain(TestCase):
             "2": ["flow1", "flow2"],
             "3": ["flow3", "flow4", "flow5", "flow6"],
         }
+        evc5 = MagicMock(id="5", service_level=7, creation_time=1)
+        evc5.is_affected_by_link.return_value = True
+        evc5.is_failover_path_affected_by_link.return_value = False
+        evc5.failover_path = ["3"]
+        evc5.get_failover_flows.return_value = {
+            "4": ["flow7", "flow8"],
+            "5": ["flow9", "flow10"],
+        }
         link = MagicMock(id="123")
         event = KytosEvent(name="test", content={"link": link})
-        self.napp.circuits = {"1": evc1, "2": evc2, "3": evc3, "4": evc4}
+        self.napp.circuits = {"1": evc1, "2": evc2, "3": evc3, "4": evc4,
+                              "5": evc5}
         settings_mock.BATCH_SIZE = 2
         self.napp.handle_link_down(event)
+
+        assert evc5.service_level > evc4.service_level
+        # evc5 batched flows should be sent first
         emit_event_mock.assert_has_calls([
+            call(
+                self.napp.controller,
+                context="kytos.flow_manager",
+                name="flows.install",
+                dpid="4",
+                flow_dict={"flows": ["flow7", "flow8"]},
+            ),
+            call(
+                self.napp.controller,
+                context="kytos.flow_manager",
+                name="flows.install",
+                dpid="5",
+                flow_dict={"flows": ["flow9", "flow10"]},
+            ),
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
@@ -1782,9 +1829,11 @@ class TestMain(TestCase):
             ),
         ])
         event_name = "evc_affected_by_link_down"
+        assert evc3.service_level > evc1.service_level
+        # evc3 should be handled before evc1
         emit_event_mock.assert_has_calls([
-            call(self.napp.controller, event_name, evc_id="1", link_id="123"),
             call(self.napp.controller, event_name, evc_id="3", link_id="123"),
+            call(self.napp.controller, event_name, evc_id="1", link_id="123"),
         ])
         evc4.sync.assert_called_once()
         event_name = "redeployed_link_down"
