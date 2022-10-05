@@ -9,6 +9,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 Added
 =====
 - Added ``service_level`` EVC attribute to set the service network convergence level, the higher the better
+- EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
 
 Changed
 =======
