@@ -6,6 +6,19 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [Unreleased]
 ************
 
+Added
+=====
+- Added ``service_level`` EVC attribute to set the service network convergence level, the higher the better
+- EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
+
+Changed
+=======
+- ``priority`` has been renamed to ``sb_priority`` (southbound priority), ``./scripts/001_rename_priority.py`` can be used to update EVC documents accordingly
+
+Removed
+=======
+- ``priority`` is no longer supported in the API spec
+
 [2022.2.0] - 2022-08-12
 ***********************
 
