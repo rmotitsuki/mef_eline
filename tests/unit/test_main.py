@@ -447,6 +447,17 @@ class TestMain(TestCase):
                 "tag": {"tag_type": 1, "value": 1},
             },
             "dynamic_backup_path": True,
+            "primary_constraints": {
+                "spf_max_path_cost": 8,
+                "mandatory_metrics": {
+                    "ownership": "red"
+                }
+            },
+            "secondary_constraints": {
+                "mandatory_metrics": {
+                    "ownership": "blue"
+                }
+            }
         }
 
         response = api.post(
@@ -471,6 +482,8 @@ class TestMain(TestCase):
             uni_a=uni1,
             uni_z=uni2,
             dynamic_backup_path=True,
+            primary_constraints=payload["primary_constraints"],
+            secondary_constraints=payload["secondary_constraints"],
         )
         # verify save method is called
         mongo_controller_upsert_mock.assert_called_once()
