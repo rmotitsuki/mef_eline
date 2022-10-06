@@ -1,7 +1,7 @@
 """Module to test the Path class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch, Mock, MagicMock
+from unittest.mock import call, patch, Mock, MagicMock
 
 from kytos.core.common import EntityStatus
 from kytos.core.link import Link
@@ -400,8 +400,18 @@ class TestDynamicPathManager(TestCase):
         mock_response.status_code = 200
         mock_response.json.return_value = paths1
         mock_requests_post.return_value = mock_response
-
-        res_paths = list(DynamicPathManager.get_best_paths(MagicMock()))
+        kwargs = {
+            "spf_max_path_cost": 8,
+            "mandatory_metrics": {
+                "ownership": "red"
+            }
+        }
+        circuit = MagicMock()
+        circuit.uni_a.interface.id = "1"
+        circuit.uni_z.interface.id = "2"
+        max_paths = 2
+        res_paths = list(DynamicPathManager.get_best_paths(circuit,
+                         max_paths=max_paths, **kwargs))
         self.assertEqual(
             [link.id for link in res_paths[0]],
             [link.id for link in expected_paths_0]
@@ -410,6 +420,18 @@ class TestDynamicPathManager(TestCase):
             [link.id for link in res_paths[1]],
             [link.id for link in expected_paths_1]
         )
+        expected_call = call(
+            "http://localhost:8181/api/kytos/pathfinder/v2/",
+            json={
+                **{
+                    "source": circuit.uni_a.interface.id,
+                    "destination": circuit.uni_z.interface.id,
+                    "spf_max_paths": max_paths,
+                },
+                **kwargs
+            },
+        )
+        mock_requests_post.assert_has_calls([expected_call])
 
     @patch("requests.post")
     def test_get_disjoint_paths(self, mock_requests_post):
@@ -420,6 +442,14 @@ class TestDynamicPathManager(TestCase):
         DynamicPathManager.set_controller(controller)
 
         evc = MagicMock()
+        evc.secondary_constraints = {
+            "spf_max_path_cost": 20,
+            "mandatory_metrics": {
+                "ownership": "red"
+            }
+        }
+        evc.uni_a.interface.id = "1"
+        evc.uni_z.interface.id = "2"
 
         # Topo0
         paths1 = {
@@ -588,6 +618,22 @@ class TestDynamicPathManager(TestCase):
             [link.id for link in paths[0]],
             [link.id for link in expected_disjoint_path]
         )
+
+        max_paths = 10
+        expected_call = call(
+            "http://localhost:8181/api/kytos/pathfinder/v2/",
+            json={
+                **{
+                    "source": evc.uni_a.interface.id,
+                    "destination": evc.uni_z.interface.id,
+                    "spf_max_paths": max_paths,
+                },
+                **evc.secondary_constraints
+            },
+        )
+        assert mock_requests_post.call_count >= 1
+        # If secondary_constraints are set they are expected to be parametrized
+        mock_requests_post.assert_has_calls([expected_call])
 
         # EP029 Topo2
         paths2 = {
