@@ -126,7 +126,8 @@ class EVCBaseDoc(DocumentBaseModel):
             "owner": {"$ifNull": ["$owner", None]},
             "queue_id": {"$ifNull": ["$queue_id", None]},
             "primary_constraints": {"$ifNull": ["$primary_constraints", {}]},
-            "secondary_constraints": {"$ifNull": ["$secondary_constraints", {}]},
+            "secondary_constraints": {"$ifNull": ["$secondary_constraints",
+                                      {}]},
             "primary_links": {"$ifNull": ["$primary_links", []]},
             "backup_links": {"$ifNull": ["$backup_links", []]},
             "start_date": {"$dateToString": {
