@@ -1,7 +1,6 @@
 """ELineController."""
 # pylint: disable=unnecessary-lambda,invalid-name
 import os
-import re
 from datetime import datetime
 from typing import Dict, Optional
 
