@@ -37,6 +37,8 @@ class EVCBase(GenericEntity):
         "dynamic_backup_path",
         "queue_id",
         "sb_priority",
+        "primary_constraints",
+        "secondary_constraints"
     ]
     required_attributes = ["name", "uni_a", "uni_z"]
 
