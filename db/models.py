@@ -51,7 +51,7 @@ class UNIDoc(BaseModel):
 class LinkConstraints(BaseModel):
     """LinkConstraints."""
     bandwidth: Optional[float]
-    ownership: Optional[dict[str, str]]
+    ownership: Optional[str]
     reliability: Optional[float]
     utilization: Optional[float]
     delay: Optional[float]
@@ -61,10 +61,12 @@ class LinkConstraints(BaseModel):
 class PathConstraints(BaseModel):
     """Pathfinder Constraints."""
     spf_attribute: Literal["hop", "delay", "priority"] = "hop"
-    spf_max_cost: Optional[float]
+    spf_max_path_cost: Optional[float]
     mandatory_metrics: Optional[LinkConstraints]
     flexible_metrics: Optional[LinkConstraints]
     minimul_flexible_hits: Optional[int]
+    desired_links: Optional[List[str]]
+    undesired_links: Optional[List[str]]
 
 
 class EVCBaseDoc(DocumentBaseModel):
@@ -123,6 +125,8 @@ class EVCBaseDoc(DocumentBaseModel):
             "enabled": 1,
             "owner": {"$ifNull": ["$owner", None]},
             "queue_id": {"$ifNull": ["$queue_id", None]},
+            "primary_constraints": {"$ifNull": ["$primary_constraints", {}]},
+            "secondary_constraints": {"$ifNull": ["$secondary_constraints", {}]},
             "primary_links": {"$ifNull": ["$primary_links", []]},
             "backup_links": {"$ifNull": ["$backup_links", []]},
             "start_date": {"$dateToString": {
