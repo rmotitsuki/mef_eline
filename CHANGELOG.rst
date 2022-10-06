@@ -10,6 +10,7 @@ Added
 =====
 - Added ``service_level`` EVC attribute to set the service network convergence level, the higher the better
 - EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
+- Added support for constrained paths for primary dynamic paths and failover paths, ``primary_constraints`` and ``secondary_constraints`` can be set via API.
 
 Changed
 =======
