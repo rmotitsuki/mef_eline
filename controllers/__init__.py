@@ -57,6 +57,11 @@ class ELineController:
         )
         return {"circuits": {value["id"]: value for value in circuits}}
 
+    def get_circuit(self, circuit_id: str) -> Optional[Dict]:
+        """Get a circuit."""
+        return self.db.evcs.find_one({"_id": circuit_id},
+                                     EVCBaseDoc.projection())
+
     def upsert_evc(self, evc: Dict) -> Optional[Dict]:
         """Update or insert an EVC"""
         utc_now = datetime.utcnow()
