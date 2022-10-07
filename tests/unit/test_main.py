@@ -1332,7 +1332,7 @@ class TestMain(TestCase):
                 ]
             },
             {
-                "priority": 3
+                "sb_priority": 3
             },
             {
                 # It works only with 'enable' and not with 'enabled'

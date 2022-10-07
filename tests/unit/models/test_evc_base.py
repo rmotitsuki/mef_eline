@@ -214,7 +214,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
                 ),
             ],
             "enabled": True,
-            "priority": 2,
+            "sb_priority": 2,
+            "service_level": 7,
         }
         evc = EVC(**attributes)
 
@@ -248,7 +249,8 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             ],
             "active": False,
             "enabled": True,
-            "priority": 2,
+            "sb_priority": 2,
+            "service_level": 7,
         }
         actual_dict = evc.as_dict()
         for name, value in expected_dict.items():
