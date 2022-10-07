@@ -40,6 +40,7 @@ class TestControllers(TestCase):
         self.eline.bootstrap_indexes()
         expected_indexes = [
             ("evcs", [("circuit_scheduler", 1)]),
+            ("evcs", [("archived", 1)]),
         ]
         mock = self.eline.mongo.bootstrap_index
         assert mock.call_count == len(expected_indexes)
