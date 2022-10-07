@@ -11,14 +11,20 @@ Added
 - Added ``service_level`` EVC attribute to set the service network convergence level, the higher the better
 - EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
 - Added support for constrained paths for primary dynamic paths and failover paths, ``primary_constraints`` and ``secondary_constraints`` can be set via API.
+- Documented ``GET /v2/evc?archived`` query arg on openapi.yml
 
 Changed
 =======
 - ``priority`` has been renamed to ``sb_priority`` (southbound priority), ``./scripts/001_rename_priority.py`` can be used to update EVC documents accordingly
+- ``GET /v2/evc?archived=true`` will only return archived EVCs
 
 Removed
 =======
 - ``priority`` is no longer supported in the API spec
+
+Fixed
+=====
+- Fixed found but unloaded message log attempt for archived EVCs
 
 [2022.2.0] - 2022-08-12
 ***********************
