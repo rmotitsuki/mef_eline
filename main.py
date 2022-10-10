@@ -60,6 +60,14 @@ class Main(KytosNApp):
 
         self.load_all_evcs()
 
+    def get_evcs_by_svc_level(self) -> list:
+        """Get circuits sorted by desc service level and asc creation_time.
+
+        In the future, as more ops are offloaded it should be get from the DB.
+        """
+        return sorted(self.circuits.values(),
+                      key=lambda x: (-x.service_level, x.creation_time))
+
     @staticmethod
     def get_eline_controller():
         """Return the ELineController instance."""
@@ -81,7 +89,7 @@ class Main(KytosNApp):
         """Execute consistency routine."""
         self.execution_rounds += 1
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
-        for circuit in tuple(self.circuits.values()):
+        for circuit in self.get_evcs_by_svc_level():
             stored_circuits.pop(circuit.id, None)
             if (
                 circuit.is_enabled()
@@ -633,7 +641,7 @@ class Main(KytosNApp):
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
         log.debug("Event handle_link_up %s", event)
-        for evc in self.circuits.copy().values():
+        for evc in self.get_evcs_by_svc_level():
             if evc.is_enabled() and not evc.archived:
                 with evc.lock:
                     evc.handle_link_up(event.content["link"])
@@ -651,7 +659,7 @@ class Main(KytosNApp):
         evcs_with_failover = []
         evcs_normal = []
         check_failover = []
-        for evc in self.circuits.copy().values():
+        for evc in self.get_evcs_by_svc_level():
             if evc.is_affected_by_link(link):
                 # if there is no failover path, handles link down the
                 # tradditional way
