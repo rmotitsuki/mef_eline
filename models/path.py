@@ -111,7 +111,7 @@ class DynamicPathManager:
         cls.controller = controller
 
     @staticmethod
-    def get_paths(circuit, max_paths=2):
+    def get_paths(circuit, max_paths=2, **kwargs):
         """Get a valid path for the circuit from the Pathfinder."""
         endpoint = settings.PATHFINDER_URL
         request_data = {
@@ -119,6 +119,7 @@ class DynamicPathManager:
             "destination": circuit.uni_z.interface.id,
             "spf_max_paths": max_paths,
         }
+        request_data.update(kwargs)
         api_reply = requests.post(endpoint, json=request_data)
 
         if api_reply.status_code != getattr(requests.codes, "ok"):
@@ -145,9 +146,9 @@ class DynamicPathManager:
         return None
 
     @classmethod
-    def get_best_paths(cls, circuit):
+    def get_best_paths(cls, circuit, **kwargs):
         """Return the best paths available for a circuit, if they exist."""
-        for path in cls.get_paths(circuit):
+        for path in cls.get_paths(circuit, **kwargs):
             yield cls.create_path(path["hops"])
 
     @classmethod
@@ -197,7 +198,8 @@ class DynamicPathManager:
         if not unwanted_links:
             return None
 
-        paths = cls.get_paths(circuit, max_paths=cutoff)
+        paths = cls.get_paths(circuit, max_paths=cutoff,
+                              **circuit.secondary_constraints)
         for path in paths:
             head = path["hops"][:-1]
             tail = path["hops"][1:]

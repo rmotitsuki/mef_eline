@@ -37,6 +37,8 @@ class EVCBase(GenericEntity):
         "dynamic_backup_path",
         "queue_id",
         "sb_priority",
+        "primary_constraints",
+        "secondary_constraints"
     ]
     required_attributes = ["name", "uni_a", "uni_z"]
 
@@ -106,6 +108,8 @@ class EVCBase(GenericEntity):
         self.primary_path = Path(kwargs.get("primary_path", []))
         self.backup_path = Path(kwargs.get("backup_path", []))
         self.dynamic_backup_path = kwargs.get("dynamic_backup_path", False)
+        self.primary_constraints = kwargs.get("primary_constraints", {})
+        self.secondary_constraints = kwargs.get("secondary_constraints", {})
         self.creation_time = get_time(kwargs.get("creation_time")) or now()
         self.owner = kwargs.get("owner", None)
         self.sb_priority = kwargs.get("sb_priority", None) or kwargs.get(
@@ -287,6 +291,8 @@ class EVCBase(GenericEntity):
         evc_dict["archived"] = self.archived
         evc_dict["sb_priority"] = self.sb_priority
         evc_dict["service_level"] = self.service_level
+        evc_dict["primary_constraints"] = self.primary_constraints
+        evc_dict["secondary_constraints"] = self.secondary_constraints
 
         return evc_dict
 
@@ -309,7 +315,8 @@ class EVCDeploy(EVCBase):
 
     def discover_new_paths(self):
         """Discover new paths to satisfy this circuit and deploy it."""
-        return DynamicPathManager.get_best_paths(self)
+        return DynamicPathManager.get_best_paths(self,
+                                                 **self.primary_constraints)
 
     def get_failover_path_candidates(self):
         """Get failover paths to satisfy this EVC."""

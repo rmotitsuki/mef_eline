@@ -27,6 +27,31 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             EVC(**attributes)
         self.assertEqual(str(handle_error.exception), error_message)
 
+    def test_expected_requiring_redeploy_attributes(self) -> None:
+        """Test expected attributes_requiring_redeploy."""
+        expected = [
+            "primary_path",
+            "backup_path",
+            "dynamic_backup_path",
+            "queue_id",
+            "sb_priority",
+            "primary_constraints",
+            "secondary_constraints"
+        ]
+        assert EVC.attributes_requiring_redeploy == expected
+
+    def test_expeted_read_only_attributes(self) -> None:
+        """Test expected read_only_attributes."""
+        expected = [
+            "creation_time",
+            "active",
+            "current_path",
+            "failover_path",
+            "_id",
+            "archived",
+        ]
+        assert EVC.read_only_attributes == expected
+
     def test_without_uni_a(self):
         """Test if the EVC raises and error with UNI A is required."""
         attributes = {
