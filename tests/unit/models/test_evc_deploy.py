@@ -994,11 +994,10 @@ class TestEVC(TestCase):
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    @patch("napps.kytos.mef_eline.models.evc.log.error")
     def test_remove_failover_flows_include_all(self, *args):
         """Test remove failover flows including UNI switches."""
         # pylint: disable=too-many-locals
-        (log_error_mock, send_flow_mods_mocked,
+        (send_flow_mods_mocked,
          notify_mock, mock_upsert) = args
         uni_a = get_uni_mocked(
             interface_port=2,
