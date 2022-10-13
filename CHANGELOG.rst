@@ -20,6 +20,10 @@ Removed
 =======
 - ``priority`` is no longer supported in the API spec
 
+Fixed
+=====
+- Removed failover flows when an EVC gets deleted
+
 [2022.2.0] - 2022-08-12
 ***********************
 
