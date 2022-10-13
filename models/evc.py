@@ -470,6 +470,50 @@ class EVCDeploy(EVCBase):
         self.sync()
         emit_event(self._controller, "undeployed", evc_id=self.id)
 
+    def remove_failover_flows(self, exclude_uni_switches=True,
+                              force=True, sync=True) -> None:
+        """Remove failover_flows.
+
+        By default, it'll exclude UNI switches, if mef_eline has already
+        called remove_current_flows before then this minimizes the number
+        of FlowMods and IO.
+        """
+        if not self.failover_path:
+            return
+        switches, cookie, excluded = OrderedDict(), self.get_cookie(), set()
+        if exclude_uni_switches:
+            excluded.add(self.uni_a.interface.switch.id)
+            excluded.add(self.uni_z.interface.switch.id)
+        for link in self.failover_path:
+            if link.endpoint_a.switch.id not in excluded:
+                switches[link.endpoint_a.switch.id] = link.endpoint_a.switch
+            if link.endpoint_b.switch.id not in excluded:
+                switches[link.endpoint_b.switch.id] = link.endpoint_b.switch
+        for switch in switches.values():
+            try:
+                self._send_flow_mods(
+                    switch.id,
+                    [
+                        {
+                            "cookie": cookie,
+                            "cookie_mask": int(0xFFFFFFFFFFFFFFFF),
+                        }
+                    ],
+                    "delete",
+                    force=force,
+                )
+            except FlowModException as err:
+                log.error(
+                    f"Error removing flows from switch {switch.id} for"
+                    f"EVC {self}: {err}"
+                )
+        self.failover_path.make_vlans_available()
+        for link in self.failover_path:
+            notify_link_available_tags(self._controller, link)
+        self.failover_path = Path([])
+        if sync:
+            self.sync()
+
     def remove_current_flows(self, current_path=None, force=True):
         """Remove all flows from current path."""
         switches = set()
@@ -484,7 +528,7 @@ class EVCDeploy(EVCBase):
 
         match = {
             "cookie": self.get_cookie(),
-            "cookie_mask": 18446744073709551615,
+            "cookie_mask": int(0xffffffffffffffff)
         }
 
         for switch in switches:
@@ -515,7 +559,7 @@ class EVCDeploy(EVCBase):
                 dpid_flows_match[dpid].append({
                     "cookie": flow["cookie"],
                     "match": flow["match"],
-                    "cookie_mask": 18446744073709551615
+                    "cookie_mask": int(0xffffffffffffffff)
                 })
         for dpid, flows in self._prepare_uni_flows(path, skip_in=True).items():
             dpid_flows_match.setdefault(dpid, [])
