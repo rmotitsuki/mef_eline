@@ -481,14 +481,17 @@ class EVCDeploy(EVCBase):
         if not self.failover_path:
             return
         switches, cookie, excluded = OrderedDict(), self.get_cookie(), set()
+        links = set()
         if exclude_uni_switches:
             excluded.add(self.uni_a.interface.switch.id)
             excluded.add(self.uni_z.interface.switch.id)
         for link in self.failover_path:
             if link.endpoint_a.switch.id not in excluded:
                 switches[link.endpoint_a.switch.id] = link.endpoint_a.switch
+                links.add(link)
             if link.endpoint_b.switch.id not in excluded:
                 switches[link.endpoint_b.switch.id] = link.endpoint_b.switch
+                links.add(link)
         for switch in switches.values():
             try:
                 self._send_flow_mods(
@@ -507,8 +510,9 @@ class EVCDeploy(EVCBase):
                     f"Error removing flows from switch {switch.id} for"
                     f"EVC {self}: {err}"
                 )
-        self.failover_path.make_vlans_available()
-        for link in self.failover_path:
+        for link in links:
+            link.make_tag_available(link.get_metadata("s_vlan"))
+            link.remove_metadata("s_vlan")
             notify_link_available_tags(self._controller, link)
         self.failover_path = Path([])
         if sync:
