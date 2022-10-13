@@ -334,6 +334,7 @@ class Main(KytosNApp):
         log.info("Removing %s", evc)
         with evc.lock:
             evc.remove_current_flows()
+            evc.remove_failover_flows(sync=False)
             evc.deactivate()
             evc.disable()
             self.sched.remove(evc)
