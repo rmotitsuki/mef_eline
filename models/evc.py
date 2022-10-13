@@ -656,7 +656,7 @@ class EVCDeploy(EVCBase):
                 use_path = Path()
                 self._install_direct_uni_flows()
             else:
-                log.warn(
+                log.warning(
                     f"{self} was not deployed. " "No available path was found."
                 )
                 return False
@@ -724,7 +724,7 @@ class EVCDeploy(EVCBase):
         self.sync()
 
         if not use_path:
-            log.warn(
+            log.warning(
                 f"Failover path for {self} was not deployed: {reason}"
             )
             return False
@@ -1052,11 +1052,11 @@ class EVCDeploy(EVCBase):
         """Check if current_path is deployed comparing with SDN traces."""
         trace_a = self.run_sdntrace(self.uni_a)
         if len(trace_a) != len(self.current_path) + 1:
-            log.warn(f"Invalid trace from uni_a: {trace_a}")
+            log.warning(f"Invalid trace from uni_a: {trace_a}")
             return False
         trace_z = self.run_sdntrace(self.uni_z)
         if len(trace_z) != len(self.current_path) + 1:
-            log.warn(f"Invalid trace from uni_z: {trace_z}")
+            log.warning(f"Invalid trace from uni_z: {trace_z}")
             return False
 
         for link, trace1, trace2 in zip(self.current_path,
@@ -1065,12 +1065,12 @@ class EVCDeploy(EVCBase):
             if compare_endpoint_trace(
                link.endpoint_a,
                glom(link.metadata, 's_vlan.value'), trace2) is False:
-                log.warn(f"Invalid trace from uni_a: {trace_a}")
+                log.warning(f"Invalid trace from uni_a: {trace_a}")
                 return False
             if compare_endpoint_trace(
                link.endpoint_b,
                glom(link.metadata, 's_vlan.value'), trace1) is False:
-                log.warn(f"Invalid trace from uni_z: {trace_z}")
+                log.warning(f"Invalid trace from uni_z: {trace_z}")
                 return False
 
         return True
