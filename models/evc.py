@@ -499,7 +499,7 @@ class EVCDeploy(EVCBase):
                     [
                         {
                             "cookie": cookie,
-                            "cookie_mask": int(0xFFFFFFFFFFFFFFFF),
+                            "cookie_mask": int(0xffffffffffffffff),
                         }
                     ],
                     "delete",
