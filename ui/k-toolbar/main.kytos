@@ -61,6 +61,11 @@
                     tooltip="Enter with a Tag Value Z"
                     placeholder="tag value" icon="arrow-right"></k-input>
 
+           <k-input id="service-level-input" :value.sync="service_level"
+                    title="Service level:"
+                    tooltip="Enter the service level (0-7)"
+                    placeholder="service level value" icon="arrow-right"></k-input>
+
            <k-button tooltip="Request Circuit" title="Request Circuit"
                      icon="gear" :on_click="request_circuit">
                      </k-button>
@@ -87,6 +92,7 @@ module.exports = {
         endpoint_name_z: "Endpoint name:",
         tag_type_z: "",
         tag_value_z: "",
+        service_level: "",
         dpids: [""],
         hasAutoComplete:false
     }
@@ -124,6 +130,7 @@ module.exports = {
         this.endpoint_name_z = "Endpoint name:";
         this.tag_type_z = "";
         this.tag_value_z = "";
+        this.service_level = "";
     },
     post_success(data) {
         let notification = {
@@ -161,6 +168,9 @@ module.exports = {
         if (this.tag_type_z != "" && this.tag_value_z != "") {
             request.uni_z['tag'] = {tag_type: parseInt(this.tag_type_z),
                                     value: parseInt(this.tag_value_z)}
+        }
+        if (this.service_level !== undefined && this.service_level !== "") {
+            request.service_level = parseInt(this.service_level)
         }
         
         let circuit_request = $.ajax({
