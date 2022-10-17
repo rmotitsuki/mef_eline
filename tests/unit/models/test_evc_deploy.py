@@ -923,6 +923,141 @@ class TestEVC(TestCase):
         evc.remove_current_flows()
         log_error_mock.assert_called()
 
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
+    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.log.error")
+    def test_remove_failover_flows_exclude_uni_switches(self, *args):
+        """Test remove failover flows excluding UNI switches."""
+        # pylint: disable=too-many-locals
+        (log_error_mock, send_flow_mods_mocked,
+         notify_mock, mock_upsert) = args
+        uni_a = get_uni_mocked(
+            interface_port=2,
+            tag_value=82,
+            switch_id="00:00:00:00:00:00:00:01",
+            is_valid=True,
+        )
+        uni_z = get_uni_mocked(
+            interface_port=3,
+            tag_value=83,
+            switch_id="00:00:00:00:00:00:00:03",
+            is_valid=True,
+        )
+
+        switch_a = Switch("00:00:00:00:00:00:00:01")
+        switch_b = Switch("00:00:00:00:00:00:00:02")
+        switch_c = Switch("00:00:00:00:00:00:00:03")
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "custom_name",
+            "uni_a": uni_a,
+            "uni_z": uni_z,
+            "active": True,
+            "enabled": True,
+            "failover_path": [
+                get_link_mocked(
+                    switch_a=switch_a,
+                    switch_b=switch_b,
+                    endpoint_a_port=9,
+                    endpoint_b_port=10,
+                    metadata={"s_vlan": 5},
+                ),
+                get_link_mocked(
+                    switch_a=switch_b,
+                    switch_b=switch_c,
+                    endpoint_a_port=11,
+                    endpoint_b_port=12,
+                    metadata={"s_vlan": 6},
+                ),
+            ],
+        }
+
+        evc = EVC(**attributes)
+        evc.remove_failover_flows(exclude_uni_switches=True, sync=True)
+        notify_mock.assert_called()
+
+        assert send_flow_mods_mocked.call_count == 1
+        flows = [
+            {"cookie": evc.get_cookie(),
+             "cookie_mask": int(0xffffffffffffffff)}
+        ]
+        send_flow_mods_mocked.assert_any_call(switch_b.id, flows, 'delete',
+                                              force=True)
+        assert mock_upsert.call_count == 1
+
+        send_flow_mods_mocked.side_effect = FlowModException("error")
+        evc.remove_current_flows()
+        log_error_mock.assert_called()
+
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
+    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
+    def test_remove_failover_flows_include_all(self, *args):
+        """Test remove failover flows including UNI switches."""
+        # pylint: disable=too-many-locals
+        (send_flow_mods_mocked,
+         notify_mock, mock_upsert) = args
+        uni_a = get_uni_mocked(
+            interface_port=2,
+            tag_value=82,
+            switch_id="00:00:00:00:00:00:00:01",
+            is_valid=True,
+        )
+        uni_z = get_uni_mocked(
+            interface_port=3,
+            tag_value=83,
+            switch_id="00:00:00:00:00:00:00:03",
+            is_valid=True,
+        )
+
+        switch_a = Switch("00:00:00:00:00:00:00:01")
+        switch_b = Switch("00:00:00:00:00:00:00:02")
+        switch_c = Switch("00:00:00:00:00:00:00:03")
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "custom_name",
+            "uni_a": uni_a,
+            "uni_z": uni_z,
+            "active": True,
+            "enabled": True,
+            "failover_path": [
+                get_link_mocked(
+                    switch_a=switch_a,
+                    switch_b=switch_b,
+                    endpoint_a_port=9,
+                    endpoint_b_port=10,
+                    metadata={"s_vlan": 5},
+                ),
+                get_link_mocked(
+                    switch_a=switch_b,
+                    switch_b=switch_c,
+                    endpoint_a_port=11,
+                    endpoint_b_port=12,
+                    metadata={"s_vlan": 6},
+                ),
+            ],
+        }
+
+        evc = EVC(**attributes)
+        evc.remove_failover_flows(exclude_uni_switches=False, sync=True)
+        notify_mock.assert_called()
+
+        assert send_flow_mods_mocked.call_count == 3
+        flows = [
+            {"cookie": evc.get_cookie(),
+             "cookie_mask": int(0xffffffffffffffff)}
+        ]
+        send_flow_mods_mocked.assert_any_call(switch_a.id, flows, 'delete',
+                                              force=True)
+        send_flow_mods_mocked.assert_any_call(switch_b.id, flows, 'delete',
+                                              force=True)
+        send_flow_mods_mocked.assert_any_call(switch_c.id, flows, 'delete',
+                                              force=True)
+        assert mock_upsert.call_count == 1
+
     @staticmethod
     def create_evc_intra_switch():
         """Create intra-switch EVC."""
