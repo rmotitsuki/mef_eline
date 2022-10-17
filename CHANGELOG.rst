@@ -24,6 +24,7 @@ Removed
 
 Fixed
 =====
+- Removed failover flows when an EVC gets deleted
 - Fixed found but unloaded message log attempt for archived EVCs
 
 [2022.2.0] - 2022-08-12
