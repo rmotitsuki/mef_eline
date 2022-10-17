@@ -120,26 +120,16 @@ class Main(KytosNApp):
     def list_circuits(self):
         """Endpoint to return circuits stored.
 
-        If archived is set to True return all circuits, else only the ones
-        not archived.
+        archive query arg if defined (not null) will be filtered
+        accordingly, by default only non archived evcs will be listed
         """
         log.debug("list_circuits /v2/evc")
-        archived = request.args.get("archived", False)
-        circuits = self.mongo_controller.get_circuits()['circuits']
-        if not circuits:
-            return jsonify({}), 200
-        if archived:
-            return jsonify(circuits), 200
-        return (
-            jsonify(
-                {
-                    circuit_id: circuit
-                    for circuit_id, circuit in circuits.items()
-                    if not circuit.get("archived", False)
-                }
-            ),
-            200,
-        )
+        archived = request.args.get("archived", "false").lower()
+        archived_to_optional = {"null": None, "true": True, "false": False}
+        archived = archived_to_optional.get(archived, False)
+        circuits = self.mongo_controller.get_circuits(archived=archived)
+        circuits = circuits['circuits']
+        return jsonify(circuits), 200
 
     @rest("/v2/evc/<circuit_id>", methods=["GET"])
     def get_circuit(self, circuit_id):
