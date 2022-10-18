@@ -25,6 +25,7 @@ Removed
 Fixed
 =====
 - Removed failover flows when an EVC gets deleted
+- Validated ``queue_id`` on ``POST /v2/evc``
 
 [2022.2.0] - 2022-08-12
 ***********************
