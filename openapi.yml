@@ -342,6 +342,12 @@ components:
           default: 0
           minimum: 0
           maximum: 7
+        queue_id:
+          type: integer
+          format: int32
+          description: "QoS Egress Queue ID"
+          minimum: 0
+          maximum: 7
         enabled:
           type: boolean
     NewLink:
@@ -564,6 +570,12 @@ components:
           format: int32
           description: "Service level provided for network convergence. The higher the better"
           default: 0
+          minimum: 0
+          maximum: 7
+        queue_id:
+          type: integer
+          format: int32
+          description: "QoS Egress Queue ID"
           minimum: 0
           maximum: 7
 
