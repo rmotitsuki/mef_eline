@@ -13,6 +13,7 @@ Added
 - Added support for constrained paths for primary dynamic paths and failover paths, ``primary_constraints`` and ``secondary_constraints`` can be set via API.
 - Added ``service_level`` UI component on ``k-toolbar`` and made it editable.
 - Added ``sb_priority`` UI component on ``k-toolbar``.
+- Added ``queue_id`` UI component on ``k-toolbar``.
 
 Changed
 =======
