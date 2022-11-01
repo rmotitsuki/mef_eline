@@ -112,9 +112,7 @@ class EVCBase(GenericEntity):
         self.secondary_constraints = kwargs.get("secondary_constraints", {})
         self.creation_time = get_time(kwargs.get("creation_time")) or now()
         self.owner = kwargs.get("owner", None)
-        self.sb_priority = kwargs.get("sb_priority", None) or kwargs.get(
-            "priority", None
-        )
+        self.sb_priority = kwargs.get("sb_priority", self.get_priority())
         self.service_level = kwargs.get("service_level", 0)
         self.circuit_scheduler = kwargs.get("circuit_scheduler", [])
 
@@ -305,6 +303,13 @@ class EVCBase(GenericEntity):
         """Archive this EVC on deletion."""
         self.archived = True
 
+    def get_priority(self):
+        """Check if a UNI has a tag. If it doesn't, this EVC is EPL.
+        Otherwise is an EVPL. Default value for priorities are returned.
+        """
+        if self.uni_z.user_tag or self.uni_a.user_tag:
+            return settings.EVPL_SB_PRIORITY
+        return settings.EPL_SB_PRIORITY
 
 # pylint: disable=fixme, too-many-public-methods
 class EVCDeploy(EVCBase):
