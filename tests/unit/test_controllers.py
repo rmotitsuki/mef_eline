@@ -40,6 +40,7 @@ class TestControllers(TestCase):
         self.eline.bootstrap_indexes()
         expected_indexes = [
             ("evcs", [("circuit_scheduler", 1)]),
+            ("evcs", [("archived", 1)]),
         ]
         mock = self.eline.mongo.bootstrap_index
         assert mock.call_count == len(expected_indexes)
@@ -49,6 +50,17 @@ class TestControllers(TestCase):
 
         assert "circuits" in self.eline.get_circuits()
         assert self.eline.db.evcs.aggregate.call_count == 1
+
+    def test_get_circuits_archived(self):
+        """Test get_circuits archived filter"""
+
+        self.eline.get_circuits(archived=None)
+        arg1 = self.eline.db.evcs.aggregate.call_args[0]
+        assert "$match" not in arg1[0][0]
+
+        self.eline.get_circuits(archived=True)
+        arg1 = self.eline.db.evcs.aggregate.call_args[0]
+        assert arg1[0][0]["$match"] == {'archived': True}
 
     def test_upsert_evc(self):
         """Test upsert_evc"""
