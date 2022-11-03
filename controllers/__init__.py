@@ -39,6 +39,7 @@ class ELineController:
         """Bootstrap mef_eline relaeted indexes."""
         index_tuples = [
             ("evcs", [("circuit_scheduler.id", pymongo.ASCENDING)]),
+            ("evcs", [("archived", pymongo.ASCENDING)]),
         ]
         for collection, keys in index_tuples:
             if self.mongo.bootstrap_index(collection, keys):
@@ -46,14 +47,20 @@ class ELineController:
                     f"Created DB index {keys}, collection: {collection}"
                 )
 
-    def get_circuits(self) -> Dict:
+    def get_circuits(self, archived: Optional[bool] = False) -> Dict:
         """Get all circuits from database."""
-        circuits = self.db.evcs.aggregate(
-            [
+        aggregation = []
+        match_filters = {"$match": {}}
+        if archived is not None:
+            match_filters["$match"]["archived"] = archived
+            aggregation.append(match_filters)
+
+        aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},
             ]
         )
+        circuits = self.db.evcs.aggregate(aggregation)
         return {"circuits": {value["id"]: value for value in circuits}}
 
     def get_circuit(self, circuit_id: str) -> Optional[Dict]:

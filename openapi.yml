@@ -11,6 +11,13 @@ paths:
       summary: List all circuits stored.
       description: List all circuits stored.
       operationId: list_circuits
+      parameters:
+        - name: archived
+          in: query
+          schema:
+            type: string
+          description: "Filter for archived value, if not null. It's false by default"
+          required: false
       responses:
         '200':
           description: OK
