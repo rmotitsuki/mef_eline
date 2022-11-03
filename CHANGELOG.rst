@@ -12,6 +12,7 @@ Added
 - EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
 - Added support for constrained paths for primary dynamic paths and failover paths, ``primary_constraints`` and ``secondary_constraints`` can be set via API.
 - Added ``service_level`` UI component on ``k-toolbar`` and made it editable.
+- Added ``sb_priority`` UI component on ``k-toolbar``.
 - Documented ``GET /v2/evc?archived`` query arg on openapi.yml
 
 Changed
