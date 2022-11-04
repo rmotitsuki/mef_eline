@@ -14,10 +14,12 @@ Added
 - Added ``service_level`` UI component on ``k-toolbar`` and made it editable.
 - Added ``sb_priority`` UI component on ``k-toolbar``.
 - Added ``queue_id`` UI component on ``k-toolbar``.
+- Documented ``GET /v2/evc?archived`` query arg on openapi.yml
 
 Changed
 =======
 - ``priority`` has been renamed to ``sb_priority`` (southbound priority), ``./scripts/001_rename_priority.py`` can be used to update EVC documents accordingly
+- ``GET /v2/evc?archived=true`` will only return archived EVCs
 
 Removed
 =======
@@ -27,6 +29,7 @@ Fixed
 =====
 - Removed failover flows when an EVC gets deleted
 - Validated ``queue_id`` on ``POST /v2/evc``
+- Fixed found but unloaded message log attempt for archived EVCs
 
 [2022.2.0] - 2022-08-12
 ***********************
