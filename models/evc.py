@@ -748,13 +748,15 @@ class EVCDeploy(EVCBase):
         vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
         vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
 
+        is_EVPL = (vlan_a is not None)
         flow_mod_az = self._prepare_flow_mod(
             self.uni_a.interface, self.uni_z.interface,
-            self.queue_id, bool(vlan_a)
+            self.queue_id, is_EVPL
         )
+        is_EVPL = (vlan_z is not None)
         flow_mod_za = self._prepare_flow_mod(
             self.uni_z.interface, self.uni_a.interface,
-            self.queue_id, bool(vlan_z)
+            self.queue_id, is_EVPL
         )
 
         if vlan_a and vlan_z:
@@ -989,8 +991,9 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
+        is_EVPL = (in_vlan is not None)
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id, bool(in_vlan)
+            in_interface, out_interface, queue_id, is_EVPL
         )
 
         # the service tag must be always pushed
