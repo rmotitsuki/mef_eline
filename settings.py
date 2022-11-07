@@ -37,7 +37,7 @@ BATCH_INTERVAL = 0.5
 # everything at a glance
 BATCH_SIZE = 50
 
-# Default values for EVPL and EPL respectively. They are use when sb_priority is
-# not set in a request
+# Default values for EVPL and EPL respectively. They are use when sb_priority
+# is not set in a request
 EVPL_SB_PRIORITY = 1000
 EPL_SB_PRIORITY = 500

@@ -14,7 +14,12 @@ sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
 from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
-from napps.kytos.mef_eline.settings import MANAGER_URL, SDN_TRACE_CP_URL  # NOQA
+from napps.kytos.mef_eline.settings import (
+    MANAGER_URL,
+    SDN_TRACE_CP_URL,
+    EVPL_SB_PRIORITY,
+    EPL_SB_PRIORITY
+)  # NOQA
 from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
@@ -182,6 +187,7 @@ class TestEVC(TestCase):
             "actions": [
                 {"action_type": "output", "port": interface_z.port_number}
             ],
+            "priority": EVPL_SB_PRIORITY,
         }
         self.assertEqual(expected_flow_mod, flow_mod)
 
@@ -210,6 +216,7 @@ class TestEVC(TestCase):
                 {"action_type": "pop_vlan"},
                 {"action_type": "output", "port": interface_z.port_number},
             ],
+            "priority": EVPL_SB_PRIORITY,
         }
         self.assertEqual(expected_flow_mod, flow_mod)
 
@@ -244,18 +251,21 @@ class TestEVC(TestCase):
                                 'action_type': 'output',
                                 'port': interface_z.port_number
                             }
-                        ]
+                        ],
+                        "priority": EPL_SB_PRIORITY,
                     }
                     if in_vlan_a and in_vlan_z:
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
                         expected_flow_mod['actions'].insert(0, {
                             'action_type': 'set_vlan', 'vlan_id': in_vlan_z
                         })
+                        expected_flow_mod['priority'] = EVPL_SB_PRIORITY
                     elif in_vlan_a:
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
                         expected_flow_mod['actions'].insert(0, {
                             'action_type': 'pop_vlan'
                         })
+                        expected_flow_mod["priority"] = EVPL_SB_PRIORITY
                     elif in_vlan_z:
                         expected_flow_mod['actions'].insert(0, {
                             'action_type': 'set_vlan', 'vlan_id': in_vlan_z
@@ -263,6 +273,7 @@ class TestEVC(TestCase):
                         expected_flow_mod['actions'].insert(0, {
                             'action_type': 'push_vlan', 'tag_type': 'c'
                         })
+                        expected_flow_mod["priority"] = EPL_SB_PRIORITY
                     self.assertEqual(expected_flow_mod, flow_mod)
 
     @staticmethod
@@ -305,6 +316,7 @@ class TestEVC(TestCase):
                         "port": evc.primary_links[0].endpoint_a.port_number,
                     },
                 ],
+                "priority": EVPL_SB_PRIORITY,
             },
             {
                 "match": {
@@ -321,6 +333,7 @@ class TestEVC(TestCase):
                         "port": evc.uni_a.interface.port_number,
                     },
                 ],
+                "priority": EVPL_SB_PRIORITY,
             },
         ]
 
@@ -352,6 +365,7 @@ class TestEVC(TestCase):
                         "port": evc.primary_links[-1].endpoint_b.port_number,
                     },
                 ],
+                "priority": EVPL_SB_PRIORITY,
             },
             {
                 "match": {
@@ -368,6 +382,7 @@ class TestEVC(TestCase):
                         "port": evc.uni_z.interface.port_number,
                     },
                 ],
+                "priority": EVPL_SB_PRIORITY,
             },
         ]
 
@@ -444,6 +459,7 @@ class TestEVC(TestCase):
                     {"action_type": "set_vlan", "vlan_id": out_vlan},
                     {"action_type": "output", "port": out_port},
                 ],
+                "priority": EVPL_SB_PRIORITY
             },
             {
                 "match": {"in_port": out_port, "dl_vlan": out_vlan},
@@ -452,6 +468,7 @@ class TestEVC(TestCase):
                     {"action_type": "set_vlan", "vlan_id": in_vlan},
                     {"action_type": "output", "port": in_port},
                 ],
+                "priority": EVPL_SB_PRIORITY
             },
         ]
 
@@ -1101,7 +1118,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": 84},
                     {"action_type": "output", "port": 3},
-                ]
+                ],
+                "priority": EVPL_SB_PRIORITY
             },
             {
                 "match": {"in_port": 3, "dl_vlan": 84},
@@ -1109,7 +1127,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": 82},
                     {"action_type": "output", "port": 1},
-                ]
+                ],
+                "priority": EVPL_SB_PRIORITY
             }
         ]
 
@@ -1129,7 +1148,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": 84},
                     {"action_type": "output", "port": 3},
-                ]
+                ],
+                "priority": EPL_SB_PRIORITY
             },
             {
                 "match": {"in_port": 3, "dl_vlan": 84},
@@ -1137,7 +1157,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "pop_vlan"},
                     {"action_type": "output", "port": 1},
-                ]
+                ],
+                "priority": EVPL_SB_PRIORITY
             }
         ]
         evc._install_direct_uni_flows()
@@ -1156,7 +1177,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "pop_vlan"},
                     {"action_type": "output", "port": 3},
-                ]
+                ],
+                "priority": EVPL_SB_PRIORITY
             },
             {
                 "match": {"in_port": 3},
@@ -1164,7 +1186,8 @@ class TestEVC(TestCase):
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": 82},
                     {"action_type": "output", "port": 1},
-                ]
+                ],
+                "priority": EPL_SB_PRIORITY
             }
         ]
         evc._install_direct_uni_flows()
@@ -1180,12 +1203,14 @@ class TestEVC(TestCase):
             {
                 "match": {"in_port": 1},
                 "cookie": evc.get_cookie(),
-                "actions": [{"action_type": "output", "port": 3}]
+                "actions": [{"action_type": "output", "port": 3}],
+                "priority": EPL_SB_PRIORITY
             },
             {
                 "match": {"in_port": 3},
                 "cookie": evc.get_cookie(),
-                "actions": [{"action_type": "output", "port": 1}]
+                "actions": [{"action_type": "output", "port": 1}],
+                "priority": EPL_SB_PRIORITY
             }
         ]
         evc._install_direct_uni_flows()

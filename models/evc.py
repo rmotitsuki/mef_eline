@@ -112,7 +112,9 @@ class EVCBase(GenericEntity):
         self.secondary_constraints = kwargs.get("secondary_constraints", {})
         self.creation_time = get_time(kwargs.get("creation_time")) or now()
         self.owner = kwargs.get("owner", None)
-        self.sb_priority = kwargs.get("sb_priority", self.get_priority())
+        self.sb_priority = kwargs.get("sb_priority", None) or kwargs.get(
+            "priority", None
+        )
         self.service_level = kwargs.get("service_level", 0)
         self.circuit_scheduler = kwargs.get("circuit_scheduler", [])
 
@@ -303,13 +305,6 @@ class EVCBase(GenericEntity):
         """Archive this EVC on deletion."""
         self.archived = True
 
-    def get_priority(self):
-        """Check if a UNI has a tag. If it doesn't, this EVC is EPL.
-        Otherwise is an EVPL. Default value for priorities are returned.
-        """
-        if self.uni_z.user_tag or self.uni_a.user_tag:
-            return settings.EVPL_SB_PRIORITY
-        return settings.EPL_SB_PRIORITY
 
 # pylint: disable=fixme, too-many-public-methods
 class EVCDeploy(EVCBase):
@@ -754,10 +749,12 @@ class EVCDeploy(EVCBase):
         vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
 
         flow_mod_az = self._prepare_flow_mod(
-            self.uni_a.interface, self.uni_z.interface, self.queue_id
+            self.uni_a.interface, self.uni_z.interface,
+            self.queue_id, bool(vlan_a)
         )
         flow_mod_za = self._prepare_flow_mod(
-            self.uni_z.interface, self.uni_a.interface, self.queue_id
+            self.uni_z.interface, self.uni_a.interface,
+            self.queue_id, bool(vlan_z)
         )
 
         if vlan_a and vlan_z:
@@ -937,7 +934,8 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
-    def _prepare_flow_mod(self, in_interface, out_interface, queue_id=None):
+    def _prepare_flow_mod(self, in_interface, out_interface,
+                          queue_id=None, is_EVPL=True):
         """Prepare a common flow mod."""
         default_actions = [
             {"action_type": "output", "port": out_interface.port_number}
@@ -954,6 +952,11 @@ class EVCDeploy(EVCBase):
         }
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
+        else:
+            if is_EVPL:
+                flow_mod["priority"] = settings.EVPL_SB_PRIORITY
+            else:
+                flow_mod["priority"] = settings.EPL_SB_PRIORITY
 
         return flow_mod
 
@@ -986,9 +989,8 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
-
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id
+            in_interface, out_interface, queue_id, bool(in_vlan)
         )
 
         # the service tag must be always pushed
