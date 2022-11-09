@@ -854,7 +854,9 @@ class Main(KytosNApp):
             tag = TAG.from_dict(tag_dict)
         else:
             tag = None
-        uni = UNI(interface, tag)
+
+        priority = uni_dict.get("sb_priority", None)
+        uni = UNI(interface, priority, tag)
 
         return uni
 

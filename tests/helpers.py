@@ -101,7 +101,7 @@ def get_uni_mocked(**kwargs):
     switch.dpid = kwargs.get("switch_dpid", "custom_switch_dpid")
     interface = Interface(interface_name, interface_port, switch)
     tag = TAG(tag_type, tag_value)
-    uni = Mock(spec=UNI, interface=interface, user_tag=tag)
+    uni = Mock(spec=UNI, interface=interface, sb_priority=None, user_tag=tag)
     uni.is_valid.return_value = is_valid
     uni.as_dict.return_value = {
         "interface_id": f"switch_mock:{interface_port}",

@@ -39,5 +39,5 @@ BATCH_SIZE = 50
 
 # Default values for EVPL and EPL respectively. They are use when sb_priority
 # is not set in a request
-EVPL_SB_PRIORITY = 1000
-EPL_SB_PRIORITY = 500
+EVPL_SB_PRIORITY = 2000
+EPL_SB_PRIORITY = 1000

@@ -180,7 +180,8 @@ class TestEVC(TestCase):
         evc = EVC(**attributes)
 
         # pylint: disable=protected-access
-        flow_mod = evc._prepare_flow_mod(interface_a, interface_z)
+        flow_mod = evc._prepare_flow_mod(interface_a, interface_z,
+                                         EVPL_SB_PRIORITY)
         expected_flow_mod = {
             "match": {"in_port": interface_a.port_number},
             "cookie": evc.get_cookie(),
@@ -237,10 +238,11 @@ class TestEVC(TestCase):
             for in_vlan_z in (3, None):
                 with self.subTest(in_vlan_a=in_vlan_a, in_vlan_z=in_vlan_z):
                     # pylint: disable=protected-access
+                    priority = EVPL_SB_PRIORITY if in_vlan_a \
+                               else EPL_SB_PRIORITY
                     flow_mod = evc._prepare_push_flow(interface_a, interface_z,
                                                       in_vlan_a, out_vlan_a,
-                                                      in_vlan_z)
-
+                                                      in_vlan_z, priority)
                     expected_flow_mod = {
                         'match': {'in_port': interface_a.port_number},
                         'cookie': evc.get_cookie(),
@@ -252,7 +254,7 @@ class TestEVC(TestCase):
                                 'port': interface_z.port_number
                             }
                         ],
-                        "priority": EPL_SB_PRIORITY,
+                        "priority": priority,
                     }
                     if in_vlan_a and in_vlan_z:
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
