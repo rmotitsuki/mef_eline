@@ -856,6 +856,8 @@ class Main(KytosNApp):
             tag = None
 
         priority = uni_dict.get("sb_priority", None)
+
+        # pylint: disable=too-many-function-args
         uni = UNI(interface, priority, tag)
 
         return uni
