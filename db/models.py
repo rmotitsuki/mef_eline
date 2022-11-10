@@ -43,10 +43,8 @@ class TAGDoc(BaseModel):
 
 class UNIDoc(BaseModel):
     """UNI model"""
-
     tag: Optional[TAGDoc]
     interface_id: str
-    sb_priority: Optional[int]
 
 
 class LinkConstraints(BaseModel):

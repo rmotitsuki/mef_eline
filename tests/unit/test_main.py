@@ -446,7 +446,6 @@ class TestMain(TestCase):
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
                 "tag": {"tag_type": 1, "value": 80},
-                "sb_priority": 2000,
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",

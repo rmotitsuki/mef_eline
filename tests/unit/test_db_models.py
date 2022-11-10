@@ -16,7 +16,6 @@ class TestDBModels(TestCase):
                     "tag_type": 1,
                     "value": 100,
                 },
-                "sb_priority": 2500
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:3",
@@ -40,7 +39,6 @@ class TestDBModels(TestCase):
         evc = EVCBaseDoc(**self.evc_dict)
         assert evc.name == "EVC 2"
         assert evc.uni_a.interface_id == "00:00:00:00:00:00:00:04:1"
-        assert evc.uni_a.sb_priority == 2500
         assert evc.uni_z.interface_id == "00:00:00:00:00:00:00:02:3"
         assert evc.dynamic_backup_path
         assert evc.sb_priority == 81
