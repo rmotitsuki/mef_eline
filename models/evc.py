@@ -955,7 +955,7 @@ class EVCDeploy(EVCBase):
         default_actions = [
             {"action_type": "output", "port": out_interface.port_number}
         ]
-        if queue_id:
+        if queue_id is not None:
             default_actions.append(
                 {"action_type": "set_queue", "queue_id": queue_id}
             )

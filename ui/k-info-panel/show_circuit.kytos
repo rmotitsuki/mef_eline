@@ -350,9 +350,10 @@ module.exports = {
                     'Dynamic backup path': {'value': data['dynamic_backup_path']?true:false, 'editable':true}
                    };
       this.others = {'Owner': {'value': data['owner']},
-                     'Priority': {'value': data['priority'], 'editable':true, 'name':'priority'},
+                     'Southbound priority': {'value': data['sb_priority'], 'editable':true, 'name':'sb_priority'},
                      'Bandwidth': {'value': data['bandwidth'], 'editable':true, 'name':'bandwidth'},
-                     'Queue': {'value': data['queue_id'], 'editable':true, 'name':'queue_id'}
+                     'Queue': {'value': data['queue_id'], 'editable':true, 'name':'queue_id'},
+                     'Service level': {'value': data['service_level'], 'editable':true, 'name':'service_level'}
                     };
       this.dates = {'Request time': data['request_time'],
                     'Creation time': data['creation_time'],
@@ -498,9 +499,10 @@ module.exports = {
         name: this.basics["Name"]["value"],
         enable: this.flags["Enabled"]["value"],
         dynamic_backup_path: this.flags["Dynamic backup path"]["value"],                
-        priority: parseInt(this.others["Priority"]["value"]),
+        sb_priority: parseInt(this.others["Southbound priority"]["value"]),
         bandwidth: this.others["Bandwidth"]["value"],
         queue_id: this.others["Queue"]["value"],
+        service_level: this.others["Service level"]["value"],
         uni_a: {
           interface_id: this.endpoints_data["DPID"][0]["value"],
         },
