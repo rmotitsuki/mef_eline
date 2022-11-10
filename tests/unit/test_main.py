@@ -601,6 +601,34 @@ class TestMain(TestCase):
         )
         self.assertEqual(400, response.status_code, response.data)
 
+    def test_create_a_circuit_invalid_queue_id(self):
+        """Test create a new circuit with invalid queue_id."""
+        api = self.get_app_test_client(self.napp)
+        url = f"{self.server_name_url}/v2/evc/"
+
+        payload = {
+            "name": "my evc1",
+            "queue_id": 8,
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:76",
+                "tag": {"tag_type": 1, "value": 80},
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:2",
+                "tag": {"tag_type": 1, "value": 1},
+            },
+        }
+        response = api.post(
+            url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        current_data = json.loads(response.data)
+        expected_data = "8 is greater than the maximum of 7"
+
+        assert response.status_code == 400
+        assert expected_data in current_data["description"], expected_data
+
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
