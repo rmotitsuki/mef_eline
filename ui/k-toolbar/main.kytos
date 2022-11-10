@@ -9,7 +9,7 @@
            <k-input-auto id="endpoint-a-input" :value.sync="endpoint_a"
                     title="Endpoint A:"
                     tooltip="Endpoint A (format: dpid:port_number)"
-                    placeholder="First endpoint" icon="arrow-right"
+                    placeholder="Endpoint A" icon="arrow-right"
                     :candidates="dpids" 
                     @focus="fetchDpids"
                     @blur="onblur_dpid"
@@ -18,26 +18,27 @@
             <k-input id="endpoint-a-input" :value.sync="endpoint_a"
                     title="Endpoint A:"
                     tooltip="Endpoint A (format: dpid:port_number)"
-                    placeholder="First endpoint" icon="arrow-right"
+                    placeholder="Endpoint A" icon="arrow-right"
 					v-else
                     ></k-input> 
             <div class="k-input mef-field-label" :value.sync="endpoint_name_a"
                     >{{endpoint_name_a}}</div> 
             
            <k-input id="endpoint-a-tag-type" :value.sync="tag_type_a"
+                    v-if=false
                     title="Tag Type A:"
                     tooltip="Enter with a Tag Type"
                     placeholder="tag type" icon="arrow-right"></k-input>
 
            <k-input id="endpoint-a-tag-value" :value.sync="tag_value_a"
                     title="Tag Value A:"
-                    tooltip="Enter with a Tag value"
-                    placeholder="tag value" icon="arrow-right"></k-input>
+                    tooltip="Enter VLAN A value"
+                    placeholder="VLAN A" icon="arrow-right"></k-input>
 
            <k-input-auto id="endpoint-z-input" :value.sync="endpoint_z"
                     title="Endpoint Z:"
                     tooltip="Endpoint Z (format: dpid:port_number)"
-                    placeholder="Last endpoint" icon="arrow-left"
+                    placeholder="Endpoint Z" icon="arrow-left"
                     :candidates="dpids"
                     @focus="fetchDpids"
                     @blur="onblur_dpid"
@@ -47,19 +48,20 @@
            <k-input id="endpoint-z-input" :value.sync="endpoint_z"
                     title="Endpoint Z:"
                     tooltip="Endpoint Z (format: dpid:port_number)"
-                    placeholder="Last endpoint" icon="arrow-left"
+                    placeholder="Endpoint Z" icon="arrow-left"
                     v-else
                     ></k-input>
 
            <k-input id="endpoint-z-tag_type" :value.sync="tag_type_z"
+                    v-if=false
                     title="Tag Type Z:"
                     tooltip="Enter with a Tag Type Z"
                     placeholder="tag type" icon="arrow-right"></k-input>
 
            <k-input id="endpoint-z-tag-value" :value.sync="tag_value_z"
                     title="Tag Value Z:"
-                    tooltip="Enter with a Tag Value Z"
-                    placeholder="tag value" icon="arrow-right"></k-input>
+                    tooltip="Enter VLAN Z value"
+                    placeholder="VLAN Z" icon="arrow-right"></k-input>
 
            <k-input id="service-level-input" :value.sync="service_level"
                     title="Service level:"
@@ -94,11 +96,11 @@ module.exports = {
         circuit_name: "",
         endpoint_a: "",
         endpoint_name_a: "Endpoint name:",
-        tag_type_a: "",
+        tag_type_a: "1", // VLAN
         tag_value_a: "",
         endpoint_z: "",
         endpoint_name_z: "Endpoint name:",
-        tag_type_z: "",
+        tag_type_z: "1", // VLAN
         tag_value_z: "",
         service_level: "",
         sb_priority: "",
@@ -144,11 +146,11 @@ module.exports = {
         this.circuit_name = "";
         this.endpoint_a = "";
         this.endpoint_name_a = "Endpoint name:";
-        this.tag_type_a = "";
+        this.tag_type_a = "1",
         this.tag_value_a = "";
         this.endpoint_z = "";
         this.endpoint_name_z = "Endpoint name:";
-        this.tag_type_z = "";
+        this.tag_type_z = "1",
         this.tag_value_z = "";
         this.service_level = "";
         this.sb_priority = "";
