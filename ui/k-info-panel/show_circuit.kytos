@@ -339,7 +339,7 @@ module.exports = {
       let tag_z = {'value': this.circuit['uni_z']['tag'] ? this.circuit['uni_z']['tag']['value'] : "", 
                    'editable':true, 
                   'name':'tag_z'};
-      this.endpoints_data['Tag Value'] = [tag_a, tag_z];
+      this.endpoints_data['VLAN'] = [tag_a, tag_z];
 
       this.basics = {'ID': {'value': data['id'], 'editable':false},
                      'Name': {'value': data['name'], 'editable':true, 'name':'name'}
@@ -512,16 +512,16 @@ module.exports = {
       };
 
       // Tag is optional
-      if(this.endpoints_data["Tag Value"][0]["value"]) {
+      if(this.endpoints_data["VLAN"][0]["value"]) {
         payload["uni_a"]["tag"] = {
           tag_type: this.TAG_TYPE_VLAN,
-          value: parseInt(this.endpoints_data["Tag Value"][0]["value"])
+          value: parseInt(this.endpoints_data["VLAN"][0]["value"])
         };
       }
-      if(this.endpoints_data["Tag Value"][1]["value"]) {
+      if(this.endpoints_data["VLAN"][1]["value"]) {
         payload["uni_z"]["tag"] = {
           tag_type: this.TAG_TYPE_VLAN,
-          value: parseInt(this.endpoints_data["Tag Value"][1]["value"])
+          value: parseInt(this.endpoints_data["VLAN"][1]["value"])
         };
       }
 
