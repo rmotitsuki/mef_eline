@@ -43,7 +43,6 @@ class TAGDoc(BaseModel):
 
 class UNIDoc(BaseModel):
     """UNI model"""
-
     tag: Optional[TAGDoc]
     interface_id: str
 

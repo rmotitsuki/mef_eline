@@ -748,11 +748,15 @@ class EVCDeploy(EVCBase):
         vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
         vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
 
+        is_EVPL = (vlan_a is not None)
         flow_mod_az = self._prepare_flow_mod(
-            self.uni_a.interface, self.uni_z.interface, self.queue_id
+            self.uni_a.interface, self.uni_z.interface,
+            self.queue_id, is_EVPL
         )
+        is_EVPL = (vlan_z is not None)
         flow_mod_za = self._prepare_flow_mod(
-            self.uni_z.interface, self.uni_a.interface, self.queue_id
+            self.uni_z.interface, self.uni_a.interface,
+            self.queue_id, is_EVPL
         )
 
         if vlan_a and vlan_z:
@@ -932,7 +936,8 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
-    def _prepare_flow_mod(self, in_interface, out_interface, queue_id=None):
+    def _prepare_flow_mod(self, in_interface, out_interface,
+                          queue_id=None, is_EVPL=True):
         """Prepare a common flow mod."""
         default_actions = [
             {"action_type": "output", "port": out_interface.port_number}
@@ -949,7 +954,11 @@ class EVCDeploy(EVCBase):
         }
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
-
+        else:
+            if is_EVPL:
+                flow_mod["priority"] = settings.EVPL_SB_PRIORITY
+            else:
+                flow_mod["priority"] = settings.EPL_SB_PRIORITY
         return flow_mod
 
     def _prepare_nni_flow(self, *args, queue_id=None):
@@ -965,6 +974,7 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
+    # pylint: disable=too-many-arguments
     def _prepare_push_flow(self, *args, queue_id=None):
         """Prepare push flow.
 
@@ -981,9 +991,9 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
-
+        is_EVPL = (in_vlan is not None)
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id
+            in_interface, out_interface, queue_id, is_EVPL
         )
 
         # the service tag must be always pushed

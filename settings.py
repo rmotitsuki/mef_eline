@@ -36,3 +36,8 @@ BATCH_INTERVAL = 0.5
 # number of FlowMod requests. Use 0 (zero) to disable BATCH mode, i.e. sends
 # everything at a glance
 BATCH_SIZE = 50
+
+# Default values for EVPL and EPL respectively. They are use when sb_priority
+# is not set in a request
+EVPL_SB_PRIORITY = 20000
+EPL_SB_PRIORITY = 10000

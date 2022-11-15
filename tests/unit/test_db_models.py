@@ -15,7 +15,7 @@ class TestDBModels(TestCase):
                 "tag": {
                     "tag_type": 1,
                     "value": 100,
-                }
+                },
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:3",
