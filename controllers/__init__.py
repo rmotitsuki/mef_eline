@@ -74,7 +74,7 @@ class ELineController:
         model = EVCBaseDoc(
             **{
                 **evc,
-                **{"_id": evc["id"], "updated_at": utc_now}
+                **{"_id": evc["id"]}
             }
         )
         updated = self.db.evcs.find_one_and_update(

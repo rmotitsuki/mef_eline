@@ -4,6 +4,7 @@
 NApp to provision circuits from user request.
 """
 import time
+from datetime import datetime
 from threading import Lock
 
 from flask import jsonify, request
@@ -18,7 +19,7 @@ from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
-from napps.kytos.mef_eline.models import EVC, DynamicPathManager, Path
+from napps.kytos.mef_eline.models import EVC, EVCDeploy, DynamicPathManager, Path
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.utils import emit_event, load_spec, validate
 
@@ -55,7 +56,6 @@ class Main(KytosNApp):
         self.circuits = {}
 
         self._lock = Lock()
-        self.execution_rounds = -1
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
 
         self.load_all_evcs()
@@ -75,9 +75,6 @@ class Main(KytosNApp):
 
     def execute(self):
         """Execute once when the napp is running."""
-        if self.execution_rounds < 0:
-            self.execution_rounds += 1
-            return
         if self._lock.locked():
             return
         log.debug("Starting consistency routine")
@@ -87,7 +84,7 @@ class Main(KytosNApp):
 
     def execute_consistency(self):
         """Execute consistency routine."""
-        self.execution_rounds += 1
+        circuits_to_check = {}
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
         for circuit in self.get_evcs_by_svc_level():
             stored_circuits.pop(circuit.id, None)
@@ -95,17 +92,25 @@ class Main(KytosNApp):
                 circuit.is_enabled()
                 and not circuit.is_active()
                 and not circuit.lock.locked()
+                and not circuit.flow_removed_recent()
+                and not circuit.updated_recent()
             ):
-                if circuit.check_traces():
-                    log.info(f"{circuit} enabled but inactive - activating")
+                circuits_to_check[circuit.id] = circuit
+        circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
+        for circuit_id in circuits_checked:
+            circuit = circuits_checked[circuit_id]['circuit']
+            if circuits_checked[circuit_id]['checked']: 
+                circuit.execution_rounds = 0
+                log.info(f"{circuit} enabled but inactive - activating")
+                with circuit.lock:
+                    circuit.activate()
+                    circuit.sync()
+            else: 
+                circuit.execution_rounds += 1
+                if circuit.execution_rounds > settings.WAIT_FOR_OLD_PATH:
+                    log.info(f"{circuit} enabled but inactive - redeploy")
                     with circuit.lock:
-                        circuit.activate()
-                        circuit.sync()
-                else:
-                    if self.execution_rounds > settings.WAIT_FOR_OLD_PATH:
-                        log.info(f"{circuit} enabled but inactive - redeploy")
-                        with circuit.lock:
-                            circuit.deploy()
+                        circuit.deploy()
         for circuit_id in stored_circuits:
             log.info(f"EVC found in mongodb but unloaded {circuit_id}")
             self._load_evc(stored_circuits[circuit_id])
@@ -242,6 +247,19 @@ class Main(KytosNApp):
         log.debug("create_circuit result %s %s", result, status)
         emit_event(self.controller, "created", evc_id=evc.id)
         return jsonify(result), status
+
+    @listen_to('kytos/flow_manager.flow.removed')
+    def on_flow_delete(self, event):
+        """Capture delete messages to keep track when flows got removed."""
+        self.handle_flow_delete(event)
+
+    def handle_flow_delete(self, event):
+        """Keep track when the EVC got flows removed by deriving its cookie."""
+        flow = event.content["flow"]
+        evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
+        if evc:
+            log.debug("Flow removed in EVC %s", evc.id)
+            evc.flow_removed() 
 
     @rest("/v2/evc/<circuit_id>", methods=["PATCH"])
     def update(self, circuit_id):
