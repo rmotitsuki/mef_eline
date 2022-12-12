@@ -129,7 +129,8 @@ class TestMain(TestCase):
     @patch('napps.kytos.mef_eline.main.settings')
     @patch('napps.kytos.mef_eline.main.Main._load_evc')
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    def test_execute_consistency(self, *args):
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.check_list_traces")
+    def test_execute_consistency(self, mock_check_list_traces, *args):
         """Test execute_consistency."""
         (mongo_controller_upsert_mock, mock_load_evc, mock_settings) = args
 
@@ -140,19 +141,30 @@ class TestMain(TestCase):
         self.napp.mongo_controller.get_circuits.return_value = {
             "circuits": stored_circuits
         }
+
         mock_settings.WAIT_FOR_OLD_PATH = -1
         evc1 = MagicMock(id=1, service_level=0, creation_time=1)
         evc1.is_enabled.return_value = True
         evc1.is_active.return_value = False
         evc1.lock.locked.return_value = False
-        evc1.check_traces.return_value = True
+        evc1.flow_removed_recent.return_value = False
+        evc1.updated_recent.return_value = False
+        evc1.execution_rounds = 0
         evc2 = MagicMock(id=2, service_level=7, creation_time=1)
         evc2.is_enabled.return_value = True
         evc2.is_active.return_value = False
         evc2.lock.locked.return_value = False
-        evc2.check_traces.return_value = False
+        evc2.flow_removed_recent.return_value = False
+        evc2.updated_recent.return_value = False
+        evc2.execution_rounds = 0
         self.napp.circuits = {'1': evc1, '2': evc2}
         assert self.napp.get_evcs_by_svc_level() == [evc2, evc1]
+
+        mock_check_list_traces.return_value = {
+                                                1: True,
+                                                2: False
+                                            }
+
         self.napp.execute_consistency()
         self.assertEqual(evc1.activate.call_count, 1)
         self.assertEqual(evc1.sync.call_count, 1)
@@ -160,17 +172,33 @@ class TestMain(TestCase):
         mock_load_evc.assert_called_with(stored_circuits['3'])
 
     @patch('napps.kytos.mef_eline.main.settings')
-    def test_execute_consistency_wait_for(self, mock_settings):
+    @patch('napps.kytos.mef_eline.main.Main._load_evc')
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.check_list_traces")
+    def test_execute_consistency_wait_for(self, mock_check_list_traces, *args):
         """Test execute and wait for setting."""
-        evc1 = MagicMock()
+        (mongo_controller_upsert_mock, _, mock_settings) = args
+
+        stored_circuits = {'1': {'name': 'circuit_1'}}
+        mongo_controller_upsert_mock.return_value = True
+        self.napp.mongo_controller.get_circuits.return_value = {
+            "circuits": stored_circuits
+        }
+
+        mock_settings.WAIT_FOR_OLD_PATH = -1
+        evc1 = MagicMock(id=1, service_level=0, creation_time=1)
         evc1.is_enabled.return_value = True
         evc1.is_active.return_value = False
         evc1.lock.locked.return_value = False
-        evc1.check_traces.return_value = False
+        evc1.flow_removed_recent.return_value = False
+        evc1.updated_recent.return_value = False
+        evc1.execution_rounds = 0
         evc1.deploy.call_count = 0
         self.napp.circuits = {'1': evc1}
-        self.napp.execution_rounds = 0
+        assert self.napp.get_evcs_by_svc_level() == [evc1]
         mock_settings.WAIT_FOR_OLD_PATH = 1
+
+        mock_check_list_traces.return_value = {1: False}
 
         self.napp.execute_consistency()
         self.assertEqual(evc1.deploy.call_count, 0)

@@ -124,7 +124,7 @@ class EVCBaseDoc(DocumentBaseModel):
             "metadata": 1,
             "active": 1,
             "enabled": 1,
-            "execution_rounds": {"$ifNull": ["$owner", None]},
+            "execution_rounds": {"$ifNull": ["$execution_rounds", 0]},
             "owner": {"$ifNull": ["$owner", None]},
             "queue_id": {"$ifNull": ["$queue_id", None]},
             "primary_constraints": {"$ifNull": ["$primary_constraints", {}]},

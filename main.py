@@ -4,7 +4,6 @@
 NApp to provision circuits from user request.
 """
 import time
-from datetime import datetime
 from threading import Lock
 
 from flask import jsonify, request
@@ -19,7 +18,8 @@ from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
-from napps.kytos.mef_eline.models import EVC, EVCDeploy, DynamicPathManager, Path
+from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
+                                          Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.utils import emit_event, load_spec, validate
 
@@ -97,15 +97,15 @@ class Main(KytosNApp):
             ):
                 circuits_to_check[circuit.id] = circuit
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
-        for circuit_id in circuits_checked:
-            circuit = circuits_checked[circuit_id]['circuit']
-            if circuits_checked[circuit_id]['checked']: 
+        for circuit_id, is_checked in circuits_checked.items():
+            circuit = circuits_to_check[circuit_id]
+            if is_checked:
                 circuit.execution_rounds = 0
                 log.info(f"{circuit} enabled but inactive - activating")
                 with circuit.lock:
                     circuit.activate()
                     circuit.sync()
-            else: 
+            else:
                 circuit.execution_rounds += 1
                 if circuit.execution_rounds > settings.WAIT_FOR_OLD_PATH:
                     log.info(f"{circuit} enabled but inactive - redeploy")
@@ -259,7 +259,7 @@ class Main(KytosNApp):
         evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
             log.debug("Flow removed in EVC %s", evc.id)
-            evc.flow_removed() 
+            evc.flow_removed()
 
     @rest("/v2/evc/<circuit_id>", methods=["PATCH"])
     def update(self, circuit_id):

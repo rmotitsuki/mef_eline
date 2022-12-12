@@ -30,7 +30,8 @@ class TestDBModels(TestCase):
             "sb_priority": 81,
             "active": False,
             "enabled": False,
-            "circuit_scheduler": []
+            "circuit_scheduler": [],
+            "queue_id": None
         }
 
     def test_evcbasedoc(self):
@@ -52,8 +53,8 @@ class TestDBModels(TestCase):
 
         self.evc_dict["queue_id"] = "error"
 
-        with self.assertRaises(ValidationError):
-            EVCBaseDoc(**self.evc_dict)
+        EVCBaseDoc(**self.evc_dict)
+        self.assertRaises(ValidationError)
 
     def test_document_base_model_dict(self):
         """test_document_base_model_dict."""
