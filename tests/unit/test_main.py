@@ -147,15 +147,15 @@ class TestMain(TestCase):
         evc1.is_enabled.return_value = True
         evc1.is_active.return_value = False
         evc1.lock.locked.return_value = False
-        evc1.flow_removed_recent.return_value = False
-        evc1.updated_recent.return_value = False
+        evc1.has_recent_removed_flow.return_value = False
+        evc1.is_recent_updated.return_value = False
         evc1.execution_rounds = 0
         evc2 = MagicMock(id=2, service_level=7, creation_time=1)
         evc2.is_enabled.return_value = True
         evc2.is_active.return_value = False
         evc2.lock.locked.return_value = False
-        evc2.flow_removed_recent.return_value = False
-        evc2.updated_recent.return_value = False
+        evc2.has_recent_removed_flow.return_value = False
+        evc2.is_recent_updated.return_value = False
         evc2.execution_rounds = 0
         self.napp.circuits = {'1': evc1, '2': evc2}
         assert self.napp.get_evcs_by_svc_level() == [evc2, evc1]
@@ -190,8 +190,8 @@ class TestMain(TestCase):
         evc1.is_enabled.return_value = True
         evc1.is_active.return_value = False
         evc1.lock.locked.return_value = False
-        evc1.flow_removed_recent.return_value = False
-        evc1.updated_recent.return_value = False
+        evc1.has_recent_removed_flow.return_value = False
+        evc1.is_recent_updated.return_value = False
         evc1.execution_rounds = 0
         evc1.deploy.call_count = 0
         self.napp.circuits = {'1': evc1}

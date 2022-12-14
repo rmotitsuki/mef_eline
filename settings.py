@@ -44,5 +44,5 @@ EPL_SB_PRIORITY = 10000
 
 #  Time (seconds) to check if an evc has been updated
 #  or flows have been deleted.
-TIME_RECENT_DELETED_FLOWS = 1
-TIME_RECENT_UPDATED = 1
+TIME_RECENT_DELETED_FLOWS = 10
+TIME_RECENT_UPDATED = 10

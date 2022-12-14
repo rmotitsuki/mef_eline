@@ -92,8 +92,8 @@ class Main(KytosNApp):
                 circuit.is_enabled()
                 and not circuit.is_active()
                 and not circuit.lock.locked()
-                and not circuit.flow_removed_recent()
-                and not circuit.updated_recent()
+                and not circuit.has_recent_removed_flow()
+                and not circuit.is_recent_updated()
             ):
                 circuits_to_check[circuit.id] = circuit
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
@@ -259,7 +259,7 @@ class Main(KytosNApp):
         evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
             log.debug("Flow removed in EVC %s", evc.id)
-            evc.flow_removed()
+            evc.set_flow_removed_at()
 
     @rest("/v2/evc/<circuit_id>", methods=["PATCH"])
     def update(self, circuit_id):

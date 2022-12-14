@@ -200,23 +200,23 @@ class EVCBase(GenericEntity):
         self.sync()
         return enable, redeploy
 
-    def flow_removed(self):
+    def set_flow_removed_at(self):
         """Update flow_removed_at attribute."""
         self.flow_removed_at = datetime.utcnow()
 
-    def flow_removed_recent(self):
+    def has_recent_removed_flow(self, setting=settings):
         """Check if any flow has been removed from the evc"""
         if self.flow_removed_at is None:
             return False
         now_time = datetime.now(timezone.utc)
         removed_time = self.flow_removed_at
         res_seconds = (now_time - removed_time) / timedelta(seconds=1)
-        return res_seconds < settings.TIME_RECENT_DELETED_FLOWS
+        return res_seconds < setting.TIME_RECENT_DELETED_FLOWS
 
-    def updated_recent(self):
+    def is_recent_updated(self, setting=settings):
         """Check if the evc has been updated recently"""
         res = (datetime.utcnow() - self.updated_at) / timedelta(seconds=1)
-        return res < settings.TIME_RECENT_UPDATED
+        return res < setting.TIME_RECENT_UPDATED
 
     def __repr__(self):
         """Repr method."""

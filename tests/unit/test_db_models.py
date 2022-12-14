@@ -53,8 +53,8 @@ class TestDBModels(TestCase):
 
         self.evc_dict["queue_id"] = "error"
 
-        EVCBaseDoc(**self.evc_dict)
-        self.assertRaises(ValidationError)
+        with self.assertRaises(ValidationError):
+            EVCBaseDoc(**self.evc_dict)
 
     def test_document_base_model_dict(self):
         """test_document_base_model_dict."""

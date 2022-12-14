@@ -77,7 +77,7 @@ class EVCBaseDoc(DocumentBaseModel):
     request_time: Optional[datetime]
     start_date: Optional[datetime]
     end_date: Optional[datetime]
-    end_date: Optional[datetime]
+    queue_id: Optional[int]
     flow_removed_at: Optional[datetime]
     execution_rounds: int = 0
     bandwidth: int = 0
