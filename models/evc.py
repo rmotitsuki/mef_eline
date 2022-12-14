@@ -1132,6 +1132,8 @@ class EVCDeploy(EVCBase):
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_z'
                                         }
+        if len(uni_list) == 0:
+            return {}
         traces = EVCDeploy.run_bulk_sdntraces(uni_list)
         del uni_list
         circuit_by_traces = {}
