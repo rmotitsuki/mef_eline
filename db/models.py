@@ -154,6 +154,6 @@ class EVCBaseDoc(DocumentBaseModel):
                 }
             }},
             "updated_at": {"$dateToString": {
-                "format": time_fmt, "date": "$start_date"
+                "format": time_fmt, "date": "$updated_at"
             }}
         }

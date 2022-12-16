@@ -1397,7 +1397,11 @@ class TestEVC(TestCase):
                             }
                         ]
         result = EVCDeploy.run_bulk_sdntraces([evc.uni_a])
-        put_mock.assert_called_with(expected_endpoint, json=expected_payload)
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
         self.assertEqual(result['result'], "ok")
 
         response.status_code = 400

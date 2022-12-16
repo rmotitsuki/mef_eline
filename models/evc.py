@@ -1,6 +1,6 @@
 """Classes used in the main application."""  # pylint: disable=too-many-lines
 from collections import OrderedDict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from threading import Lock
 from uuid import uuid4
 
@@ -119,7 +119,7 @@ class EVCBase(GenericEntity):
         self.circuit_scheduler = kwargs.get("circuit_scheduler", [])
         self.flow_removed_at = get_time(kwargs.get("flow_removed_at")) or None
         self.updated_at = get_time(kwargs.get("updated_at")) or now()
-        self.execution_rounds = get_time(kwargs.get("execution_rounds")) or 0
+        self.execution_rounds = kwargs.get("execution_rounds", 0)
 
         self.current_links_cache = set()
         self.primary_links_cache = set()
@@ -152,7 +152,7 @@ class EVCBase(GenericEntity):
 
     def sync(self):
         """Sync this EVC in the MongoDB."""
-        self.updated_at = datetime.utcnow()
+        self.updated_at = now()
         self._mongo_controller.upsert_evc(self.as_dict())
 
     def update(self, **kwargs):
@@ -196,27 +196,24 @@ class EVCBase(GenericEntity):
                 setattr(self, attribute, value)
                 if attribute in self.attributes_requiring_redeploy:
                     redeploy = value
-        setattr(self, 'updated_at', datetime.utcnow())
         self.sync()
         return enable, redeploy
 
     def set_flow_removed_at(self):
         """Update flow_removed_at attribute."""
-        self.flow_removed_at = datetime.utcnow()
+        self.flow_removed_at = now()
 
     def has_recent_removed_flow(self, setting=settings):
         """Check if any flow has been removed from the evc"""
         if self.flow_removed_at is None:
             return False
-        now_time = datetime.now(timezone.utc)
-        removed_time = self.flow_removed_at
-        res_seconds = (now_time - removed_time) / timedelta(seconds=1)
+        res_seconds = (now() - self.flow_removed_at).seconds
         return res_seconds < setting.TIME_RECENT_DELETED_FLOWS
 
     def is_recent_updated(self, setting=settings):
         """Check if the evc has been updated recently"""
-        res = (datetime.utcnow() - self.updated_at) / timedelta(seconds=1)
-        return res < setting.TIME_RECENT_UPDATED
+        res_seconds = (now() - self.updated_at).seconds
+        return res_seconds < setting.TIME_RECENT_UPDATED
 
     def __repr__(self):
         """Repr method."""
@@ -1102,7 +1099,7 @@ class EVCDeploy(EVCBase):
                                             "dl_vlan": uni.user_tag.value,
                                             }
             data.append(data_uni)
-        response = requests.put(endpoint, json=data)
+        response = requests.put(endpoint, json=data, timeout=30)
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
             return []
