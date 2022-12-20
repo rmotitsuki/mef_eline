@@ -195,6 +195,11 @@ class TestPath(TestCase):
         expected_dict = [{"id": 3}, {"id": 2}]
         self.assertEqual(expected_dict, current_path.as_dict())
 
+    def test_empty_is_valid(self) -> None:
+        """Test empty path is valid."""
+        path = Path([])
+        self.assertEqual(path.is_valid(MagicMock(), MagicMock(), False), True)
+
     def test_is_valid(self):
         """Test is_valid method."""
         switch1 = Switch("00:00:00:00:00:00:00:01")
