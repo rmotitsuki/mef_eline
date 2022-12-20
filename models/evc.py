@@ -167,6 +167,12 @@ class EVCBase(GenericEntity):
         enable, redeploy = (None, None)
         uni_a = kwargs.get("uni_a") or self.uni_a
         uni_z = kwargs.get("uni_z") or self.uni_z
+        self._validate_has_primary_or_dynamic(
+            primary_path=kwargs.get("primary_path"),
+            dynamic_backup_path=kwargs.get("dynamic_backup_path"),
+            uni_a=uni_a,
+            uni_z=uni_z,
+        )
         for attribute, value in kwargs.items():
             if attribute in self.read_only_attributes:
                 raise ValueError(f"{attribute} can't be updated.")
@@ -223,6 +229,35 @@ class EVCBase(GenericEntity):
                     tag = uni.user_tag.value
                     message = f"VLAN tag {tag} is not available in {attribute}"
                     raise ValueError(message)
+
+    def _validate_has_primary_or_dynamic(
+        self,
+        primary_path=None,
+        dynamic_backup_path=None,
+        uni_a=None,
+        uni_z=None,
+    ) -> None:
+        """Validate that it must have a primary path or allow dynamic paths."""
+        primary_path = (
+            primary_path
+            if primary_path is not None
+            else self.primary_path
+        )
+        dynamic_backup_path = (
+            dynamic_backup_path
+            if dynamic_backup_path is not None
+            else self.dynamic_backup_path
+        )
+        uni_a = uni_a if uni_a is not None else self.uni_a
+        uni_z = uni_z if uni_z is not None else self.uni_z
+        if (
+            not primary_path
+            and not dynamic_backup_path
+            and uni_a and uni_z
+            and uni_a.interface.switch != uni_z.interface.switch
+        ):
+            msg = "The EVC must have a primary path or allow dynamic paths."
+            raise ValueError(msg)
 
     def __eq__(self, other):
         """Override the default implementation."""

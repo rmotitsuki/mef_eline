@@ -208,14 +208,10 @@ class Main(KytosNApp):
             log.debug("create_circuit result %s %s", result, 409)
             raise Conflict(result)
 
-        if (
-            not evc.primary_path
-            and evc.dynamic_backup_path is False
-            and evc.uni_a.interface.switch != evc.uni_z.interface.switch
-        ):
-            result = "The EVC must have a primary path or allow dynamic paths."
-            log.debug("create_circuit result %s %s", result, 400)
-            raise BadRequest(result)
+        try:
+            evc._validate_has_primary_or_dynamic()
+        except ValueError as exception:
+            raise BadRequest(str(exception)) from exception
 
         # store circuit in dictionary
         self.circuits[evc.id] = evc
