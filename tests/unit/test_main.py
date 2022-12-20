@@ -1642,6 +1642,16 @@ class TestMain(TestCase):
         self.assertEqual(400, response.status_code)
         self.assertEqual(current_data["description"], expected_data)
 
+    def test_link_from_dict_non_existent_intf(self):
+        """Test _link_from_dict non existent intf."""
+        self.napp.controller.get_interface_by_id = MagicMock(return_value=None)
+        link_dict = {
+            "endpoint_a": {"id": "a"},
+            "endpoint_b": {"id": "b"}
+        }
+        with self.assertRaises(ValueError):
+            self.napp._uni_from_dict(link_dict)
+
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
