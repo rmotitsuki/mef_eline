@@ -865,6 +865,12 @@ class Main(KytosNApp):
 
         endpoint_a = self.controller.get_interface_by_id(id_a)
         endpoint_b = self.controller.get_interface_by_id(id_b)
+        if not endpoint_a:
+            error_msg = f"Could not get interface endpoint_a id {id_a}"
+            raise ValueError(error_msg)
+        if not endpoint_b:
+            error_msg = f"Could not get interface endpoint_b id {id_b}"
+            raise ValueError(error_msg)
 
         link = Link(endpoint_a, endpoint_b)
         if "metadata" in link_dict:
