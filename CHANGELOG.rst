@@ -33,6 +33,7 @@ Fixed
 - Validated ``queue_id`` on ``POST /v2/evc``
 - Fixed found but unloaded message log attempt for archived EVCs
 - Fixed EVC validation to catch nonexistent links interfaces
+- Allowed ``primary_path`` to be empty on update when ``dynamic_backup_path`` is true and ``backup_path`` to be empty too
 
 [2022.2.0] - 2022-08-12
 ***********************

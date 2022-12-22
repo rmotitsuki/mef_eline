@@ -1,7 +1,8 @@
 """Module to test the EVCBase class."""
 import sys
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
+from napps.kytos.mef_eline.models import Path
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
@@ -105,6 +106,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
+            "dynamic_backup_path": True,
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
         }
@@ -130,6 +132,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
+            "dynamic_backup_path": True,
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
         }
@@ -147,6 +150,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
+            "dynamic_backup_path": True,
             "enable": True,
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
@@ -157,12 +161,97 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         self.assertIs(evc.is_enabled(), False)
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
+    def test_update_empty_primary_path(self, _sync_mock):
+        """Test if an empty primary path can be set."""
+        initial_primary_path = Path([MagicMock(id=1), MagicMock(id=2)])
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "dynamic_backup_path": True,
+            "primary_path": initial_primary_path,
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        update_dict = {"primary_path": Path([])}
+        evc = EVC(**attributes)
+        self.assertEqual(evc.primary_path, initial_primary_path)
+        evc.update(**update_dict)
+        assert len(evc.primary_path) == 0
+
+    @patch("napps.kytos.mef_eline.models.EVC.sync")
+    def test_update_empty_path_non_dynamic_backup(self, _sync_mock):
+        """Test if an empty primary path can't be set if dynamic."""
+        initial_primary_path = Path([MagicMock(id=1), MagicMock(id=2)])
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "dynamic_backup_path": False,
+            "primary_path": initial_primary_path,
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        update_dict = {"primary_path": Path([])}
+        evc = EVC(**attributes)
+        self.assertEqual(evc.primary_path, initial_primary_path)
+        with self.assertRaises(ValueError) as handle_error:
+            evc.update(**update_dict)
+        self.assertEqual(
+            str(handle_error.exception),
+            'The EVC must have a primary path or allow dynamic paths.'
+        )
+
+    @patch("napps.kytos.mef_eline.models.EVC.sync")
+    def test_update_empty_backup_path(self, _sync_mock):
+        """Test if an empty backup path can be set."""
+        initial_backup_path = Path([MagicMock(id=1), MagicMock(id=2)])
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "dynamic_backup_path": True,
+            "backup_path": initial_backup_path,
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        update_dict = {"backup_path": Path([])}
+        evc = EVC(**attributes)
+        self.assertEqual(evc.backup_path, initial_backup_path)
+        evc.update(**update_dict)
+        assert len(evc.backup_path) == 0
+
+    @patch("napps.kytos.mef_eline.models.EVC.sync")
+    def test_update_empty_backup_path_non_dynamic(self, _sync_mock):
+        """Test if an empty backup path can be set even if it's non dynamic."""
+        initial_backup_path = Path([MagicMock(id=1), MagicMock(id=2)])
+        primary_path = Path([MagicMock(id=3), MagicMock(id=4)])
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "dynamic_backup_path": False,
+            "primary_path": primary_path,
+            "backup_path": initial_backup_path,
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        update_dict = {"backup_path": Path([])}
+        evc = EVC(**attributes)
+        self.assertEqual(evc.primary_path, primary_path)
+        self.assertEqual(evc.backup_path, initial_backup_path)
+        evc.update(**update_dict)
+        self.assertEqual(evc.primary_path, primary_path)
+        self.assertEqual(len(evc.backup_path), 0)
+
+    @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_update_queue(self, _sync_mock):
         """Test if evc is set to redeploy."""
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_name",
             "enable": True,
+            "dynamic_backup_path": True,
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
         }

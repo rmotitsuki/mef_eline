@@ -46,6 +46,8 @@ class Path(list, GenericEntity):
 
     def is_valid(self, switch_a, switch_z, is_scheduled=False):
         """Check if this is a valid path."""
+        if not self:
+            return True
         previous = switch_a
         for link in self:
             if link.endpoint_a.switch != previous:
