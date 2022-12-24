@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import requests
 from glom import glom
+from requests.exceptions import ConnectTimeout
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
@@ -1099,16 +1100,60 @@ class EVCDeploy(EVCBase):
                                             "dl_vlan": uni.user_tag.value,
                                             }
             data.append(data_uni)
-        response = requests.put(endpoint, json=data, timeout=30)
+        try:
+            response = requests.put(endpoint, json=data, timeout=30)
+        except ConnectTimeout as exception:
+            log.error(f"Request has timed out: {exception}")
+
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
             return []
         return response.json()
 
     @staticmethod
+    def check_trace(
+                    circuit_id,
+                    circuit_current_path,
+                    circuit_by_traces,
+                    circuits_checked
+                ):
+        """Auxiliar function to check an individual trace"""
+        circuits_checked[circuit_id] = True
+        trace_a = circuit_by_traces[circuit_id]['trace_a']
+        trace_z = circuit_by_traces[circuit_id]['trace_z']
+        if len(trace_a) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            circuits_checked[circuit_id] = False
+        if len(trace_z) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            circuits_checked[circuit_id] = False
+        for link, trace1, trace2 in zip(circuit_current_path,
+                                        trace_a[1:],
+                                        trace_z[:0:-1]):
+            metadata_vlan = None
+            if link.metadata:
+                metadata_vlan = glom(link.metadata, 's_vlan.value')
+            if compare_endpoint_trace(
+                                        link.endpoint_a,
+                                        metadata_vlan,
+                                        trace2
+                                    ) is False:
+                log.warning(f"Invalid trace from uni_a: {trace_a}")
+                circuits_checked[circuit_id] = False
+            if compare_endpoint_trace(
+                                        link.endpoint_b,
+                                        metadata_vlan,
+                                        trace1
+                                    ) is False:
+                log.warning(f"Invalid trace from uni_z: {trace_z}")
+                circuits_checked[circuit_id] = False
+
+    @staticmethod
     # pylint: disable=too-many-locals
     def check_list_traces(list_circuits):
         """Check if current_path is deployed comparing with SDN traces."""
+        if not list_circuits:
+            return {}
         uni_list = []
         circuit_data = {}
         for circuit_id in list_circuits:
@@ -1129,10 +1174,8 @@ class EVCDeploy(EVCBase):
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_z'
                                         }
-        if len(uni_list) == 0:
-            return {}
         traces = EVCDeploy.run_bulk_sdntraces(uni_list)
-        del uni_list
+
         circuit_by_traces = {}
         circuits_checked = {}
 
@@ -1144,41 +1187,20 @@ class EVCDeploy(EVCBase):
                     continue
                 circuit_id = circuit_from_data['circuit_id']
                 trace_name = circuit_from_data['trace_name']
+                circuit = list_circuits[circuit_id]
+                circuit_current_path = circuit.current_path.copy()
                 if circuit_id not in circuit_by_traces:
                     circuit_by_traces[circuit_id] = {}
                 circuit_by_traces[circuit_id][trace_name] = trace
+
                 if 'trace_a' in circuit_by_traces[circuit_id] \
                         and 'trace_z' in circuit_by_traces[circuit_id]:
-                    circuits_checked[circuit.id] = True
-                    trace_a = circuit_by_traces[circuit_id]['trace_a']
-                    trace_z = circuit_by_traces[circuit_id]['trace_z']
-                    if len(trace_a) != len(circuit.current_path) + 1:
-                        log.warning(f"Invalid trace from uni_a: {trace_a}")
-                        circuits_checked[circuit.id] = False
-                    if len(trace_z) != len(circuit.current_path) + 1:
-                        log.warning(f"Invalid trace from uni_z: {trace_z}")
-                        circuits_checked[circuit.id] = False
-                    for link, trace1, trace2 in zip(circuit.current_path,
-                                                    trace_a[1:],
-                                                    trace_z[:0:-1]):
-                        if compare_endpoint_trace(
-                                                    link.endpoint_a,
-                                                    glom(
-                                                            link.metadata,
-                                                            's_vlan.value'),
-                                                    trace2
-                                                ) is False:
-                            log.warning(f"Invalid trace from uni_a: {trace_a}")
-                            circuits_checked[circuit.id] = False
-                        if compare_endpoint_trace(
-                                                    link.endpoint_b,
-                                                    glom(
-                                                            link.metadata,
-                                                            's_vlan.value'),
-                                                    trace1
-                                                ) is False:
-                            log.warning(f"Invalid trace from uni_z: {trace_z}")
-                            circuits_checked[circuit.id] = False
+                    EVCDeploy.check_trace(
+                                            circuit_id,
+                                            circuit_current_path,
+                                            circuit_by_traces,
+                                            circuits_checked
+                                        )
         return circuits_checked
 
 
