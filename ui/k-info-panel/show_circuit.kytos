@@ -138,7 +138,121 @@
             </table>
           </div>
         </template>
+        <template  v-for="(p_constraint, p_constraint_index) in constraints">
+          <div class="mef-circuit-table mef-circuit-table-constraints">
+            <table class="table">
+              <tbody>
+              <tr><th>{{constraint_labels[p_constraint_index]}}</th></tr>
+              <tr><td>
+                <div id="mef-constraints-desired-links">
+                  <table class="table">
+                    <tr><th>{{constraint_labels['desired_links']}}</th>
+                    </tr>
+                    <tr>
+                    <td>
+                      <k-select :options="get_desired_link_options(p_constraint_index)"
+                      :value.sync=form_constraints[p_constraint_index].desired_links>
+                      </k-select>
+                    </td>
+                    </tr>
+                  </table>
+                </div>
+                <div id="mef-constraints-undesired-links">
+                  <table class="table">
+                    <tr><th>{{constraint_labels['undesired_links']}}</th></tr>
+                    <tr>
+                    <td>
+                      <k-select :options="get_undesired_link_options(p_constraint_index)"
+                      :value.sync=form_constraints[p_constraint_index].undesired_links>
+                      </k-select>
+                    </td>
+                    </tr>
+                  </table>
+                </div>
+
+                  <div>
+                    <table class="table" id="mef-constraints-spf">
+                      <tr>
+                        <th>{{constraint_labels['spf_attribute']}}</th>
+                        <td> 
+                          <k-dropdown :options="get_spf_attribute_options(p_constraint_index)" 
+                           :value.sync=form_constraints[p_constraint_index].spf_attribute></k-dropdown>
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>{{constraint_labels['spf_max_path_cost']}}</th>
+                        <td>
+                          <k-input :value.sync=p_constraint.spf_max_path_cost></k-input>
+                        </td>
+                      </tr>
+                      <tr>
+                        <th>
+                          <span :title=constraint_descriptions.minimum_flexible_hits>
+                            {{constraint_labels['minimum_flexible_hits']}}
+                          </span>
+                        </th>
+                        <td>
+                          <k-input :value.sync=p_constraint.minimum_flexible_hits></k-input>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div style="
+                      float: left;
+                      width: 250px;">
+                    <table class="table">
+                      <tr><th>{{constraint_labels['mandatory_metrics']}}</th>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div>
+                            <table class="table" style="">
+                              <template v-for="(metric_attr, metric_index) in p_constraint.mandatory_metrics">
+                                <tr>
+                                  <th>{{constraint_labels["flexible_metrics."+metric_index]}}</th>
+                                  <td style="padding:0 5px;">
+                                    <k-input :value.sync="p_constraint.mandatory_metrics[metric_index]"></k-input>
+                                  </td>
+                                </tr>
+                              </template>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+                  <div style="
+                      float: left;
+                      margin-left: 10px;
+                      width: 250px;">
+                    <table class="table">
+                      <tr>
+                        <th>{{constraint_labels['flexible_metrics']}}</th>
+                      </tr>
+                      <tr>
+                        <td>
+                          <div>
+                            <template v-for="(metric_attr, metric_index) in p_constraint.flexible_metrics">
+                              <tr>
+                                <th>{{constraint_labels["flexible_metrics."+metric_index]}}</th>
+                                <td style="padding:0 5px;">
+                                  <k-input :value.sync="p_constraint.flexible_metrics[metric_index]"></k-input>
+                                </td>
+                              </tr>
+                            </template>
+                          </div>
+                        </td>
+                      </tr>
+                    </table>
+                  </div>
+              </td>
+              </tr>
+              </tbody>
+            </table>
+          </div>
+        </template>
       </div>
+
       <div class="mef-back-button">
         <k-button tooltip="List installed EVCs" title="< Back to list" :on_click="showInfoPanel">
         </k-button>
@@ -196,9 +310,81 @@ module.exports = {
         circuit_scheduler: {}, // EVC scheduler data
         showDelModal: false,
         TAG_TYPE_VLAN: 1, // Tag type VLAN
+
+        constraints: {}, // constraint data
+        constraint_labels: {}, // constraint labels
+        constraint_descriptions: {}, // constraint mouse over description
+        link_options: [], // constraint link dropdown options
+        form_constraints: {}, // constraint data vue object synchronization
     }
   },
   methods: {
+    get_spf_attribute_options: function(type) {
+      /**
+       * Method to build option items for spf attribute.
+       * @parameter type primary_constraints or secondary_constraints
+       */
+      let _spf = this.form_constraints[type].spf_attribute;
+      if(this.form_constraints[type].spf_attribute == '') {
+        _spf = this.constraints[type].spf_attribute;
+      }
+      let _result = [
+        {value: "hop", description: "hop", selected: (_spf == 'hop')},
+        {value: "delay", description: "delay", selected: (_spf == 'delay')},
+        {value: "priority", description: "priority", selected: (_spf == 'priority')},
+      ];
+      return _result;
+    },
+    get_link_options: function(selecteds){
+      /**
+       * Build option items for constraint (desired/undesired) link.
+       */
+      let _this = this;
+      let _result = [];
+      $.each(this.link_options, function(key, item){
+        let _selected = false;
+        if(selecteds) {
+          selecteds.every( s => {
+            if(s == item.value) {
+              _selected = true;
+              return false;
+            }
+            return true;
+          });
+        }
+        let _item = {};
+        _item.value = item.value;
+        _item.description = item.description;
+        _item.selected = _selected;
+
+        _result.push(_item);
+      });
+      return _result;
+    },
+    get_desired_link_options: function(type) {
+      /**
+       * Method to build option items for constraint desired_links.
+       * @parameter type primary_constraints or secondary_constraints
+       */
+      let _links = this.form_constraints[type].desired_links;
+      if (this.form_constraints[type].desired_links == []) {
+        _links = this.constraints[type].desired_links;
+      }
+      let _result = this.get_link_options(_links);
+      return _result;
+    },
+    get_undesired_link_options: function(type) {
+      /**
+       * Method to build option items for constraint undesired_links.
+       * @parameter type primary_constraints or secondary_constraints
+       */
+      let _links = this.form_constraints[type].undesired_links;
+      if (this.form_constraints[type].undesired_links == []) {
+        _links = this.constraints[type].undesired_links;
+      }
+      let _result = this.get_link_options(_links);
+      return _result;
+    },
     showInfoPanel: function() {
       let listConnections = {
           component: 'kytos-mef_eline-k-info-panel-list_connections',
@@ -284,6 +470,28 @@ module.exports = {
         _this.$kytos.$emit("setNotification" , notification);
       });
     },
+    load_topology(){
+      var _this = this;
+
+      $.ajax({
+        async: true,
+        dataType: "json",
+        url: this.$kytos_server_api + "kytos/topology/v3",
+
+        success: function(data) {
+          let _link = data['topology']['links']
+          _this.link_options = [];
+
+          $.each(_link, function(key, value){
+            if (value.metadata.link_name !== undefined && value.metadata.link_name.length !== 0){
+              _this.link_options.push({value:value.id, description:value.metadata.link_name})
+            } else {
+              _this.link_options.push({value:value.id, description:value.id});
+            }
+          });
+        }
+      });
+    },
     onblur_dpid: function() {
       /**
        * Update dpid values on event onblur triggered in dpids fields.
@@ -366,10 +574,15 @@ module.exports = {
                    };
 
       this.links = {"Primary links": data['primary_links'],
-                      "Backup links": data['backup_links']
+                    "Backup links": data['backup_links']
                    };
       
       this.circuit_scheduler = data['circuit_scheduler'];
+
+      this.constraints = {
+        'primary_constraints': this.buildPathConstraintsView(data['primary_constraints']),
+        'secondary_constraints': this.buildPathConstraintsView(data['secondary_constraints']),
+      };
     },
     buildPathView: function(path_data) {
       /**
@@ -458,6 +671,81 @@ module.exports = {
         _this.$kytos.$emit("setNotification" , notification);
       });
     },
+
+    buildPathConstraintsView: function(data) {
+      /**
+      * Build path constraint data for exibition 
+      * (primary and secondary constraints paths).
+      * Parameter:
+      *   constraints_data: json with path constraint data
+      */
+      this.constraint_labels = {
+        'primary_constraints': 'Primary Constraints',
+        'secondary_constraints': 'Secondary Constraints',
+        'desired_links': 'Desired links',
+        'undesired_links': 'Undesired links',
+        'spf_attribute': 'SPF attribute',
+        'spf_max_path_cost': 'SPF max path cost',
+        'minimum_flexible_hits': 'Flexible hits',
+        'mandatory_metrics': 'Mandatory metrics',
+        'mandatory_metrics.bandwidth': 'Bandwidth',
+        'mandatory_metrics.utilization': 'Utilization',
+        'mandatory_metrics.priority': 'Priority',
+        'mandatory_metrics.delay': 'Delay',
+        'mandatory_metrics.ownership': 'Ownership',
+        'flexible_metrics': 'Flexible metrics',
+        'flexible_metrics.bandwidth': 'Bandwidth',
+        'flexible_metrics.utilization': 'Utilization',
+        'flexible_metrics.priority': 'Priority',
+        'flexible_metrics.delay': 'Delay',
+        'flexible_metrics.ownership': 'Ownership',
+      };
+
+      let _constraint = {};
+      if(data) {
+        _constraint = {
+          'desired_links': data['desired_links'],
+          'undesired_links': data['undesired_links'],
+          'spf_attribute': data['spf_attribute'],
+          'spf_max_path_cost': data['spf_max_path_cost'],
+          'minimum_flexible_hits': data['minimum_flexible_hits'],
+        };
+        
+        if(data['mandatory_metrics']) {
+          _constraint.mandatory_metrics = {
+            'bandwidth': data['mandatory_metrics']['bandwidth'],
+            'utilization': data['mandatory_metrics']['utilization'],
+            'priority': data['mandatory_metrics']['priority'],
+            'delay': data['mandatory_metrics']['delay'],
+            'ownership': data['mandatory_metrics']['ownership']
+          };
+        } else {
+          _constraint.mandatory_metrics = {
+            'bandwidth': '', 'utilization': '', 'priority': '',
+            'delay': '', 'ownership': '',
+          };
+        } 
+        if(data['flexible_metrics']) {
+          _constraint.flexible_metrics = {
+            'bandwidth': data['flexible_metrics']['bandwidth'],
+            'utilization': data['flexible_metrics']['utilization'],
+            'priority': data['flexible_metrics']['priority'],
+            'delay': data['flexible_metrics']['delay'],
+            'ownership': data['flexible_metrics']['ownership']
+          };
+        } else {
+          _constraint.flexible_metrics = {
+            'bandwidth': '', 'utilization': '', 'priority': '',
+            'delay': '', 'ownership': '',
+          };
+        }
+
+        this.constraint_descriptions.minimum_flexible_hits = "Minimum number of attributes listed in flexible_metrics that a path will meet. minimum: 0 maximum: 6";
+      }
+
+      return _constraint;
+    },
+
     getEndpointData: function(endpoint) {
       /**
       * Get DPID and Interface attributes and metadata.
@@ -525,6 +813,51 @@ module.exports = {
         };
       }
 
+      ['primary_constraints', 'secondary_constraints'].forEach(_type => {
+        payload[_type] = {};
+        // Dropdown forms
+        if(this.form_constraints[_type].desired_links.length > 0) {
+          payload[_type].desired_links = this.form_constraints[_type].desired_links;
+        }
+        if(this.form_constraints[_type].desired_links.length > 0) {
+          payload[_type].undesired_links = this.form_constraints[_type].undesired_links;
+        }
+        if(this.form_constraints[_type].spf_attribute !== "") {
+          payload[_type].spf_attribute = this.form_constraints[_type].spf_attribute;
+        }
+
+        // Input forms
+        if(this.constraints[_type].spf_max_path_cost !== "") {
+          payload[_type].spf_max_path_cost = parseInt(this.constraints[_type].spf_max_path_cost);
+        }
+        if(this.constraints[_type].minimum_flexible_hits !== "") {
+          payload[_type].minimum_flexible_hits = parseInt(this.constraints[_type].minimum_flexible_hits);
+        }
+
+        ['mandatory_metrics', 'flexible_metrics'].forEach(_metric_type => {
+          if(this.constraints[_type][_metric_type]) {
+            let metric = this.constraints[_type][_metric_type];
+            let _mandatory_metrics = {};
+            ['bandwidth', 'utilization', 'priority', 'delay'].forEach(_m => {
+              if(metric[_m] !== undefined && metric[_m] !== '') {
+                _mandatory_metrics[_m] = parseInt(metric[_m]);
+              } else {
+                //TODO: set the value to remove the metric (ex: 0, undefined, null, -1...)
+                //_mandatory_metrics[_m] = null;
+              }
+            });
+            if(metric['ownership'] !== undefined) { // can be empty
+              _mandatory_metrics['ownership'] = metric['ownership'];
+            }
+            
+            if(!$.isEmptyObject(_mandatory_metrics)) {
+              payload[_type][_metric_type] = _mandatory_metrics;
+            }
+          }
+        });
+      });
+      $payload = payload;
+
       var request = $.ajax({
         url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id,
         type:"PATCH",
@@ -548,17 +881,46 @@ module.exports = {
       });
     },
   },
-  mounted() {
-    if(this.content && this.content.id) {
+  beforeMount() {
       // Load DPID attributes and metadata
       this.loadDpidNames();
+      // load topology links
+      this.load_topology();
+  },
+  mounted() {
+    let _this = this;
+    if(this.content && this.content.id) {
       // Load EVC
       this.loadEVC(this.content.id);
+
       // Make the panel fill the screen except the left menu width
       $('.k-info-panel:has(.mef_circuit_container)').addClass('mef-k-info-panel');
       
       this.$kytos.dpids = this.dpids;
     }
+    ['primary_constraints', 'secondary_constraints'].forEach( s => {
+        _this.form_constraints[s] = {
+          'desired_links': '',
+          'undesired_links': '',
+          'spf_attribute': '',
+          'spf_max_path_cost': '',
+          'minimum_flexible_hits': '',
+          'mandatory_metrics': {
+            'bandwidth': '',
+            'utilization': '',
+            'priority': '',
+            'delay': '',
+            'ownership': ''
+          },
+          'flexible_metrics': {
+            'bandwidth': '',
+            'utilization': '',
+            'priority': '',
+            'delay': '',
+            'ownership': ''
+          }
+        };
+      });
   },
   created() {
     // Check if the UI component k-input-auto exists
@@ -587,6 +949,9 @@ module.exports = {
   .mef_circuit_container .check_false {
     color: #c00000;
   }
+  .mef_circuit_container .k-select {
+    font-size: 1em;
+  }
   .mef_circuit_container .mef-buttons {
     display: flow-root;
   }
@@ -604,6 +969,10 @@ module.exports = {
     text-align: center;
     font-size: 1em;
   }
+  .mef_circuit_container .k-select__select:hover * {
+    color: white;
+    background-color: #515151;
+  }
   .mef_circuit_container input:focus {
     border: 1px solid blueviolet;
   }
@@ -619,12 +988,12 @@ module.exports = {
     float: none;
   }
   .mef_circuit_container tbody tr:hover {
-    background: inherit;
+    background: none;
   }
   .mef_circuit_container table {
     border-collapse: collapse;
     width: 100%;
-    font-size: 0.9em;
+    
   }
   .mef_circuit_container tr:nth-child(even) {
       background-color: #2d2d2d;
@@ -646,6 +1015,9 @@ module.exports = {
       margin-left: 20px;
       margin-bottom: 20px;
   }
+  .mef-circuit-table tbody tr:hover {
+    background: none;
+  }
   .mef-circuit-table th {
     width: 75px;
   }
@@ -654,6 +1026,28 @@ module.exports = {
   }
   .mef-circuit-table table + table {
     margin-top:4px;
+  }
+  .mef-circuit-table-constraints {
+    clear:both; 
+    width:540px;
+  }
+  .mef-circuit-table-constraints #mef-constraints-desired-links {
+    float: left;
+    width: 255px;
+  }
+  .mef-circuit-table-constraints #mef-constraints-undesired-links {
+    float: left;
+    margin-left: 10px;
+    width: 255px;
+  }
+  .mef-circuit-table-constraints #mef-constraints-spf {
+    width: 300px;
+  }
+  .mef-circuit-table-constraints #mef-constraints-spf th {
+    width: 130px;
+  }
+  .mef-circuit-table-constraints select {
+    margin: 0;
   }
   .mef-back-button {
     clear: both;
@@ -674,7 +1068,7 @@ module.exports = {
   }
   .mef-circuit-table-path {
     clear:both; 
-    width:520px;
+    width:540px;
   }
   /* Modal windows */
   .modal-mask {
