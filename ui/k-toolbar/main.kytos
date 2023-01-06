@@ -289,7 +289,7 @@ module.exports = {
         'undesired_links': 'Undesired links',
         'spf_attribute': 'SPF attribute',
         'spf_max_path_cost': 'SPF max path cost',
-        'minimum_flexible_hits': 'Flexible hits',
+        'minimum_flexible_hits': 'Min. flexible hits',
         'mandatory_metrics': 'Mandatory metrics',
         'bandwidth': 'Bandwidth',
         'utilization': 'Utilization',
