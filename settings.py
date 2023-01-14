@@ -13,7 +13,7 @@ TOPOLOGY_URL = "http://localhost:8181/api/kytos/topology/v3"
 SDN_TRACE_CP_URL = "http://localhost:8181/api/amlight/sdntrace_cp"
 
 # EVC consistency interval
-DEPLOY_EVCS_INTERVAL = 5
+DEPLOY_EVCS_INTERVAL = 60
 
 # Number of execution rounds to wait for old path to become available.
 # i.e., it will wait up to DEPLOY_EVCS_INTERVAL*WAIT_FOR_OLD_PATH to the old
@@ -44,5 +44,5 @@ EPL_SB_PRIORITY = 10000
 
 #  Time (seconds) to check if an evc has been updated
 #  or flows have been deleted.
-TIME_RECENT_DELETED_FLOWS = 5
-TIME_RECENT_UPDATED = 5
+TIME_RECENT_DELETED_FLOWS = 60
+TIME_RECENT_UPDATED = 60

@@ -1163,6 +1163,9 @@ class EVCDeploy(EVCBase):
             dpid_a = circuit.uni_a.interface.switch.dpid
             port_a = circuit.uni_a.interface.port_number
             interface_a = str(dpid_a) + ':' + str(port_a)
+            if circuit.uni_a.user_tag:
+                vlan_a = circuit.uni_a.user_tag.value
+                interface_a += ':' + str(vlan_a)
             circuit_data[interface_a] = {
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_a'
@@ -1170,6 +1173,9 @@ class EVCDeploy(EVCBase):
             dpid_z = circuit.uni_z.interface.switch.dpid
             port_z = circuit.uni_z.interface.port_number
             interface_z = str(dpid_z) + ':' + str(port_z)
+            if circuit.uni_z.user_tag:
+                vlan_z = circuit.uni_z.user_tag.value
+                interface_z += ':' + str(vlan_z)
             circuit_data[interface_z] = {
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_z'
@@ -1182,6 +1188,8 @@ class EVCDeploy(EVCBase):
         for trace_switch in traces:
             for trace in traces[trace_switch]:
                 id_trace = str(trace[0]['dpid']) + ':' + str(trace[0]['port'])
+                if 'vlan' in trace[0]:
+                    id_trace += ':' + str(trace[0]['vlan'])
                 circuit_from_data = circuit_data.get(id_trace)
                 if circuit_from_data is None:
                     continue
