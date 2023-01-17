@@ -817,7 +817,7 @@ module.exports = {
         payload[_type] = {};
         // Dropdown forms
         if(this.form_constraints[_type].desired_links.length > 0) {
-          payload[_type].desired_links = this.form_constraints[_type].desired_links;
+          payload[_type].desired_links = this.form_constraints[_type].desired_links.filter(item => typeof(item) == "string");
         }
         if(this.form_constraints[_type].desired_links.length > 0) {
           payload[_type].undesired_links = this.form_constraints[_type].undesired_links.filter(item => typeof(item) == "string");
