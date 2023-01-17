@@ -313,6 +313,7 @@ class EVCBase(GenericEntity):
         evc_dict["sb_priority"] = self.sb_priority
         evc_dict["service_level"] = self.service_level
         evc_dict["primary_constraints"] = self.primary_constraints
+        evc_dict["secondary_constraints"] = self.secondary_constraints
         evc_dict["flow_removed_at"] = self.flow_removed_at
         evc_dict["updated_at"] = self.updated_at
 
