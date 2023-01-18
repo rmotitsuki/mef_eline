@@ -115,6 +115,15 @@ class DynamicPathManager:
     @staticmethod
     def get_paths(circuit, max_paths=2, **kwargs):
         """Get a valid path for the circuit from the Pathfinder."""
+        # pylint: disable=fixme
+        # XXX: temporary workaround for kytos-ng/pathfinder#37
+        if (
+            len(circuit.secondary_constraints.get('undesired_links', [])) > 0
+            or len(circuit.secondary_constraints.get('desired_links', [])) > 0
+            or len(circuit.primary_constrains.get('undesired_links', [])) > 0
+            or len(circuit.primary_constrains.get('desired_links', [])) > 0
+        ):
+            max_paths += 10
         endpoint = settings.PATHFINDER_URL
         request_data = {
             "source": circuit.uni_a.interface.id,
