@@ -150,8 +150,8 @@
                     </tr>
                     <tr>
                     <td>
-                      <k-select :options="get_desired_link_options(p_constraint_index)"
-                      :value.sync=form_constraints[p_constraint_index].desired_links>
+                      <k-select :options="get_link_options()"
+                      :value.sync=p_constraint.desired_links>
                       </k-select>
                     </td>
                     </tr>
@@ -162,8 +162,8 @@
                     <tr><th>{{constraint_labels['undesired_links']}}</th></tr>
                     <tr>
                     <td>
-                      <k-select :options="get_undesired_link_options(p_constraint_index)"
-                      :value.sync=form_constraints[p_constraint_index].undesired_links>
+                      <k-select :options="get_link_options()"
+                      :value.sync=p_constraint.undesired_links>
                       </k-select>
                     </td>
                     </tr>
@@ -176,7 +176,7 @@
                         <th>{{constraint_labels['spf_attribute']}}</th>
                         <td> 
                           <k-dropdown :options="get_spf_attribute_options(p_constraint_index)" 
-                           :value.sync=form_constraints[p_constraint_index].spf_attribute></k-dropdown>
+                           :value.sync=p_constraint.spf_attribute></k-dropdown>
                         </td>
                       </tr>
                       <tr>
@@ -335,54 +335,18 @@ module.exports = {
       ];
       return _result;
     },
-    get_link_options: function(selecteds){
+    get_link_options: function(){
       /**
        * Build option items for constraint (desired/undesired) link.
        */
       let _this = this;
       let _result = [];
       $.each(this.link_options, function(key, item){
-        let _selected = false;
-        if(selecteds) {
-          selecteds.every( s => {
-            if(s == item.value) {
-              _selected = true;
-              return false;
-            }
-            return true;
-          });
-        }
         let _item = {};
         _item.value = item.value;
         _item.description = item.description;
-        _item.selected = _selected;
-
         _result.push(_item);
       });
-      return _result;
-    },
-    get_desired_link_options: function(type) {
-      /**
-       * Method to build option items for constraint desired_links.
-       * @parameter type primary_constraints or secondary_constraints
-       */
-      let _links = this.form_constraints[type].desired_links;
-      if (this.form_constraints[type].desired_links == []) {
-        _links = this.constraints[type].desired_links;
-      }
-      let _result = this.get_link_options(_links);
-      return _result;
-    },
-    get_undesired_link_options: function(type) {
-      /**
-       * Method to build option items for constraint undesired_links.
-       * @parameter type primary_constraints or secondary_constraints
-       */
-      let _links = this.form_constraints[type].undesired_links;
-      if (this.form_constraints[type].undesired_links == []) {
-        _links = this.constraints[type].undesired_links;
-      }
-      let _result = this.get_link_options(_links);
       return _result;
     },
     showInfoPanel: function() {
@@ -816,14 +780,20 @@ module.exports = {
       ['primary_constraints', 'secondary_constraints'].forEach(_type => {
         payload[_type] = {};
         // Dropdown forms
-        if(this.form_constraints[_type].desired_links.length > 0) {
-          payload[_type].desired_links = this.form_constraints[_type].desired_links.filter(item => typeof(item) == "string");
+        payload[_type].desired_links = [];
+        if(this.constraints[_type].desired_links && this.constraints[_type].desired_links.length > 0) {
+          payload[_type].desired_links = [].concat(
+            this.constraints[_type].desired_links.filter(item => typeof(item) == "string")
+          );
         }
-        if(this.form_constraints[_type].desired_links.length > 0) {
-          payload[_type].undesired_links = this.form_constraints[_type].undesired_links.filter(item => typeof(item) == "string");
+        payload[_type].undesired_links = [];
+        if(this.constraints[_type].undesired_links && this.constraints[_type].undesired_links.length > 0) {
+          payload[_type].undesired_links = [].concat(
+            this.constraints[_type].undesired_links.filter(item => typeof(item) == "string")
+          );
         }
-        if(this.form_constraints[_type].spf_attribute !== "") {
-          payload[_type].spf_attribute = this.form_constraints[_type].spf_attribute;
+        if(this.constraints[_type].spf_attribute !== "") {
+          payload[_type].spf_attribute = this.constraints[_type].spf_attribute;
         }
 
         // Input forms

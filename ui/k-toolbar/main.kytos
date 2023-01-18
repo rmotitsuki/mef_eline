@@ -421,10 +421,10 @@ module.exports = {
           });
 
           // Dropdown forms
-          if(this.form_constraints[_type].desired_links.length > 0) {
+          if(this.form_constraints[_type].desired_links) {
             request[_type].desired_links = this.form_constraints[_type].desired_links.filter(item => typeof(item) == "string");
           }
-          if(this.form_constraints[_type].undesired_links.length > 0) {
+          if(this.form_constraints[_type].undesired_links) {
             request[_type].undesired_links = this.form_constraints[_type].undesired_links.filter(item => typeof(item) == "string");
           }
           if(this.form_constraints[_type].spf_attribute) {
