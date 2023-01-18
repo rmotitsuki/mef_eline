@@ -645,7 +645,7 @@ class Main(KytosNApp):
 
     def handle_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
-        log.debug("Event handle_link_up %s", event)
+        log.info("Event handle_link_up %s", event.content["link"])
         for evc in self.get_evcs_by_svc_level():
             if evc.is_enabled() and not evc.archived:
                 with evc.lock:
