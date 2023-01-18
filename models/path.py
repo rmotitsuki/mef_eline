@@ -120,8 +120,8 @@ class DynamicPathManager:
         if (
             len(circuit.secondary_constraints.get('undesired_links', [])) > 0
             or len(circuit.secondary_constraints.get('desired_links', [])) > 0
-            or len(circuit.primary_constrains.get('undesired_links', [])) > 0
-            or len(circuit.primary_constrains.get('desired_links', [])) > 0
+            or len(circuit.primary_constraints.get('undesired_links', [])) > 0
+            or len(circuit.primary_constraints.get('desired_links', [])) > 0
         ):
             max_paths += 10
         endpoint = settings.PATHFINDER_URL
