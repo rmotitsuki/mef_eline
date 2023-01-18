@@ -2153,3 +2153,15 @@ class TestMain(TestCase):
         del uni_dict["tag"]
         uni = self.napp._uni_from_dict(uni_dict)
         self.assertEqual(uni, uni_mock)
+
+    def test_handle_flow_delete(self):
+        """Test handle_flow_delete method"""
+        flow = MagicMock()
+        flow.cookie = 0xaa00000000000011
+        event = MagicMock()
+        event.content = {'flow': flow}
+        evc = create_autospec(EVC)
+        evc.set_flow_removed_at = MagicMock()
+        self.napp.circuits = {"00000000000011": evc}
+        self.napp.handle_flow_delete(event)
+        evc.set_flow_removed_at.assert_called_once()
