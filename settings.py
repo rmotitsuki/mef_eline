@@ -41,3 +41,8 @@ BATCH_SIZE = 50
 # is not set in a request
 EVPL_SB_PRIORITY = 20000
 EPL_SB_PRIORITY = 10000
+
+#  Time (seconds) to check if an evc has been updated
+#  or flows have been deleted.
+TIME_RECENT_DELETED_FLOWS = 60
+TIME_RECENT_UPDATED = 60

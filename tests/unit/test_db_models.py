@@ -30,7 +30,8 @@ class TestDBModels(TestCase):
             "sb_priority": 81,
             "active": False,
             "enabled": False,
-            "circuit_scheduler": []
+            "circuit_scheduler": [],
+            "queue_id": None
         }
 
     def test_evcbasedoc(self):

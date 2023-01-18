@@ -15,12 +15,15 @@ Added
 - Added ``sb_priority`` UI component on ``k-toolbar``.
 - Added ``queue_id`` UI component on ``k-toolbar``.
 - Documented ``GET /v2/evc?archived`` query arg on openapi.yml
+- Added ``flow_removed_at`` and ``updated_at`` parameters in EVC.
+- Added ``execution_rounds`` in EVC to be used by the consistency check. 
 
 Changed
 =======
 - ``priority`` has been renamed to ``sb_priority`` (southbound priority), ``./scripts/001_rename_priority.py`` can be used to update EVC documents accordingly
 - ``GET /v2/evc?archived=true`` will only return archived EVCs
 - k-toolbar UI component won't expose UNI tag type anymore, if a tag value is set, it'll assume it's tag type vlan.
+- Consistency check uses the new ``PUT /traces`` endpoint from `sdntrace_cp` for bulk requests.
 
 Removed
 =======

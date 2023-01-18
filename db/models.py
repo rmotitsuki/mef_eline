@@ -78,6 +78,8 @@ class EVCBaseDoc(DocumentBaseModel):
     start_date: Optional[datetime]
     end_date: Optional[datetime]
     queue_id: Optional[int]
+    flow_removed_at: Optional[datetime]
+    execution_rounds: int = 0
     bandwidth: int = 0
     primary_path: Optional[List]
     backup_path: Optional[List]
@@ -122,6 +124,7 @@ class EVCBaseDoc(DocumentBaseModel):
             "metadata": 1,
             "active": 1,
             "enabled": 1,
+            "execution_rounds": {"$ifNull": ["$execution_rounds", 0]},
             "owner": {"$ifNull": ["$owner", None]},
             "queue_id": {"$ifNull": ["$queue_id", None]},
             "primary_constraints": {"$ifNull": ["$primary_constraints", {}]},
@@ -145,4 +148,12 @@ class EVCBaseDoc(DocumentBaseModel):
                     "$ifNull": ["$end_date", None]
                 }
             }},
+            "flow_removed_at": {"$dateToString": {
+                "format": time_fmt, "date": {
+                    "$ifNull": ["$flow_removed_at", None]
+                }
+            }},
+            "updated_at": {"$dateToString": {
+                "format": time_fmt, "date": "$updated_at"
+            }}
         }

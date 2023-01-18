@@ -28,10 +28,15 @@ def notify_link_available_tags(controller, link, src_func=None):
 
 def compare_endpoint_trace(endpoint, vlan, trace):
     """Compare and endpoint with a trace step."""
+    if vlan and "vlan" in trace:
+        return (
+            endpoint.switch.dpid == trace["dpid"]
+            and endpoint.port_number == trace["port"]
+            and vlan == trace["vlan"]
+        )
     return (
         endpoint.switch.dpid == trace["dpid"]
         and endpoint.port_number == trace["port"]
-        and vlan == trace["vlan"]
     )
 
 

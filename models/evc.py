@@ -6,6 +6,7 @@ from uuid import uuid4
 
 import requests
 from glom import glom
+from requests.exceptions import ConnectTimeout
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
@@ -117,6 +118,9 @@ class EVCBase(GenericEntity):
         )
         self.service_level = kwargs.get("service_level", 0)
         self.circuit_scheduler = kwargs.get("circuit_scheduler", [])
+        self.flow_removed_at = get_time(kwargs.get("flow_removed_at")) or None
+        self.updated_at = get_time(kwargs.get("updated_at")) or now()
+        self.execution_rounds = kwargs.get("execution_rounds", 0)
 
         self.current_links_cache = set()
         self.primary_links_cache = set()
@@ -149,6 +153,7 @@ class EVCBase(GenericEntity):
 
     def sync(self):
         """Sync this EVC in the MongoDB."""
+        self.updated_at = now()
         self._mongo_controller.upsert_evc(self.as_dict())
 
     def update(self, **kwargs):
@@ -200,6 +205,22 @@ class EVCBase(GenericEntity):
                     redeploy = value
         self.sync()
         return enable, redeploy
+
+    def set_flow_removed_at(self):
+        """Update flow_removed_at attribute."""
+        self.flow_removed_at = now()
+
+    def has_recent_removed_flow(self, setting=settings):
+        """Check if any flow has been removed from the evc"""
+        if self.flow_removed_at is None:
+            return False
+        res_seconds = (now() - self.flow_removed_at).seconds
+        return res_seconds < setting.TIME_RECENT_DELETED_FLOWS
+
+    def is_recent_updated(self, setting=settings):
+        """Check if the evc has been updated recently"""
+        res_seconds = (now() - self.updated_at).seconds
+        return res_seconds < setting.TIME_RECENT_UPDATED
 
     def __repr__(self):
         """Repr method."""
@@ -328,6 +349,8 @@ class EVCBase(GenericEntity):
         evc_dict["service_level"] = self.service_level
         evc_dict["primary_constraints"] = self.primary_constraints
         evc_dict["secondary_constraints"] = self.secondary_constraints
+        evc_dict["flow_removed_at"] = self.flow_removed_at
+        evc_dict["updated_at"] = self.updated_at
 
         return evc_dict
 
@@ -1093,32 +1116,136 @@ class EVCDeploy(EVCBase):
             return []
         return response.json().get('result', [])
 
-    def check_traces(self):
-        """Check if current_path is deployed comparing with SDN traces."""
-        trace_a = self.run_sdntrace(self.uni_a)
-        if len(trace_a) != len(self.current_path) + 1:
-            log.warning(f"Invalid trace from uni_a: {trace_a}")
-            return False
-        trace_z = self.run_sdntrace(self.uni_z)
-        if len(trace_z) != len(self.current_path) + 1:
-            log.warning(f"Invalid trace from uni_z: {trace_z}")
-            return False
+    @staticmethod
+    def run_bulk_sdntraces(uni_list):
+        """Run SDN traces on control plane starting from EVC UNIs."""
+        endpoint = f"{settings.SDN_TRACE_CP_URL}/traces"
+        data = []
+        for uni in uni_list:
+            data_uni = {
+                "trace": {
+                            "switch": {
+                                "dpid": uni.interface.switch.dpid,
+                                "in_port": uni.interface.port_number,
+                            }
+                        }
+                }
+            if uni.user_tag:
+                data_uni["trace"]["eth"] = {
+                                            "dl_type": 0x8100,
+                                            "dl_vlan": uni.user_tag.value,
+                                            }
+            data.append(data_uni)
+        try:
+            response = requests.put(endpoint, json=data, timeout=30)
+        except ConnectTimeout as exception:
+            log.error(f"Request has timed out: {exception}")
 
-        for link, trace1, trace2 in zip(self.current_path,
+        if response.status_code >= 400:
+            log.error(f"Failed to run sdntrace-cp: {response.text}")
+            return []
+        return response.json()
+
+    @staticmethod
+    def check_trace(
+                    circuit_id,
+                    circuit_current_path,
+                    circuit_by_traces,
+                    circuits_checked
+                ):
+        """Auxiliar function to check an individual trace"""
+        circuits_checked[circuit_id] = True
+        trace_a = circuit_by_traces[circuit_id]['trace_a']
+        trace_z = circuit_by_traces[circuit_id]['trace_z']
+        if len(trace_a) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            circuits_checked[circuit_id] = False
+        if len(trace_z) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            circuits_checked[circuit_id] = False
+        for link, trace1, trace2 in zip(circuit_current_path,
                                         trace_a[1:],
                                         trace_z[:0:-1]):
+            metadata_vlan = None
+            if link.metadata:
+                metadata_vlan = glom(link.metadata, 's_vlan.value')
             if compare_endpoint_trace(
-               link.endpoint_a,
-               glom(link.metadata, 's_vlan.value'), trace2) is False:
+                                        link.endpoint_a,
+                                        metadata_vlan,
+                                        trace2
+                                    ) is False:
                 log.warning(f"Invalid trace from uni_a: {trace_a}")
-                return False
+                circuits_checked[circuit_id] = False
             if compare_endpoint_trace(
-               link.endpoint_b,
-               glom(link.metadata, 's_vlan.value'), trace1) is False:
+                                        link.endpoint_b,
+                                        metadata_vlan,
+                                        trace1
+                                    ) is False:
                 log.warning(f"Invalid trace from uni_z: {trace_z}")
-                return False
+                circuits_checked[circuit_id] = False
 
-        return True
+    @staticmethod
+    # pylint: disable=too-many-locals
+    def check_list_traces(list_circuits):
+        """Check if current_path is deployed comparing with SDN traces."""
+        if not list_circuits:
+            return {}
+        uni_list = []
+        circuit_data = {}
+        for circuit_id in list_circuits:
+            circuit = list_circuits[circuit_id]
+            uni_list.append(circuit.uni_a)
+            uni_list.append(circuit.uni_z)
+            dpid_a = circuit.uni_a.interface.switch.dpid
+            port_a = circuit.uni_a.interface.port_number
+            interface_a = str(dpid_a) + ':' + str(port_a)
+            if circuit.uni_a.user_tag:
+                vlan_a = circuit.uni_a.user_tag.value
+                interface_a += ':' + str(vlan_a)
+            circuit_data[interface_a] = {
+                                            'circuit_id': circuit.id,
+                                            'trace_name': 'trace_a'
+                                        }
+            dpid_z = circuit.uni_z.interface.switch.dpid
+            port_z = circuit.uni_z.interface.port_number
+            interface_z = str(dpid_z) + ':' + str(port_z)
+            if circuit.uni_z.user_tag:
+                vlan_z = circuit.uni_z.user_tag.value
+                interface_z += ':' + str(vlan_z)
+            circuit_data[interface_z] = {
+                                            'circuit_id': circuit.id,
+                                            'trace_name': 'trace_z'
+                                        }
+        traces = EVCDeploy.run_bulk_sdntraces(uni_list)
+
+        circuit_by_traces = {}
+        circuits_checked = {}
+
+        for trace_switch in traces:
+            for trace in traces[trace_switch]:
+                id_trace = str(trace[0]['dpid']) + ':' + str(trace[0]['port'])
+                if 'vlan' in trace[0]:
+                    id_trace += ':' + str(trace[0]['vlan'])
+                circuit_from_data = circuit_data.get(id_trace)
+                if circuit_from_data is None:
+                    continue
+                circuit_id = circuit_from_data['circuit_id']
+                trace_name = circuit_from_data['trace_name']
+                circuit = list_circuits[circuit_id]
+                circuit_current_path = circuit.current_path.copy()
+                if circuit_id not in circuit_by_traces:
+                    circuit_by_traces[circuit_id] = {}
+                circuit_by_traces[circuit_id][trace_name] = trace
+
+                if 'trace_a' in circuit_by_traces[circuit_id] \
+                        and 'trace_z' in circuit_by_traces[circuit_id]:
+                    EVCDeploy.check_trace(
+                                            circuit_id,
+                                            circuit_current_path,
+                                            circuit_by_traces,
+                                            circuits_checked
+                                        )
+        return circuits_checked
 
 
 class LinkProtection(EVCDeploy):

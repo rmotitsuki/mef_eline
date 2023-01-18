@@ -29,3 +29,6 @@ class TestUtils(TestCase):
                 self.assertEqual(
                     compare_endpoint_trace(endpoint, vlan, trace), expected
                 )
+                self.assertEqual(
+                    compare_endpoint_trace(endpoint, None, trace), expected
+                )
