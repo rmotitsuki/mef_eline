@@ -321,6 +321,12 @@ class TestMain(TestCase):
                     "endpoint_b": {
                         "interface_id": "00:00:00:00:00:00:00:02:2"
                     },
+                    "metadata": {
+                        "s_vlan": {
+                            "tag_type": 1,
+                            "value": 100
+                        }
+                    },
                 }
             ],
             "backup_links": [],
@@ -1089,6 +1095,11 @@ class TestMain(TestCase):
                             content_type='application/json')
         self.assertEqual(response.status_code, 403)
 
+        # case 8: invalid json
+        response = api.post(url, data='{"test"}',
+                            content_type='application/json')
+        self.assertEqual(response.status_code, 400)
+
     @patch('apscheduler.schedulers.background.BackgroundScheduler.remove_job')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
@@ -1678,7 +1689,16 @@ class TestMain(TestCase):
             "endpoint_b": {"id": "b"}
         }
         with self.assertRaises(ValueError):
-            self.napp._uni_from_dict(link_dict)
+            self.napp._link_from_dict(link_dict)
+
+    def test_uni_from_dict_non_existent_intf(self):
+        """Test _link_from_dict non existent intf."""
+        self.napp.controller.get_interface_by_id = MagicMock(return_value=None)
+        uni_dict = {
+            "interface_id": "aaa",
+        }
+        with self.assertRaises(ValueError):
+            self.napp._uni_from_dict(uni_dict)
 
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")

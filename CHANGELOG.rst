@@ -17,6 +17,7 @@ Added
 - Documented ``GET /v2/evc?archived`` query arg on openapi.yml
 - Added ``flow_removed_at`` and ``updated_at`` parameters in EVC.
 - Added ``execution_rounds`` in EVC to be used by the consistency check. 
+- Added logging message for ``link_up`` events.
 
 Changed
 =======
