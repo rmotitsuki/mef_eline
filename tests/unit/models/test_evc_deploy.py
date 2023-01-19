@@ -433,6 +433,49 @@ class TestEVC(TestCase):
         return EVC(**attributes)
 
     @staticmethod
+    def create_evc_inter_switch_same_dpid():
+        """Create inter-switch EVC with two links in the path"""
+        uni_a = get_uni_mocked(
+            interface_port=2,
+            tag_value=82,
+            switch_id=1,
+            switch_dpid=1,
+            is_valid=True,
+        )
+        uni_z = get_uni_mocked(
+            interface_port=3,
+            tag_value=83,
+            switch_id=1,
+            switch_dpid=1,
+            is_valid=True,
+        )
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "custom_name",
+            "id": "1",
+            "uni_a": uni_a,
+            "uni_z": uni_z,
+            "primary_links": [
+                get_link_mocked(
+                    switch_a=Switch(1),
+                    switch_b=Switch(2),
+                    endpoint_a_port=9,
+                    endpoint_b_port=10,
+                    metadata={"s_vlan": 5},
+                ),
+                get_link_mocked(
+                    switch_a=Switch(2),
+                    switch_b=Switch(3),
+                    endpoint_a_port=11,
+                    endpoint_b_port=12,
+                    metadata={"s_vlan": 6},
+                ),
+            ],
+        }
+        return EVC(**attributes)
+
+    @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     def test_install_nni_flows(send_flow_mods_mock):
         """Test install nni flows method.
@@ -1413,6 +1456,7 @@ class TestEVC(TestCase):
     def test_check_list_traces(self, run_bulk_sdntraces_mock, _):
         """Test check_list_traces method."""
         evc = self.create_evc_inter_switch()
+
         for link in evc.primary_links:
             link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
         evc.current_path = evc.primary_links
@@ -1469,6 +1513,57 @@ class TestEVC(TestCase):
         }
         result = EVCDeploy.check_list_traces({evc.id: evc})
         self.assertFalse(result[evc.id])
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
+    def test_check_list_traces_same_switch_unis(self, run_bulk_sdntraces_mock):
+        """Test check_list_traces method."""
+        evc = self.create_evc_inter_switch_same_dpid()
+
+        for link in evc.primary_links:
+            link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
+        evc.current_path = evc.primary_links
+
+        trace_a = [
+            {"dpid": 1, "port": 2, "time": "t1", "type": "start", "vlan": 82},
+            {"dpid": 2, "port": 10, "time": "t2", "type": "trace", "vlan": 5},
+            {"dpid": 3, "port": 12, "time": "t3", "type": "trace", "vlan": 6},
+        ]
+        trace_z = [
+            {"dpid": 1, "port": 3, "time": "t1", "type": "start", "vlan": 83},
+            {"dpid": 2, "port": 11, "time": "t2", "type": "trace", "vlan": 6},
+            {"dpid": 1, "port": 9, "time": "t3", "type": "trace", "vlan": 5},
+        ]
+
+        run_bulk_sdntraces_mock.return_value = {
+                                                1: [trace_a, trace_z]
+                                            }
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertTrue(result[evc.id])
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
+    def test_check_list_traces_current_path_empty(self, bulk_sdntraces_mock):
+        """Test check_list_traces method."""
+        evc = self.create_evc_inter_switch_same_dpid()
+        for link in evc.primary_links:
+            link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
+        evc.current_path = []
+
+        trace_a = [
+            {"dpid": 1, "port": 2, "time": "t1", "type": "start", "vlan": 82},
+            {"dpid": 2, "port": 10, "time": "t2", "type": "trace", "vlan": 5},
+            {"dpid": 3, "port": 12, "time": "t3", "type": "trace", "vlan": 6},
+        ]
+        trace_z = [
+            {"dpid": 1, "port": 3, "time": "t1", "type": "start", "vlan": 83},
+            {"dpid": 2, "port": 11, "time": "t2", "type": "trace", "vlan": 6},
+            {"dpid": 1, "port": 9, "time": "t3", "type": "trace", "vlan": 5},
+        ]
+
+        bulk_sdntraces_mock.return_value = {
+                                                1: [trace_a, trace_z]
+                                            }
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertEqual(len(result), 0)
 
     @patch(
         "napps.kytos.mef_eline.models.path.DynamicPathManager"
