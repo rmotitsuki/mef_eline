@@ -1445,7 +1445,7 @@ class TestEVC(TestCase):
         self.assertFalse(result[evc.id])
 
         # case3: fail incomplete trace from uni_z
-        run_bulk_sdntraces_mock.return_values = {
+        run_bulk_sdntraces_mock.return_value = {
                                                 1: [trace_a],
                                                 3: [trace_z[:2]]
         }
@@ -1455,7 +1455,7 @@ class TestEVC(TestCase):
         # case4: fail wrong vlan id in trace from uni_a
         trace_a[1]["vlan"] = 5
         trace_z[1]["vlan"] = 99
-        run_bulk_sdntraces_mock.return_values = {
+        run_bulk_sdntraces_mock.return_value = {
                                                 1: [trace_a],
                                                 3: [trace_z]
         }
@@ -1464,17 +1464,43 @@ class TestEVC(TestCase):
 
         # case5: fail wrong vlan id in trace from uni_z
         trace_a[1]["vlan"] = 99
-        run_bulk_sdntraces_mock.return_values = {
+        run_bulk_sdntraces_mock.return_value = {
                                                 1: [trace_a],
                                                 3: [trace_z]
         }
         result = EVCDeploy.check_list_traces({evc.id: evc})
         self.assertFalse(result[evc.id])
 
-        # case6: evc with empty current path
-        evc.current_path = []
+        # case6: success when no output in traces
+        trace_a[1]["vlan"] = 5
+        trace_z[1]["vlan"] = 6
         result = EVCDeploy.check_list_traces({evc.id: evc})
-        self.assertNotIn(evc.id, result)
+        self.assertTrue(result[evc.id])
+
+        # case7: fail when output is None in trace_a or trace_b
+        trace_a[-1]["out"] = None
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertFalse(result[evc.id])
+        trace_a[-1].pop("out", None)
+        trace_z[-1]["out"] = None
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertFalse(result[evc.id])
+
+        # case8: success when the output is correct on both uni
+        trace_a[-1]["out"] = {"port": 3, "vlan": 83}
+        trace_z[-1]["out"] = {"port": 2, "vlan": 82}
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertTrue(result[evc.id])
+
+        # case9: fail if any output is incorrect
+        trace_a[-1]["out"] = {"port": 3, "vlan": 99}
+        trace_z[-1]["out"] = {"port": 2, "vlan": 82}
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertFalse(result[evc.id])
+        trace_a[-1]["out"] = {"port": 3, "vlan": 83}
+        trace_z[-1]["out"] = {"port": 2, "vlan": 99}
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertFalse(result[evc.id])
 
     @patch(
         "napps.kytos.mef_eline.models.path.DynamicPathManager"

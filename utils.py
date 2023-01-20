@@ -40,6 +40,30 @@ def compare_endpoint_trace(endpoint, vlan, trace):
     )
 
 
+def compare_uni_out_trace(uni, trace):
+    """Check if the trace last step (output) matches the UNI attributes."""
+    # keep compatibility for old versions of sdntrace-cp
+    if "out" not in trace:
+        return True
+    if not isinstance(trace["out"], dict):
+        return False
+    uni_vlan = uni.user_tag.value if uni.user_tag else None
+    return (
+        uni.interface.port_number == trace["out"].get("port")
+        and uni_vlan == trace["out"].get("vlan")
+    )
+
+
+def uni_to_str(uni):
+    """Create a string representation of the uni: intf_id:portno[:vlan]."""
+    dpid = uni.interface.switch.dpid
+    port = uni.interface.port_number
+    uni_str = str(dpid) + ':' + str(port)
+    if uni.user_tag:
+        uni_str += ':' + str(uni.user_tag.value)
+    return uni_str
+
+
 def load_spec():
     """Validate openapi spec."""
     napp_dir = Path(__file__).parent

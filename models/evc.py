@@ -15,8 +15,10 @@ from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
-from napps.kytos.mef_eline.utils import (compare_endpoint_trace, emit_event,
-                                         notify_link_available_tags)
+from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
+                                         compare_uni_out_trace, emit_event,
+                                         notify_link_available_tags,
+                                         uni_to_str)
 
 from .path import DynamicPathManager, Path
 
@@ -291,6 +293,10 @@ class EVCBase(GenericEntity):
                 return False
         return True
 
+    def is_intra_switch(self):
+        """Check if the UNIs are in the same switch."""
+        return self.uni_a.interface.switch == self.uni_z.interface.switch
+
     def shares_uni(self, other):
         """Check if two EVCs share an UNI."""
         if other.uni_a in (self.uni_a, self.uni_z) or other.uni_z in (
@@ -463,10 +469,7 @@ class EVCDeploy(EVCBase):
         if success:
             return True
 
-        if (
-            self.dynamic_backup_path
-            or self.uni_a.interface.switch == self.uni_z.interface.switch
-        ):
+        if self.dynamic_backup_path or self.is_intra_switch():
             return self.deploy_to_path()
 
         return False
@@ -710,7 +713,7 @@ class EVCDeploy(EVCBase):
             if use_path:
                 self._install_nni_flows(use_path)
                 self._install_uni_flows(use_path)
-            elif self.uni_a.interface.switch == self.uni_z.interface.switch:
+            elif self.is_intra_switch():
                 use_path = Path()
                 self._install_direct_uni_flows()
             else:
@@ -743,7 +746,7 @@ class EVCDeploy(EVCBase):
         5. Update failover_path
         """
         # Intra-switch EVCs have no failover_path
-        if self.uni_a.interface.switch == self.uni_z.interface.switch:
+        if self.is_intra_switch():
             return False
 
         # For not only setup failover path for totally dynamic EVCs
@@ -1147,25 +1150,24 @@ class EVCDeploy(EVCBase):
         return response.json()
 
     @staticmethod
-    def check_trace(
-                    circuit_id,
-                    circuit_current_path,
-                    circuit_by_traces,
-                    circuits_checked
-                ):
+    def check_trace(circuit, circuit_by_traces):
         """Auxiliar function to check an individual trace"""
-        if not circuit_current_path:
-            return
-        circuits_checked[circuit_id] = True
-        trace_a = circuit_by_traces[circuit_id]['trace_a']
-        trace_z = circuit_by_traces[circuit_id]['trace_z']
-        if len(trace_a) != len(circuit_current_path) + 1:
+        trace_a = circuit_by_traces[circuit.id]['trace_a']
+        trace_z = circuit_by_traces[circuit.id]['trace_z']
+        if (
+            len(trace_a) != len(circuit.current_path) + 1
+            or not compare_uni_out_trace(circuit.uni_z, trace_a[-1])
+        ):
             log.warning(f"Invalid trace from uni_a: {trace_a}")
-            circuits_checked[circuit_id] = False
-        if len(trace_z) != len(circuit_current_path) + 1:
+            return False
+        if (
+            len(trace_z) != len(circuit.current_path) + 1
+            or not compare_uni_out_trace(circuit.uni_a, trace_z[-1])
+        ):
             log.warning(f"Invalid trace from uni_z: {trace_z}")
-            circuits_checked[circuit_id] = False
-        for link, trace1, trace2 in zip(circuit_current_path,
+            return False
+
+        for link, trace1, trace2 in zip(circuit.current_path,
                                         trace_a[1:],
                                         trace_z[:0:-1]):
             metadata_vlan = None
@@ -1177,17 +1179,18 @@ class EVCDeploy(EVCBase):
                                         trace2
                                     ) is False:
                 log.warning(f"Invalid trace from uni_a: {trace_a}")
-                circuits_checked[circuit_id] = False
+                return False
             if compare_endpoint_trace(
                                         link.endpoint_b,
                                         metadata_vlan,
                                         trace1
                                     ) is False:
                 log.warning(f"Invalid trace from uni_z: {trace_z}")
-                circuits_checked[circuit_id] = False
+                return False
+
+        return True
 
     @staticmethod
-    # pylint: disable=too-many-locals
     def check_list_traces(list_circuits):
         """Check if current_path is deployed comparing with SDN traces."""
         if not list_circuits:
@@ -1196,28 +1199,23 @@ class EVCDeploy(EVCBase):
         circuit_data = {}
         for circuit_id in list_circuits:
             circuit = list_circuits[circuit_id]
+            # if a inter-switch EVC does not have current_path, it does not
+            # make sense to run sdntrace on it
+            if not circuit.is_intra_switch() and not circuit.current_path:
+                continue
             uni_list.append(circuit.uni_a)
             uni_list.append(circuit.uni_z)
-            dpid_a = circuit.uni_a.interface.switch.dpid
-            port_a = circuit.uni_a.interface.port_number
-            interface_a = str(dpid_a) + ':' + str(port_a)
-            if circuit.uni_a.user_tag:
-                vlan_a = circuit.uni_a.user_tag.value
-                interface_a += ':' + str(vlan_a)
+            interface_a = uni_to_str(circuit.uni_a)
             circuit_data[interface_a] = {
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_a'
                                         }
-            dpid_z = circuit.uni_z.interface.switch.dpid
-            port_z = circuit.uni_z.interface.port_number
-            interface_z = str(dpid_z) + ':' + str(port_z)
-            if circuit.uni_z.user_tag:
-                vlan_z = circuit.uni_z.user_tag.value
-                interface_z += ':' + str(vlan_z)
+            interface_z = uni_to_str(circuit.uni_z)
             circuit_data[interface_z] = {
                                             'circuit_id': circuit.id,
                                             'trace_name': 'trace_z'
                                         }
+
         traces = EVCDeploy.run_bulk_sdntraces(uni_list)
 
         circuit_by_traces = {}
@@ -1234,19 +1232,16 @@ class EVCDeploy(EVCBase):
                 circuit_id = circuit_from_data['circuit_id']
                 trace_name = circuit_from_data['trace_name']
                 circuit = list_circuits[circuit_id]
-                circuit_current_path = circuit.current_path.copy()
                 if circuit_id not in circuit_by_traces:
                     circuit_by_traces[circuit_id] = {}
                 circuit_by_traces[circuit_id][trace_name] = trace
 
                 if 'trace_a' in circuit_by_traces[circuit_id] \
                         and 'trace_z' in circuit_by_traces[circuit_id]:
-                    EVCDeploy.check_trace(
-                                            circuit_id,
-                                            circuit_current_path,
-                                            circuit_by_traces,
-                                            circuits_checked
-                                        )
+                    circuits_checked[circuit_id] = EVCDeploy.check_trace(
+                        circuit, circuit_by_traces
+                    )
+
         return circuits_checked
 
 
