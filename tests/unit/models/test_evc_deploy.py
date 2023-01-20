@@ -1451,7 +1451,7 @@ class TestEVC(TestCase):
         result = EVCDeploy.run_bulk_sdntraces([evc.uni_a])
         self.assertEqual(result, [])
 
-    @patch("napps.kytos.mef_eline.models.evc.log.debug")
+    @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
     def test_check_list_traces(self, run_bulk_sdntraces_mock, _):
         """Test check_list_traces method."""
