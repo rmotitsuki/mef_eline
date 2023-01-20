@@ -1191,7 +1191,6 @@ class EVCDeploy(EVCBase):
         return True
 
     @staticmethod
-    # py#####lint: disable=too-many-locals
     def check_list_traces(list_circuits):
         """Check if current_path is deployed comparing with SDN traces."""
         if not list_circuits:
