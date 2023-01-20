@@ -97,8 +97,8 @@ class Main(KytosNApp):
             ):
                 circuits_to_check[circuit.id] = circuit
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
-        for circuit_id, is_checked in circuits_checked.items():
-            circuit = circuits_to_check[circuit_id]
+        for circuit_id, circuit in circuits_to_check.items():
+            is_checked = circuits_checked.get(circuit_id)
             if is_checked:
                 circuit.execution_rounds = 0
                 log.info(f"{circuit} enabled but inactive - activating")
