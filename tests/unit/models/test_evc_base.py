@@ -403,3 +403,18 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         evc._id = evc_id
         # pylint: enable=protected-access
         assert EVC.get_id_from_cookie(evc.get_cookie()) == evc_id
+
+    def test_is_intra_switch(self):
+        """Test is_intra_switch method."""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        evc = EVC(**attributes)
+        assert not evc.is_intra_switch()
+
+        evc.uni_a.interface.switch = evc.uni_z.interface.switch
+        assert evc.is_intra_switch()
