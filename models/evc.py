@@ -1154,6 +1154,8 @@ class EVCDeploy(EVCBase):
                     circuits_checked
                 ):
         """Auxiliar function to check an individual trace"""
+        if not circuit_current_path:
+            return
         circuits_checked[circuit_id] = True
         trace_a = circuit_by_traces[circuit_id]['trace_a']
         trace_z = circuit_by_traces[circuit_id]['trace_z']

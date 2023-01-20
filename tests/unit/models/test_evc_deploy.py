@@ -1413,6 +1413,7 @@ class TestEVC(TestCase):
     def test_check_list_traces(self, run_bulk_sdntraces_mock, _):
         """Test check_list_traces method."""
         evc = self.create_evc_inter_switch()
+
         for link in evc.primary_links:
             link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
         evc.current_path = evc.primary_links
@@ -1469,6 +1470,11 @@ class TestEVC(TestCase):
         }
         result = EVCDeploy.check_list_traces({evc.id: evc})
         self.assertFalse(result[evc.id])
+
+        # case6: evc with empty current path
+        evc.current_path = []
+        result = EVCDeploy.check_list_traces({evc.id: evc})
+        self.assertNotIn(evc.id, result)
 
     @patch(
         "napps.kytos.mef_eline.models.path.DynamicPathManager"
