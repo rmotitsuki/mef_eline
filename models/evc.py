@@ -1154,36 +1154,37 @@ class EVCDeploy(EVCBase):
                     circuits_checked
                 ):
         """Auxiliar function to check an individual trace"""
-        if circuit_current_path:
-            circuits_checked[circuit_id] = True
-            trace_a = circuit_by_traces[circuit_id]['trace_a']
-            trace_z = circuit_by_traces[circuit_id]['trace_z']
-            if len(trace_a) != len(circuit_current_path) + 1:
+        if not circuit_current_path:
+            return
+        circuits_checked[circuit_id] = True
+        trace_a = circuit_by_traces[circuit_id]['trace_a']
+        trace_z = circuit_by_traces[circuit_id]['trace_z']
+        if len(trace_a) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            circuits_checked[circuit_id] = False
+        if len(trace_z) != len(circuit_current_path) + 1:
+            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            circuits_checked[circuit_id] = False
+        for link, trace1, trace2 in zip(circuit_current_path,
+                                        trace_a[1:],
+                                        trace_z[:0:-1]):
+            metadata_vlan = None
+            if link.metadata:
+                metadata_vlan = glom(link.metadata, 's_vlan.value')
+            if compare_endpoint_trace(
+                                        link.endpoint_a,
+                                        metadata_vlan,
+                                        trace2
+                                    ) is False:
                 log.warning(f"Invalid trace from uni_a: {trace_a}")
                 circuits_checked[circuit_id] = False
-            if len(trace_z) != len(circuit_current_path) + 1:
+            if compare_endpoint_trace(
+                                        link.endpoint_b,
+                                        metadata_vlan,
+                                        trace1
+                                    ) is False:
                 log.warning(f"Invalid trace from uni_z: {trace_z}")
                 circuits_checked[circuit_id] = False
-            for link, trace1, trace2 in zip(circuit_current_path,
-                                            trace_a[1:],
-                                            trace_z[:0:-1]):
-                metadata_vlan = None
-                if link.metadata:
-                    metadata_vlan = glom(link.metadata, 's_vlan.value')
-                if compare_endpoint_trace(
-                                            link.endpoint_a,
-                                            metadata_vlan,
-                                            trace2
-                                        ) is False:
-                    log.warning(f"Invalid trace from uni_a: {trace_a}")
-                    circuits_checked[circuit_id] = False
-                if compare_endpoint_trace(
-                                            link.endpoint_b,
-                                            metadata_vlan,
-                                            trace1
-                                        ) is False:
-                    log.warning(f"Invalid trace from uni_z: {trace_z}")
-                    circuits_checked[circuit_id] = False
 
     @staticmethod
     # pylint: disable=too-many-locals
@@ -1221,6 +1222,7 @@ class EVCDeploy(EVCBase):
 
         circuit_by_traces = {}
         circuits_checked = {}
+
         for trace_switch in traces:
             for trace in traces[trace_switch]:
                 id_trace = str(trace[0]['dpid']) + ':' + str(trace[0]['port'])
