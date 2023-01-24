@@ -8,6 +8,22 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
+
+Changed
+=======
+
+Removed
+=======
+
+Fixed
+=====
+
+
+[2022.3.0] - 2023-01-23
+***********************
+
+Added
+=====
 - Added ``service_level`` EVC attribute to set the service network convergence level, the higher the better
 - EVCs with higher service level priority will be handled first during network convergence, including when running ``sdntrace_cp`` consistency checks.
 - Added support for constrained paths for primary dynamic paths and failover paths, ``primary_constraints`` and ``secondary_constraints`` can be set via API.
@@ -38,6 +54,7 @@ Fixed
 - Fixed found but unloaded message log attempt for archived EVCs
 - Fixed EVC validation to catch nonexistent links interfaces
 - Allowed ``primary_path`` to be empty on update when ``dynamic_backup_path`` is true and ``backup_path`` to be empty too
+
 
 [2022.2.0] - 2022-08-12
 ***********************
