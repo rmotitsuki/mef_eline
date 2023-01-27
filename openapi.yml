@@ -357,6 +357,8 @@ components:
           maximum: 7
         enabled:
           type: boolean
+        metadata:
+          type: object
     NewLink:
       type: object
       required:
