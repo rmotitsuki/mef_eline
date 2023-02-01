@@ -12,7 +12,6 @@ from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
-from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
@@ -233,15 +232,18 @@ class Main(KytosNApp):
                 evc.deploy()
 
         # Notify users
-        event = KytosEvent(
-            name="kytos.mef_eline.created", content=evc.as_dict()
-        )
-        self.controller.buffers.app.put(event)
-
         result = {"circuit_id": evc.id}
         status = 201
         log.debug("create_circuit result %s %s", result, status)
-        emit_event(self.controller, "created", evc_id=evc.id)
+        emit_event(self.controller, _name="created", **{
+            "id": evc.id,
+            "name": evc.name,
+            "metadata": evc.metadata,
+            "active": evc._active,
+            "enabled": evc._enabled,
+            "uni_a": evc.uni_a,
+            "uni_z": evc.uni_z
+        })
         return jsonify(result), status
 
     @listen_to('kytos/flow_manager.flow.removed')
@@ -689,7 +691,7 @@ class Main(KytosNApp):
                 emit_event(
                     self.controller,
                     context="kytos.flow_manager",
-                    name="flows.install",
+                    _name="flows.install",
                     dpid=dpid,
                     flow_dict={"flows": switch_flows[dpid][:offset]},
                 )
