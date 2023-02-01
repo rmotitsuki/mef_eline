@@ -3,7 +3,7 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
-[2022.3.1]
+[Unreleased]
 ************
 
 Added
