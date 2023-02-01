@@ -8,6 +8,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
+- Added ``metadata`` to EVC schema
 
 Changed
 =======
