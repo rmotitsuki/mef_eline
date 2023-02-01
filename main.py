@@ -235,7 +235,7 @@ class Main(KytosNApp):
         result = {"circuit_id": evc.id}
         status = 201
         log.debug("create_circuit result %s %s", result, status)
-        emit_event(self.controller, _name="created", **{
+        emit_event(self.controller, name="created", content={
             "id": evc.id,
             "name": evc.name,
             "metadata": evc.metadata,
@@ -314,7 +314,10 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("update result %s %s", result, status)
-        emit_event(self.controller, "updated", evc_id=evc.id, data=data)
+        emit_event(self.controller, "updated", content={
+            "evc_id": evc.id,
+            "data": data
+        })
         return jsonify(result), status
 
     @rest("/v2/evc/<circuit_id>", methods=["DELETE"])
@@ -351,7 +354,9 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("delete_circuit result %s %s", result, status)
-        emit_event(self.controller, "deleted", evc_id=evc.id)
+        emit_event(self.controller, "deleted", content={
+            "evc_id": evc.id
+        })
         return jsonify(result), status
 
     @rest("v2/evc/<circuit_id>/metadata", methods=["GET"])
@@ -691,9 +696,11 @@ class Main(KytosNApp):
                 emit_event(
                     self.controller,
                     context="kytos.flow_manager",
-                    _name="flows.install",
-                    dpid=dpid,
-                    flow_dict={"flows": switch_flows[dpid][:offset]},
+                    name="flows.install",
+                    content={
+                        "dpid": dpid,
+                        "flow_dict": {"flows": switch_flows[dpid][:offset]},
+                    }
                 )
                 if offset is None or offset >= len(switch_flows[dpid]):
                     del switch_flows[dpid]
@@ -707,7 +714,9 @@ class Main(KytosNApp):
                 evc.current_path = evc.failover_path
                 evc.failover_path = old_path
                 evc.sync()
-            emit_event(self.controller, "redeployed_link_down", evc_id=evc.id)
+            emit_event(self.controller, "redeployed_link_down", content={
+                "evc_id": evc.id
+            })
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
             )
@@ -716,8 +725,10 @@ class Main(KytosNApp):
             emit_event(
                 self.controller,
                 "evc_affected_by_link_down",
-                evc_id=evc.id,
-                link_id=link.id,
+                content={
+                    "evc_id": evc.id,
+                    "link_id": link.id,
+                }
             )
 
         # After handling the hot path, check if new failover paths are needed.
@@ -745,7 +756,9 @@ class Main(KytosNApp):
         if result:
             log.info(f"{evc} redeployed due to link down {link_id}")
             event_name = "redeployed_link_down"
-        emit_event(self.controller, event_name, evc_id=evc.id)
+        emit_event(self.controller, event_name, content={
+            "evc_id": evc.id
+        })
 
     @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
     def on_evc_deployed(self, event):
