@@ -3,11 +3,12 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
-[Unreleased]
+[2022.3.1]
 ************
 
 Added
 =====
+- Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
 
 Changed
 =======
