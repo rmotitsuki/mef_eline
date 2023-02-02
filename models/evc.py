@@ -43,7 +43,7 @@ class EVCBase(GenericEntity):
         "primary_constraints",
         "secondary_constraints",
         "uni_a",
-        "uni_z"
+        "uni_z",
     ]
     required_attributes = ["name", "uni_a", "uni_z"]
 
