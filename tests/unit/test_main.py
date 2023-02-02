@@ -1901,49 +1901,67 @@ class TestMain(TestCase):
                 self.napp.controller,
                 context="kytos.flow_manager",
                 name="flows.install",
-                dpid="4",
-                flow_dict={"flows": ["flow7", "flow8"]},
+                content={
+                    "dpid": "4",
+                    "flow_dict": {"flows": ["flow7", "flow8"]},
+                }
             ),
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
                 name="flows.install",
-                dpid="5",
-                flow_dict={"flows": ["flow9", "flow10"]},
+                content={
+                    "dpid": "5",
+                    "flow_dict": {"flows": ["flow9", "flow10"]},
+                }
             ),
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
                 name="flows.install",
-                dpid="2",
-                flow_dict={"flows": ["flow1", "flow2"]},
+                content={
+                    "dpid": "2",
+                    "flow_dict": {"flows": ["flow1", "flow2"]},
+                }
             ),
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
                 name="flows.install",
-                dpid="3",
-                flow_dict={"flows": ["flow3", "flow4"]},
+                content={
+                    "dpid": "3",
+                    "flow_dict": {"flows": ["flow3", "flow4"]},
+                }
             ),
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
                 name="flows.install",
-                dpid="3",
-                flow_dict={"flows": ["flow5", "flow6"]},
+                content={
+                    "dpid": "3",
+                    "flow_dict": {"flows": ["flow5", "flow6"]},
+                }
             ),
         ])
         event_name = "evc_affected_by_link_down"
         assert evc3.service_level > evc1.service_level
         # evc3 should be handled before evc1
         emit_event_mock.assert_has_calls([
-            call(self.napp.controller, event_name, evc_id="3", link_id="123"),
-            call(self.napp.controller, event_name, evc_id="1", link_id="123"),
+            call(self.napp.controller, event_name, content={
+                "evc_id": "3",
+                "link_id": "123"
+            }),
+            call(self.napp.controller, event_name, content={
+                "evc_id": "1",
+                "link_id": "123"
+            }),
         ])
         evc4.sync.assert_called_once()
         event_name = "redeployed_link_down"
         emit_event_mock.assert_has_calls([
-            call(self.napp.controller, event_name, evc_id="4"),
+            call(self.napp.controller, event_name, content={
+                "evc_id": "4"
+            }),
         ])
 
     @patch("napps.kytos.mef_eline.main.emit_event")
@@ -1962,13 +1980,17 @@ class TestMain(TestCase):
         event.content["evc_id"] = "1"
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_called_with(
-            self.napp.controller, "redeployed_link_down", evc_id="1"
+            self.napp.controller, "redeployed_link_down", content={
+                "evc_id": "1"
+            }
         )
 
         event.content["evc_id"] = "2"
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_called_with(
-            self.napp.controller, "error_redeploy_link_down", evc_id="2"
+            self.napp.controller, "error_redeploy_link_down", content={
+                "evc_id": "2"
+            }
         )
 
     def test_handle_evc_deployed(self):

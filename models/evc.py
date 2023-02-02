@@ -505,7 +505,9 @@ class EVCDeploy(EVCBase):
             success = self.deploy_to_backup_path()
 
         if success:
-            emit_event(self._controller, "deployed", evc_id=self.id)
+            emit_event(self._controller, "deployed", content={
+                "evc_id": self.id
+            })
         return success
 
     @staticmethod
@@ -531,7 +533,9 @@ class EVCDeploy(EVCBase):
         self.remove_failover_flows()
         self.disable()
         self.sync()
-        emit_event(self._controller, "undeployed", evc_id=self.id)
+        emit_event(self._controller, "undeployed", content={
+            "evc_id": self.id
+        })
 
     def remove_failover_flows(self, exclude_uni_switches=True,
                               force=True, sync=True) -> None:
@@ -1317,7 +1321,9 @@ class LinkProtection(EVCDeploy):
             success = self.deploy_to_path()
 
         if success:
-            emit_event(self._controller, "redeployed_link_up", evc_id=self.id)
+            emit_event(self._controller, "redeployed_link_up", content={
+                "evc_id": self.id
+            })
             return True
 
         return True
