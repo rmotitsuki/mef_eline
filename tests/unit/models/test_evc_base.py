@@ -39,7 +39,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "primary_constraints",
             "secondary_constraints",
             "uni_a",
-            "uni_z"
+            "uni_z",
         ]
         assert EVC.attributes_requiring_redeploy == expected
 
