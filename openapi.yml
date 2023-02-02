@@ -598,9 +598,6 @@ components:
 
     Tag: # Can be referenced via '#/components/schemas/Tag'
       type: object
-      required:
-        - tag_type
-        - value
       properties:
         tag_type:
           type: integer
