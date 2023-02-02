@@ -504,7 +504,13 @@ class EVCDeploy(EVCBase):
 
         if success:
             emit_event(self._controller, "deployed", content={
-                "evc_id": self.id
+                "evc_id": self.id,
+                "name": self.name,
+                "metadata": self.metadata,
+                "active": self._active,
+                "enabled": self._enabled,
+                "uni_a": self.uni_a.as_dict(),
+                "uni_z": self.uni_z.as_dict(),
             })
         return success
 
@@ -532,7 +538,13 @@ class EVCDeploy(EVCBase):
         self.disable()
         self.sync()
         emit_event(self._controller, "undeployed", content={
-            "evc_id": self.id
+            "evc_id": self.id,
+            "name": self.name,
+            "metadata": self.metadata,
+            "active": self._active,
+            "enabled": self._enabled,
+            "uni_a": self.uni_a.as_dict(),
+            "uni_z": self.uni_z.as_dict(),
         })
 
     def remove_failover_flows(self, exclude_uni_switches=True,
@@ -1320,7 +1332,13 @@ class LinkProtection(EVCDeploy):
 
         if success:
             emit_event(self._controller, "redeployed_link_up", content={
-                "evc_id": self.id
+                "evc_id": self.id,
+                "name": self.name,
+                "metadata": self.metadata,
+                "active": self._active,
+                "enabled": self._enabled,
+                "uni_a": self.uni_a.as_dict(),
+                "uni_z": self.uni_z.as_dict(),
             })
             return True
 

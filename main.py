@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, too-many-lines
 """Main module of kytos/mef_eline Kytos Network Application.
 
 NApp to provision circuits from user request.
@@ -236,13 +236,13 @@ class Main(KytosNApp):
         status = 201
         log.debug("create_circuit result %s %s", result, status)
         emit_event(self.controller, name="created", content={
-            "id": evc.id,
+            "evc.id": evc.id,
             "name": evc.name,
             "metadata": evc.metadata,
             "active": evc._active,
             "enabled": evc._enabled,
             "uni_a": evc.uni_a,
-            "uni_z": evc.uni_z
+            "uni_z": evc.uni_z,
         })
         return jsonify(result), status
 
@@ -315,8 +315,13 @@ class Main(KytosNApp):
 
         log.debug("update result %s %s", result, status)
         emit_event(self.controller, "updated", content={
-            "evc_id": evc.id,
-            "data": data
+            "evc.id": evc.id,
+            "name": evc.name,
+            "metadata": evc.metadata,
+            "active": evc._active,
+            "enabled": evc._enabled,
+            "uni_a": evc.uni_a,
+            "uni_z": evc.uni_z,
         })
         return jsonify(result), status
 
@@ -355,7 +360,13 @@ class Main(KytosNApp):
 
         log.debug("delete_circuit result %s %s", result, status)
         emit_event(self.controller, "deleted", content={
-            "evc_id": evc.id
+            "evc_id": evc.id,
+            "name": evc.name,
+            "metadata": evc.metadata,
+            "active": evc._active,
+            "enabled": evc._enabled,
+            "uni_a": evc.uni_a,
+            "uni_z": evc.uni_z,
         })
         return jsonify(result), status
 
@@ -715,7 +726,13 @@ class Main(KytosNApp):
                 evc.failover_path = old_path
                 evc.sync()
             emit_event(self.controller, "redeployed_link_down", content={
-                "evc_id": evc.id
+                "evc_id": evc.id,
+                "name": evc.name,
+                "metadata": evc.metadata,
+                "active": evc._active,
+                "enabled": evc._enabled,
+                "uni_a": evc.uni_a,
+                "uni_z": evc.uni_z,
             })
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
@@ -726,8 +743,14 @@ class Main(KytosNApp):
                 self.controller,
                 "evc_affected_by_link_down",
                 content={
-                    "evc_id": evc.id,
                     "link_id": link.id,
+                    "evc_id": evc.id,
+                    "name": evc.name,
+                    "metadata": evc.metadata,
+                    "active": evc._active,
+                    "enabled": evc._enabled,
+                    "uni_a": evc.uni_a,
+                    "uni_z": evc.uni_z,
                 }
             )
 
@@ -757,7 +780,13 @@ class Main(KytosNApp):
             log.info(f"{evc} redeployed due to link down {link_id}")
             event_name = "redeployed_link_down"
         emit_event(self.controller, event_name, content={
-            "evc_id": evc.id
+            "evc_id": evc.id,
+            "name": evc.name,
+            "metadata": evc.metadata,
+            "active": evc._active,
+            "enabled": evc._enabled,
+            "uni_a": evc.uni_a,
+            "uni_z": evc.uni_z,
         })
 
     @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
