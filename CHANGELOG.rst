@@ -8,6 +8,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
+- Added more content keys ``evc_id, name, metadata, active, enabled, uni_a, uni_z`` to events from ``mef_eline``
 
 Changed
 =======
