@@ -20,7 +20,8 @@ from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import emit_event, load_spec, validate
+from napps.kytos.mef_eline.utils import (emit_event, load_spec,
+                                         map_evc_event_content, validate)
 
 
 # pylint: disable=too-many-public-methods
@@ -235,15 +236,8 @@ class Main(KytosNApp):
         result = {"circuit_id": evc.id}
         status = 201
         log.debug("create_circuit result %s %s", result, status)
-        emit_event(self.controller, name="created", content={
-            "evc.id": evc.id,
-            "name": evc.name,
-            "metadata": evc.metadata,
-            "active": evc._active,
-            "enabled": evc._enabled,
-            "uni_a": evc.uni_a,
-            "uni_z": evc.uni_z,
-        })
+        emit_event(self.controller, name="created",
+                   content=map_evc_event_content(evc))
         return jsonify(result), status
 
     @listen_to('kytos/flow_manager.flow.removed')
@@ -314,15 +308,8 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("update result %s %s", result, status)
-        emit_event(self.controller, "updated", content={
-            "evc.id": evc.id,
-            "name": evc.name,
-            "metadata": evc.metadata,
-            "active": evc._active,
-            "enabled": evc._enabled,
-            "uni_a": evc.uni_a,
-            "uni_z": evc.uni_z,
-        })
+        emit_event(self.controller, "updated",
+                   content=map_evc_event_content(evc))
         return jsonify(result), status
 
     @rest("/v2/evc/<circuit_id>", methods=["DELETE"])
@@ -359,15 +346,8 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("delete_circuit result %s %s", result, status)
-        emit_event(self.controller, "deleted", content={
-            "evc_id": evc.id,
-            "name": evc.name,
-            "metadata": evc.metadata,
-            "active": evc._active,
-            "enabled": evc._enabled,
-            "uni_a": evc.uni_a,
-            "uni_z": evc.uni_z,
-        })
+        emit_event(self.controller, "deleted",
+                   content=map_evc_event_content(evc))
         return jsonify(result), status
 
     @rest("v2/evc/<circuit_id>/metadata", methods=["GET"])
@@ -725,15 +705,8 @@ class Main(KytosNApp):
                 evc.current_path = evc.failover_path
                 evc.failover_path = old_path
                 evc.sync()
-            emit_event(self.controller, "redeployed_link_down", content={
-                "evc_id": evc.id,
-                "name": evc.name,
-                "metadata": evc.metadata,
-                "active": evc._active,
-                "enabled": evc._enabled,
-                "uni_a": evc.uni_a,
-                "uni_z": evc.uni_z,
-            })
+            emit_event(self.controller, "redeployed_link_down",
+                       content=map_evc_event_content(evc))
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
             )
@@ -742,16 +715,7 @@ class Main(KytosNApp):
             emit_event(
                 self.controller,
                 "evc_affected_by_link_down",
-                content={
-                    "link_id": link.id,
-                    "evc_id": evc.id,
-                    "name": evc.name,
-                    "metadata": evc.metadata,
-                    "active": evc._active,
-                    "enabled": evc._enabled,
-                    "uni_a": evc.uni_a,
-                    "uni_z": evc.uni_z,
-                }
+                content={"link_id": link.id} | map_evc_event_content(evc)
             )
 
         # After handling the hot path, check if new failover paths are needed.
@@ -779,15 +743,8 @@ class Main(KytosNApp):
         if result:
             log.info(f"{evc} redeployed due to link down {link_id}")
             event_name = "redeployed_link_down"
-        emit_event(self.controller, event_name, content={
-            "evc_id": evc.id,
-            "name": evc.name,
-            "metadata": evc.metadata,
-            "active": evc._active,
-            "enabled": evc._enabled,
-            "uni_a": evc.uni_a,
-            "uni_z": evc.uni_z,
-        })
+        emit_event(self.controller, event_name,
+                   content=map_evc_event_content(evc))
 
     @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
     def on_evc_deployed(self, event):

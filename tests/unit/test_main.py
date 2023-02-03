@@ -1860,9 +1860,10 @@ class TestMain(TestCase):
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_link_down(self, emit_event_mock, settings_mock, _):
         """Test handle_link_down method."""
+        uni = create_autospec(UNI)
         evc1 = MagicMock(id="1", service_level=0, creation_time=1,
                          metadata="mock", _active="true", _enabled="true",
-                         uni_a="a_uni", uni_z="z_uni")
+                         uni_a=uni, uni_z=uni)
         evc1.name = "name"
         evc1.is_affected_by_link.return_value = True
         evc1.handle_link_down.return_value = True
@@ -1871,14 +1872,14 @@ class TestMain(TestCase):
         evc2.is_affected_by_link.return_value = False
         evc3 = MagicMock(id="3", service_level=5, creation_time=1,
                          metadata="mock", _active="true", _enabled="true",
-                         uni_a="a_uni", uni_z="z_uni")
+                         uni_a=uni, uni_z=uni)
         evc3.name = "name"
         evc3.is_affected_by_link.return_value = True
         evc3.handle_link_down.return_value = True
         evc3.failover_path = None
         evc4 = MagicMock(id="4", service_level=4, creation_time=1,
                          metadata="mock", _active="true", _enabled="true",
-                         uni_a="a_uni", uni_z="z_uni")
+                         uni_a=uni, uni_z=uni)
         evc4.name = "name"
         evc4.is_affected_by_link.return_value = True
         evc4.is_failover_path_affected_by_link.return_value = False
@@ -1962,8 +1963,8 @@ class TestMain(TestCase):
                 "metadata": "mock",
                 "active": "true",
                 "enabled": "true",
-                "uni_a": "a_uni",
-                "uni_z": "z_uni",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
                 "link_id": "123",
@@ -1972,8 +1973,8 @@ class TestMain(TestCase):
                 "metadata": "mock",
                 "active": "true",
                 "enabled": "true",
-                "uni_a": "a_uni",
-                "uni_z": "z_uni",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
         ])
         evc4.sync.assert_called_once()
@@ -1985,21 +1986,22 @@ class TestMain(TestCase):
                 "metadata": "mock",
                 "active": "true",
                 "enabled": "true",
-                "uni_a": "a_uni",
-                "uni_z": "z_uni",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
         ])
 
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_evc_affected_by_link_down(self, emit_event_mock):
         """Test handle_evc_affected_by_link_down method."""
+        uni = create_autospec(UNI)
         evc1 = MagicMock(
             id="1",
             metadata="data_mocked",
             _active="true",
             _enabled="false",
-            uni_a="uni_amocked",
-            uni_z="uni_mockedz",
+            uni_a=uni,
+            uni_z=uni,
         )
         evc1.name = "name_mocked"
         evc1.handle_link_down.return_value = True
@@ -2008,8 +2010,8 @@ class TestMain(TestCase):
             metadata="mocked_data",
             _active="false",
             _enabled="true",
-            uni_a="uni_amocked",
-            uni_z="uni_mockedz",
+            uni_a=uni,
+            uni_z=uni,
         )
         evc2.name = "mocked_name"
         evc2.handle_link_down.return_value = False
@@ -2030,8 +2032,8 @@ class TestMain(TestCase):
                 "metadata": "data_mocked",
                 "active": "true",
                 "enabled": "false",
-                "uni_a": "uni_amocked",
-                "uni_z": "uni_mockedz",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }
         )
 
@@ -2044,8 +2046,8 @@ class TestMain(TestCase):
                 "metadata": "mocked_data",
                 "active": "false",
                 "enabled": "true",
-                "uni_a": "uni_amocked",
-                "uni_z": "uni_mockedz",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }
         )
 

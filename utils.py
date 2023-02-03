@@ -14,6 +14,17 @@ from kytos.core import log
 from kytos.core.events import KytosEvent
 
 
+def map_evc_event_content(evc):
+    """Returns a set of values from evc to be used for content"""
+    return {"evc_id": evc.id,
+            "name": evc.name,
+            "metadata": evc.metadata,
+            "active": evc._active,
+            "enabled": evc._enabled,
+            "uni_a": evc.uni_a.as_dict(),
+            "uni_z": evc.uni_z.as_dict()}
+
+
 def emit_event(controller, name, context="kytos/mef_eline", content=None):
     """Send an event when something happens with an EVC."""
     event_name = f"{context}.{name}"
