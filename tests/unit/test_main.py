@@ -991,6 +991,7 @@ class TestMain(TestCase):
         payload = {
             "circuit_id": requested_id,
             "schedule": {"frequency": "1 * * * *", "action": "create"},
+            "metadata": {"metadata1": "test_data"},
         }
 
         # Call URL
