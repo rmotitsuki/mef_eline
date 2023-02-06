@@ -42,7 +42,9 @@ class EVCBase(GenericEntity):
         "queue_id",
         "sb_priority",
         "primary_constraints",
-        "secondary_constraints"
+        "secondary_constraints",
+        "uni_a",
+        "uni_z",
     ]
     required_attributes = ["name", "uni_a", "uni_z"]
 
