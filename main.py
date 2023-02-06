@@ -309,7 +309,7 @@ class Main(KytosNApp):
 
         log.debug("update result %s %s", result, status)
         emit_event(self.controller, "updated",
-                   content=map_evc_event_content(evc))
+                   content=map_evc_event_content(evc, **data))
         return jsonify(result), status
 
     @rest("/v2/evc/<circuit_id>", methods=["DELETE"])

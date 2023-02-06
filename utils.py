@@ -14,9 +14,9 @@ from kytos.core import log
 from kytos.core.events import KytosEvent
 
 
-def map_evc_event_content(evc):
+def map_evc_event_content(evc, **kwargs):
     """Returns a set of values from evc to be used for content"""
-    return {"evc_id": evc.id,
+    return kwargs | {"evc_id": evc.id,
             "name": evc.name,
             "metadata": evc.metadata,
             "active": evc._active,
