@@ -1105,8 +1105,9 @@ class EVCDeploy(EVCBase):
             in_interface, out_interface, queue_id, is_EVPL
         )
         # the service tag must be always pushed
-        new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
-        flow_mod["actions"].insert(0, new_action)
+        if out_vlan != "any":
+            new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
+            flow_mod["actions"].insert(0, new_action)
 
         new_action = {"action_type": "push_vlan", "tag_type": "s"}
         flow_mod["actions"].insert(0, new_action)
