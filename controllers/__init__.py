@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import pymongo
+from pydantic import ValidationError
 from pymongo.collection import ReturnDocument
 from pymongo.errors import AutoReconnect
 from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
@@ -71,12 +72,16 @@ class ELineController:
     def upsert_evc(self, evc: Dict) -> Optional[Dict]:
         """Update or insert an EVC"""
         utc_now = datetime.utcnow()
-        model = EVCBaseDoc(
-            **{
-                **evc,
-                **{"_id": evc["id"]}
-            }
-        )
+        try:
+            model = EVCBaseDoc(
+                **{
+                    **evc,
+                    **{"_id": evc["id"]}
+                }
+            )
+        except ValidationError as err:
+            raise err
+
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},
             {

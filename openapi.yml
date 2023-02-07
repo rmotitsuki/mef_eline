@@ -603,8 +603,10 @@ components:
           type: integer
           format: int32
         value:
-          type: integer
-          format: int32
+          oneOf:
+            - type: integer
+              format: int32
+            - type: string
 
     CircuitSchedule: # Can be referenced via '#/components/schemas/CircuitSchedule'
       type: object

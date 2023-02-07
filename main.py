@@ -7,6 +7,7 @@ import time
 from threading import Lock
 
 from flask import jsonify, request
+from pydantic import ValidationError
 from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  MethodNotAllowed, NotFound,
                                  UnsupportedMediaType)
@@ -229,11 +230,14 @@ class Main(KytosNApp):
         except ValueError as exception:
             raise BadRequest(str(exception)) from exception
 
+        # save circuit
+        try:
+            evc.sync()
+        except ValidationError as exception:
+            raise BadRequest(str(exception)) from exception
+
         # store circuit in dictionary
         self.circuits[evc.id] = evc
-
-        # save circuit
-        evc.sync()
 
         # Schedule the circuit deploy
         self.sched.add(evc)

@@ -3,9 +3,9 @@
 # pylint: disable=no-self-argument,no-name-in-module
 
 from datetime import datetime
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
 
 
 class DocumentBaseModel(BaseModel):
@@ -38,7 +38,13 @@ class CircuitScheduleDoc(BaseModel):
 class TAGDoc(BaseModel):
     """TAG model"""
     tag_type: int
-    value: int
+    value: Union[str, int]
+
+    @validator('value')
+    def validate_value(cls, value):
+        """Validate value when is a string"""
+        if value.isinstance(str) and value not in ("any", "untagged"):
+            raise ValueError("value only allows 'any' and 'untagged' strings")
 
 
 class UNIDoc(BaseModel):
