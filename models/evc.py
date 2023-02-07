@@ -251,7 +251,10 @@ class EVCBase(GenericEntity):
                     raise ValueError(f"{attribute} is an invalid UNI.")
 
                 if not uni.is_valid():
-                    tag = uni.user_tag.value
+                    try:
+                        tag = uni.user_tag.value
+                    except AttributeError:
+                        tag = None
                     message = f"VLAN tag {tag} is not available in {attribute}"
                     raise ValueError(message)
 
@@ -1064,8 +1067,9 @@ class EVCDeploy(EVCBase):
         )
 
         # the service tag must be always pushed
-        new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
-        flow_mod["actions"].insert(0, new_action)
+        if out_vlan != "any":
+            new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
+            flow_mod["actions"].insert(0, new_action)
 
         new_action = {"action_type": "push_vlan", "tag_type": "s"}
         flow_mod["actions"].insert(0, new_action)
@@ -1075,8 +1079,9 @@ class EVCDeploy(EVCBase):
             flow_mod["match"]["dl_vlan"] = in_vlan
         if new_c_vlan:
             # new_in_vlan is set, so an action to set it is necessary
-            new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
-            flow_mod["actions"].insert(0, new_action)
+            if out_vlan != "any":
+                new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
+                flow_mod["actions"].insert(0, new_action)
             if not in_vlan:
                 # new_in_vlan is set, but in_vlan is not, so there was no
                 # vlan set; then it is set now
