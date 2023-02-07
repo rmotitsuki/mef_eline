@@ -1861,17 +1861,27 @@ class TestMain(TestCase):
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_link_down(self, emit_event_mock, settings_mock, _):
         """Test handle_link_down method."""
-        evc1 = MagicMock(id="1", service_level=0, creation_time=1)
+        uni = create_autospec(UNI)
+        evc1 = MagicMock(id="1", service_level=0, creation_time=1,
+                         metadata="mock", _active="true", _enabled="true",
+                         uni_a=uni, uni_z=uni)
+        evc1.name = "name"
         evc1.is_affected_by_link.return_value = True
         evc1.handle_link_down.return_value = True
         evc1.failover_path = None
         evc2 = MagicMock(id="2", service_level=6, creation_time=1)
         evc2.is_affected_by_link.return_value = False
-        evc3 = MagicMock(id="3", service_level=5, creation_time=1)
+        evc3 = MagicMock(id="3", service_level=5, creation_time=1,
+                         metadata="mock", _active="true", _enabled="true",
+                         uni_a=uni, uni_z=uni)
+        evc3.name = "name"
         evc3.is_affected_by_link.return_value = True
         evc3.handle_link_down.return_value = True
         evc3.failover_path = None
-        evc4 = MagicMock(id="4", service_level=4, creation_time=1)
+        evc4 = MagicMock(id="4", service_level=4, creation_time=1,
+                         metadata="mock", _active="true", _enabled="true",
+                         uni_a=uni, uni_z=uni)
+        evc4.name = "name"
         evc4.is_affected_by_link.return_value = True
         evc4.is_failover_path_affected_by_link.return_value = False
         evc4.failover_path = ["2"]
@@ -1948,40 +1958,83 @@ class TestMain(TestCase):
         # evc3 should be handled before evc1
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
+                "link_id": "123",
                 "evc_id": "3",
-                "link_id": "123"
+                "name": "name",
+                "metadata": "mock",
+                "active": "true",
+                "enabled": "true",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
+                "link_id": "123",
                 "evc_id": "1",
-                "link_id": "123"
+                "name": "name",
+                "metadata": "mock",
+                "active": "true",
+                "enabled": "true",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
         ])
         evc4.sync.assert_called_once()
         event_name = "redeployed_link_down"
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
-                "evc_id": "4"
+                "evc_id": "4",
+                "name": "name",
+                "metadata": "mock",
+                "active": "true",
+                "enabled": "true",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }),
         ])
 
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_evc_affected_by_link_down(self, emit_event_mock):
         """Test handle_evc_affected_by_link_down method."""
-        evc1 = MagicMock(id="1")
+        uni = create_autospec(UNI)
+        evc1 = MagicMock(
+            id="1",
+            metadata="data_mocked",
+            _active="true",
+            _enabled="false",
+            uni_a=uni,
+            uni_z=uni,
+        )
+        evc1.name = "name_mocked"
         evc1.handle_link_down.return_value = True
-        evc2 = MagicMock(id="2")
+        evc2 = MagicMock(
+            id="2",
+            metadata="mocked_data",
+            _active="false",
+            _enabled="true",
+            uni_a=uni,
+            uni_z=uni,
+        )
+        evc2.name = "mocked_name"
         evc2.handle_link_down.return_value = False
         self.napp.circuits = {"1": evc1, "2": evc2}
 
-        event = KytosEvent(name="e1", content={"evc_id": "3", "link_id": "1"})
+        event = KytosEvent(name="e1", content={
+            "evc_id": "3",
+            "link_id": "1",
+        })
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_not_called()
-
         event.content["evc_id"] = "1"
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_called_with(
             self.napp.controller, "redeployed_link_down", content={
-                "evc_id": "1"
+                "evc_id": "1",
+                "name": "name_mocked",
+                "metadata": "data_mocked",
+                "active": "true",
+                "enabled": "false",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }
         )
 
@@ -1989,7 +2042,13 @@ class TestMain(TestCase):
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_called_with(
             self.napp.controller, "error_redeploy_link_down", content={
-                "evc_id": "2"
+                "evc_id": "2",
+                "name": "mocked_name",
+                "metadata": "mocked_data",
+                "active": "false",
+                "enabled": "true",
+                "uni_a": uni.as_dict(),
+                "uni_z": uni.as_dict(),
             }
         )
 

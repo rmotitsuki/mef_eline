@@ -17,6 +17,7 @@ from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
+                                         map_evc_event_content,
                                          notify_link_available_tags,
                                          uni_to_str)
 
@@ -508,9 +509,8 @@ class EVCDeploy(EVCBase):
             success = self.deploy_to_backup_path()
 
         if success:
-            emit_event(self._controller, "deployed", content={
-                "evc_id": self.id
-            })
+            emit_event(self._controller, "deployed",
+                       content=map_evc_event_content(self))
         return success
 
     @staticmethod
@@ -536,9 +536,8 @@ class EVCDeploy(EVCBase):
         self.remove_failover_flows()
         self.disable()
         self.sync()
-        emit_event(self._controller, "undeployed", content={
-            "evc_id": self.id
-        })
+        emit_event(self._controller, "undeployed",
+                   content=map_evc_event_content(self))
 
     def remove_failover_flows(self, exclude_uni_switches=True,
                               force=True, sync=True) -> None:
@@ -1326,9 +1325,8 @@ class LinkProtection(EVCDeploy):
             success = self.deploy_to_path()
 
         if success:
-            emit_event(self._controller, "redeployed_link_up", content={
-                "evc_id": self.id
-            })
+            emit_event(self._controller, "redeployed_link_up",
+                       content=map_evc_event_content(self))
             return True
 
         return True
