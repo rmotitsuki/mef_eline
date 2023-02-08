@@ -831,25 +831,25 @@ class EVCDeploy(EVCBase):
         if vlan_a and vlan_z:
             flow_mod_az["match"]["dl_vlan"] = vlan_a
             flow_mod_za["match"]["dl_vlan"] = vlan_z
-            if vlan_z != "any":
+            if vlan_z != "4096/4096":
                 flow_mod_az["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_z}
                 )
-            if vlan_a != "any":
+            if vlan_a != "4096/4096":
                 flow_mod_za["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_a}
                 )
         elif vlan_a:
             flow_mod_az["match"]["dl_vlan"] = vlan_a
             flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
-            if vlan_a != "any":
+            if vlan_a != "4096/4096":
                 flow_mod_za["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_a}
                 )
         elif vlan_z:
             flow_mod_za["match"]["dl_vlan"] = vlan_z
             flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
-            if vlan_z != "any":
+            if vlan_z != "4096/4096":
                 flow_mod_az["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_z}
                 )
@@ -903,6 +903,19 @@ class EVCDeploy(EVCBase):
         for dpid, flows in self._prepare_nni_flows(path).items():
             self._send_flow_mods(dpid, flows)
 
+    @staticmethod
+    def _get_value_from_uni_tag(uni):
+        if uni.user_tag:
+            if type(uni.user_tag.value) == str:
+                if uni.user_tag.value == "any":
+                    return "4096/4096"
+                else:
+                    return 0
+            else:
+                return uni.user_tag.value
+        else:
+            return None
+
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):
         """Prepare flows to install UNIs."""
         uni_flows = {}
@@ -911,10 +924,11 @@ class EVCDeploy(EVCBase):
             return uni_flows
 
         # Determine VLANs
-        in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
+        in_vlan_a = self._get_value_from_uni_tag(self.uni_a)
+        #in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
         out_vlan_a = path[0].get_metadata("s_vlan").value
-
-        in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        in_vlan_z = self._get_value_from_uni_tag(self.uni_z)
+        #in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
         out_vlan_z = path[-1].get_metadata("s_vlan").value
 
         # Flows for the first UNI
@@ -1041,7 +1055,7 @@ class EVCDeploy(EVCBase):
             in_interface, out_interface, queue_id
         )
         flow_mod["match"]["dl_vlan"] = in_vlan
-        if out_vlan != "any":
+        if out_vlan != "4096/4096":
             new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
 
@@ -1070,7 +1084,7 @@ class EVCDeploy(EVCBase):
         )
 
         # the service tag must be always pushed
-        if out_vlan != "any":
+        if out_vlan != "4096/4096":
             new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
             flow_mod["actions"].insert(0, new_action)
 
@@ -1082,7 +1096,7 @@ class EVCDeploy(EVCBase):
             flow_mod["match"]["dl_vlan"] = in_vlan
         if new_c_vlan:
             # new_in_vlan is set, so an action to set it is necessary
-            if new_c_vlan != "any":
+            if new_c_vlan != "4096/4096":
                 new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
                 flow_mod["actions"].insert(0, new_action)
             if not in_vlan:
