@@ -831,24 +831,28 @@ class EVCDeploy(EVCBase):
         if vlan_a and vlan_z:
             flow_mod_az["match"]["dl_vlan"] = vlan_a
             flow_mod_za["match"]["dl_vlan"] = vlan_z
-            flow_mod_az["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-            )
-            flow_mod_za["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_a}
-            )
+            if vlan_z != "any":
+                flow_mod_az["actions"].insert(
+                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
+                )
+            if vlan_a != "any":
+                flow_mod_za["actions"].insert(
+                    0, {"action_type": "set_vlan", "vlan_id": vlan_a}
+                )
         elif vlan_a:
             flow_mod_az["match"]["dl_vlan"] = vlan_a
             flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
-            flow_mod_za["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_a}
-            )
+            if vlan_a != "any":
+                flow_mod_za["actions"].insert(
+                    0, {"action_type": "set_vlan", "vlan_id": vlan_a}
+                )
         elif vlan_z:
             flow_mod_za["match"]["dl_vlan"] = vlan_z
             flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
-            flow_mod_az["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-            )
+            if vlan_z != "any":
+                flow_mod_az["actions"].insert(
+                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
+                )
         return (
             self.uni_a.interface.switch.id, [flow_mod_az, flow_mod_za]
         )
@@ -1037,8 +1041,8 @@ class EVCDeploy(EVCBase):
             in_interface, out_interface, queue_id
         )
         flow_mod["match"]["dl_vlan"] = in_vlan
-
-        new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
+        if out_vlan != "any":
+            new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
 
         return flow_mod
@@ -1078,7 +1082,7 @@ class EVCDeploy(EVCBase):
             flow_mod["match"]["dl_vlan"] = in_vlan
         if new_c_vlan:
             # new_in_vlan is set, so an action to set it is necessary
-            if out_vlan != "any":
+            if new_c_vlan != "any":
                 new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
                 flow_mod["actions"].insert(0, new_action)
             if not in_vlan:

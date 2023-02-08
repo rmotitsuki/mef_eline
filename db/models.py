@@ -38,13 +38,14 @@ class CircuitScheduleDoc(BaseModel):
 class TAGDoc(BaseModel):
     """TAG model"""
     tag_type: int
-    value: Union[str, int]
+    value: Union[int, str]
 
     @validator('value')
     def validate_value(cls, value):
         """Validate value when is a string"""
-        if value.isinstance(str) and value not in ("any", "untagged"):
+        if type(value) == (str) and (value not in ("any", "untagged")):
             raise ValueError("value only allows 'any' and 'untagged' strings")
+        return value
 
 
 class UNIDoc(BaseModel):
