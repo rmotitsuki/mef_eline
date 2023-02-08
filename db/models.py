@@ -43,7 +43,7 @@ class TAGDoc(BaseModel):
     @validator('value')
     def validate_value(cls, value):
         """Validate value when is a string"""
-        if type(value) == (str) and (value not in ("any", "untagged")):
+        if isinstance(value, str) and (value not in ("any", "untagged")):
             raise ValueError("value only allows 'any' and 'untagged' strings")
         return value
 
