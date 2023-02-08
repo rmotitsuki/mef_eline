@@ -906,15 +906,12 @@ class EVCDeploy(EVCBase):
     @staticmethod
     def _get_value_from_uni_tag(uni):
         if uni.user_tag:
-            if type(uni.user_tag.value) == str:
+            if isinstance(uni.user_tag.value, str):
                 if uni.user_tag.value == "any":
                     return "4096/4096"
-                else:
-                    return 0
-            else:
-                return uni.user_tag.value
-        else:
-            return None
+                return 0
+            return uni.user_tag.value
+        return None
 
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):
         """Prepare flows to install UNIs."""
@@ -925,10 +922,9 @@ class EVCDeploy(EVCBase):
 
         # Determine VLANs
         in_vlan_a = self._get_value_from_uni_tag(self.uni_a)
-        #in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
         out_vlan_a = path[0].get_metadata("s_vlan").value
+
         in_vlan_z = self._get_value_from_uni_tag(self.uni_z)
-        #in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
         out_vlan_z = path[-1].get_metadata("s_vlan").value
 
         # Flows for the first UNI
