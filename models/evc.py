@@ -814,8 +814,8 @@ class EVCDeploy(EVCBase):
 
     def _prepare_direct_uni_flows(self):
         """Prepare flows connecting two UNIs for intra-switch EVC."""
-        vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
-        vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        vlan_a = self._get_value_from_uni_tag(self.uni_a)
+        vlan_z = self._get_value_from_uni_tag(self.uni_z)
 
         is_EVPL = (vlan_a is not None)
         flow_mod_az = self._prepare_flow_mod(
