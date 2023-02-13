@@ -162,6 +162,17 @@
 
                 <div class="metric">
                   <div class="metric-dropdown">
+                    <k-dropdown :options="metric_options"
+                    :title="constraint_titles['reliability']"
+                    :value.sync="is_flexible[constraint].reliability"></k-dropdown>
+                  </div>
+                  <div class="metric-field">
+                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].reliability = parseInt(val)}"></k-input>
+                  </div>
+                </div>
+
+                <div class="metric">
+                  <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['ownership']"
                     :value.sync="is_flexible[constraint].ownership"></k-dropdown>
@@ -295,6 +306,7 @@ module.exports = {
         'utilization': 'Utilization',
         'priority': 'Priority',
         'delay': 'Delay',
+        'reliability': 'Reliability',
         'ownership': 'Ownership',
       };
 
@@ -309,12 +321,12 @@ module.exports = {
 
       _constraint.mandatory_metrics = {
         'bandwidth': '', 'utilization': '', 'priority': '',
-        'delay': '', 'ownership': '',
+        'delay': '', 'reliability': '', 'ownership': '',
       };
     
       _constraint.flexible_metrics = {
         'bandwidth': '', 'utilization': '', 'priority': '',
-        'delay': '', 'ownership': '',
+        'delay': '', 'reliability': '', 'ownership': '',
       };
 
       this.constraint = {
@@ -412,7 +424,7 @@ module.exports = {
           request[_type].mandatory_metrics = {};
 
           // mandatory and flexible metrics
-          ['bandwidth', 'utilization', 'priority', 'delay', 'ownership'].forEach(_m => {
+          ['bandwidth', 'utilization', 'priority', 'delay', 'reliability', 'ownership'].forEach(_m => {
             if (_this.is_flexible[_type][_m]) {
               request[_type].flexible_metrics[_m] = _this.metrics[_type][_m];
             } else {
