@@ -63,7 +63,7 @@ class PathConstraints(BaseModel):
     spf_max_path_cost: Optional[float]
     mandatory_metrics: Optional[LinkConstraints]
     flexible_metrics: Optional[LinkConstraints]
-    minimul_flexible_hits: Optional[int]
+    minimum_flexible_hits: Optional[int]
     desired_links: Optional[List[str]]
     undesired_links: Optional[List[str]]
 
