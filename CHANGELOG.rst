@@ -22,6 +22,10 @@ Fixed
 [2022.3.1] - 2023-02-14
 ***********************
 
+Added
+=====
+- Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
+
 Fixed
 =====
 - fixed ``minimum_flexible_hits`` EVC attribute to be persistent
