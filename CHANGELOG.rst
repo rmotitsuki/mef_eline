@@ -20,13 +20,6 @@ Removed
 
 Fixed
 =====
-
-
-[2022.3.1] - 2023-012-13
-***********************
-
-Fixed
-=====
 - fixed ``minimum_flexible_hits`` EVC attribute to be persistent
 
 
