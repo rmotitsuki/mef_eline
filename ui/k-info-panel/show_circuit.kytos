@@ -656,12 +656,14 @@ module.exports = {
         'mandatory_metrics.utilization': 'Utilization',
         'mandatory_metrics.priority': 'Priority',
         'mandatory_metrics.delay': 'Delay',
+        'mandatory_metrics.reliability': 'Reliability',
         'mandatory_metrics.ownership': 'Ownership',
         'flexible_metrics': 'Flexible metrics',
         'flexible_metrics.bandwidth': 'Bandwidth',
         'flexible_metrics.utilization': 'Utilization',
         'flexible_metrics.priority': 'Priority',
         'flexible_metrics.delay': 'Delay',
+        'flexible_metrics.reliability': 'Reliability',
         'flexible_metrics.ownership': 'Ownership',
       };
 
@@ -681,12 +683,13 @@ module.exports = {
             'utilization': data['mandatory_metrics']['utilization'],
             'priority': data['mandatory_metrics']['priority'],
             'delay': data['mandatory_metrics']['delay'],
+            'reliability': data['mandatory_metrics']['reliability'],
             'ownership': data['mandatory_metrics']['ownership']
           };
         } else {
           _constraint.mandatory_metrics = {
             'bandwidth': '', 'utilization': '', 'priority': '',
-            'delay': '', 'ownership': '',
+            'delay': '', 'reliability': '', 'ownership': '',
           };
         } 
         if(data['flexible_metrics']) {
@@ -695,12 +698,13 @@ module.exports = {
             'utilization': data['flexible_metrics']['utilization'],
             'priority': data['flexible_metrics']['priority'],
             'delay': data['flexible_metrics']['delay'],
+            'reliability': data['flexible_metrics']['reliability'],
             'ownership': data['flexible_metrics']['ownership']
           };
         } else {
           _constraint.flexible_metrics = {
             'bandwidth': '', 'utilization': '', 'priority': '',
-            'delay': '', 'ownership': '',
+            'delay': '', 'reliability': '', 'ownership': '',
           };
         }
 
@@ -808,7 +812,7 @@ module.exports = {
           if(this.constraints[_type][_metric_type]) {
             let metric = this.constraints[_type][_metric_type];
             let _mandatory_metrics = {};
-            ['bandwidth', 'utilization', 'priority', 'delay'].forEach(_m => {
+            ['bandwidth', 'utilization', 'priority', 'delay', 'reliability'].forEach(_m => {
               if(metric[_m] !== undefined && metric[_m] !== '') {
                 _mandatory_metrics[_m] = parseInt(metric[_m]);
               } else {
@@ -880,6 +884,7 @@ module.exports = {
             'utilization': '',
             'priority': '',
             'delay': '',
+            'reliability': '',
             'ownership': ''
           },
           'flexible_metrics': {
@@ -887,6 +892,7 @@ module.exports = {
             'utilization': '',
             'priority': '',
             'delay': '',
+            'reliability': '',
             'ownership': ''
           }
         };

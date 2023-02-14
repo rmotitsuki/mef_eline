@@ -25,6 +25,7 @@ Fixed
 Fixed
 =====
 - fixed ``minimum_flexible_hits`` EVC attribute to be persistent
+- fixed attribute list for path constraints to include ``reliability``
 
 
 [2022.3.0] - 2023-01-23
