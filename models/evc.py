@@ -1079,7 +1079,7 @@ class EVCDeploy(EVCBase):
         )
 
         # the service tag must be always pushed
-        if out_vlan != "4096/4096":
+        if in_vlan != "4096/4096":
             new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
             flow_mod["actions"].insert(0, new_action)
 
