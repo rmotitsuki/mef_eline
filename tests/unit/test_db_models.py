@@ -2,7 +2,7 @@
 from unittest import TestCase
 from pydantic import ValidationError
 
-from db.models import EVCBaseDoc, DocumentBaseModel
+from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc
 
 
 class TestDBModels(TestCase):
@@ -61,3 +61,21 @@ class TestDBModels(TestCase):
         self.evc_dict["_id"] = "some_id"
         model = DocumentBaseModel(**self.evc_dict)
         assert "_id" not in model.dict(exclude={"_id"})
+
+    def test_tagdoc_value(self):
+        """Test TAGDoc value restrictions"""
+        tag_mask = {"tag_type": 1, "value": "untagged"}
+        tag = TAGDoc(**tag_mask)
+        assert tag.tag_type == 1
+        assert tag.value == "untagged"
+
+        tag_mask = {"tag_type": 1, "value": "any"}
+        tag = TAGDoc(**tag_mask)
+        assert tag.tag_type == 1
+        assert tag.value == "any"
+
+    def test_tagdoc_fail(self):
+        """Test TAGDoc value fail case"""
+        tag_fail = {"tag_type": 1, "value": "test_fail"}
+        with self.assertRaises(ValueError):
+            TAGDoc(**tag_fail)

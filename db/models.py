@@ -2,7 +2,6 @@
 # pylint: disable=unused-argument,invalid-name,unused-argument
 # pylint: disable=no-self-argument,no-name-in-module
 
-import re
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union
 
@@ -46,15 +45,10 @@ class TAGDoc(BaseModel):
         """Validate value when is a string"""
         if isinstance(value, int):
             return value
-        if isinstance(value, str):
-            if value in ("any", "untagged"):
-                return value
-            regex = r"^(?=.{1,9}$)\d{1,4}\/\d{1,4}$"
-            left, right = map(int, value.split('/'))
-            if re.match(regex, value) and left < 4097 and right < 4097:
-                return value
+        if isinstance(value, str) and value in ("any", "untagged"):
+            return value
         raise ValueError("value as string allows 'any', 'untagged' and the ",
-                         "format 'n/n' where n > 4097")
+                         "format 'n/n'")
 
 
 class UNIDoc(BaseModel):
