@@ -2,7 +2,6 @@
 # pylint: disable=unused-argument,invalid-name,unused-argument
 # pylint: disable=no-self-argument,no-name-in-module
 
-import re
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union
 
