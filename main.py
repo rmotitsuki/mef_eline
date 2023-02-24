@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, too-many-lines
 """Main module of kytos/mef_eline Kytos Network Application.
 
 NApp to provision circuits from user request.
@@ -12,7 +12,6 @@ from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
-from kytos.core.events import KytosEvent
 from kytos.core.helpers import listen_to
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
@@ -21,7 +20,8 @@ from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import emit_event, load_spec, validate
+from napps.kytos.mef_eline.utils import (emit_event, load_spec,
+                                         map_evc_event_content, validate)
 
 
 # pylint: disable=too-many-public-methods
@@ -82,23 +82,34 @@ class Main(KytosNApp):
             self.execute_consistency()
         log.debug("Finished consistency routine")
 
-    def execute_consistency(self):
-        """Execute consistency routine."""
-        circuits_to_check = {}
-        stored_circuits = self.mongo_controller.get_circuits()['circuits']
-        for circuit in self.get_evcs_by_svc_level():
-            stored_circuits.pop(circuit.id, None)
-            if (
+    @staticmethod
+    def should_be_checked(circuit):
+        "Verify if the circuit meets the necessary conditions to be checked"
+        # pylint: disable=too-many-boolean-expressions
+        if (
                 circuit.is_enabled()
                 and not circuit.is_active()
                 and not circuit.lock.locked()
                 and not circuit.has_recent_removed_flow()
                 and not circuit.is_recent_updated()
-            ):
-                circuits_to_check[circuit.id] = circuit
+                # if a inter-switch EVC does not have current_path, it does not
+                # make sense to run sdntrace on it
+                and (circuit.is_intra_switch() or circuit.current_path)
+                ):
+            return True
+        return False
+
+    def execute_consistency(self):
+        """Execute consistency routine."""
+        circuits_to_check = []
+        stored_circuits = self.mongo_controller.get_circuits()['circuits']
+        for circuit in self.get_evcs_by_svc_level():
+            stored_circuits.pop(circuit.id, None)
+            if self.should_be_checked(circuit):
+                circuits_to_check.append(circuit)
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
-        for circuit_id, circuit in circuits_to_check.items():
-            is_checked = circuits_checked.get(circuit_id)
+        for circuit in circuits_to_check:
+            is_checked = circuits_checked.get(circuit.id)
             if is_checked:
                 circuit.execution_rounds = 0
                 log.info(f"{circuit} enabled but inactive - activating")
@@ -233,15 +244,11 @@ class Main(KytosNApp):
                 evc.deploy()
 
         # Notify users
-        event = KytosEvent(
-            name="kytos.mef_eline.created", content=evc.as_dict()
-        )
-        self.controller.buffers.app.put(event)
-
         result = {"circuit_id": evc.id}
         status = 201
         log.debug("create_circuit result %s %s", result, status)
-        emit_event(self.controller, "created", evc_id=evc.id)
+        emit_event(self.controller, name="created",
+                   content=map_evc_event_content(evc))
         return jsonify(result), status
 
     @listen_to('kytos/flow_manager.flow.removed')
@@ -312,7 +319,8 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("update result %s %s", result, status)
-        emit_event(self.controller, "updated", evc_id=evc.id, data=data)
+        emit_event(self.controller, "updated",
+                   content=map_evc_event_content(evc, **data))
         return jsonify(result), status
 
     @rest("/v2/evc/<circuit_id>", methods=["DELETE"])
@@ -349,7 +357,8 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("delete_circuit result %s %s", result, status)
-        emit_event(self.controller, "deleted", evc_id=evc.id)
+        emit_event(self.controller, "deleted",
+                   content=map_evc_event_content(evc))
         return jsonify(result), status
 
     @rest("v2/evc/<circuit_id>/metadata", methods=["GET"])
@@ -690,8 +699,10 @@ class Main(KytosNApp):
                     self.controller,
                     context="kytos.flow_manager",
                     name="flows.install",
-                    dpid=dpid,
-                    flow_dict={"flows": switch_flows[dpid][:offset]},
+                    content={
+                        "dpid": dpid,
+                        "flow_dict": {"flows": switch_flows[dpid][:offset]},
+                    }
                 )
                 if offset is None or offset >= len(switch_flows[dpid]):
                     del switch_flows[dpid]
@@ -705,7 +716,8 @@ class Main(KytosNApp):
                 evc.current_path = evc.failover_path
                 evc.failover_path = old_path
                 evc.sync()
-            emit_event(self.controller, "redeployed_link_down", evc_id=evc.id)
+            emit_event(self.controller, "redeployed_link_down",
+                       content=map_evc_event_content(evc))
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
             )
@@ -714,8 +726,7 @@ class Main(KytosNApp):
             emit_event(
                 self.controller,
                 "evc_affected_by_link_down",
-                evc_id=evc.id,
-                link_id=link.id,
+                content={"link_id": link.id} | map_evc_event_content(evc)
             )
 
         # After handling the hot path, check if new failover paths are needed.
@@ -743,7 +754,8 @@ class Main(KytosNApp):
         if result:
             log.info(f"{evc} redeployed due to link down {link_id}")
             event_name = "redeployed_link_down"
-        emit_event(self.controller, event_name, evc_id=evc.id)
+        emit_event(self.controller, event_name,
+                   content=map_evc_event_content(evc))
 
     @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
     def on_evc_deployed(self, event):

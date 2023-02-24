@@ -8,6 +8,9 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
+- Added more content keys ``evc_id, name, metadata, active, enabled, uni_a, uni_z`` to events from ``mef_eline``
+- Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
+- Added ``metadata`` to EVC schema
 
 Changed
 =======
@@ -17,7 +20,10 @@ Removed
 
 Fixed
 =====
-
+- fixed ``minimum_flexible_hits`` EVC attribute to be persistent
+- fixed attribute list for path constraints to include ``reliability``
+- fixed unnecessary redeploy of an intra-switch EVC on link up events
+- fixed ``check_list_traces`` to work with the new version of SDN traces 
 
 [2022.3.1] - 2023-02-14
 ***********************

@@ -17,8 +17,8 @@ from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
-                                         notify_link_available_tags,
-                                         uni_to_str)
+                                         map_evc_event_content,
+                                         notify_link_available_tags)
 
 from .path import DynamicPathManager, Path
 
@@ -505,7 +505,8 @@ class EVCDeploy(EVCBase):
             success = self.deploy_to_backup_path()
 
         if success:
-            emit_event(self._controller, "deployed", evc_id=self.id)
+            emit_event(self._controller, "deployed",
+                       content=map_evc_event_content(self))
         return success
 
     @staticmethod
@@ -531,7 +532,8 @@ class EVCDeploy(EVCBase):
         self.remove_failover_flows()
         self.disable()
         self.sync()
-        emit_event(self._controller, "undeployed", evc_id=self.id)
+        emit_event(self._controller, "undeployed",
+                   content=map_evc_event_content(self))
 
     def remove_failover_flows(self, exclude_uni_switches=True,
                               force=True, sync=True) -> None:
@@ -1148,14 +1150,14 @@ class EVCDeploy(EVCBase):
 
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
-            return []
+            return {"result": []}
         return response.json()
 
     @staticmethod
-    def check_trace(circuit, circuit_by_traces):
+    def check_trace(circuit, trace_a, trace_z):
         """Auxiliar function to check an individual trace"""
-        trace_a = circuit_by_traces[circuit.id]['trace_a']
-        trace_z = circuit_by_traces[circuit.id]['trace_z']
+        if not trace_a or not trace_z:
+            return False
         if (
             len(trace_a) != len(circuit.current_path) + 1
             or not compare_uni_out_trace(circuit.uni_z, trace_a[-1])
@@ -1198,51 +1200,27 @@ class EVCDeploy(EVCBase):
         if not list_circuits:
             return {}
         uni_list = []
-        circuit_data = {}
-        for circuit_id in list_circuits:
-            circuit = list_circuits[circuit_id]
-            # if a inter-switch EVC does not have current_path, it does not
-            # make sense to run sdntrace on it
-            if not circuit.is_intra_switch() and not circuit.current_path:
-                continue
+        for circuit in list_circuits:
             uni_list.append(circuit.uni_a)
             uni_list.append(circuit.uni_z)
-            interface_a = uni_to_str(circuit.uni_a)
-            circuit_data[interface_a] = {
-                                            'circuit_id': circuit.id,
-                                            'trace_name': 'trace_a'
-                                        }
-            interface_z = uni_to_str(circuit.uni_z)
-            circuit_data[interface_z] = {
-                                            'circuit_id': circuit.id,
-                                            'trace_name': 'trace_z'
-                                        }
 
         traces = EVCDeploy.run_bulk_sdntraces(uni_list)
+        traces = traces["result"]
 
-        circuit_by_traces = {}
         circuits_checked = {}
 
-        for trace_switch in traces:
-            for trace in traces[trace_switch]:
-                id_trace = str(trace[0]['dpid']) + ':' + str(trace[0]['port'])
-                if 'vlan' in trace[0]:
-                    id_trace += ':' + str(trace[0]['vlan'])
-                circuit_from_data = circuit_data.get(id_trace)
-                if circuit_from_data is None:
-                    continue
-                circuit_id = circuit_from_data['circuit_id']
-                trace_name = circuit_from_data['trace_name']
-                circuit = list_circuits[circuit_id]
-                if circuit_id not in circuit_by_traces:
-                    circuit_by_traces[circuit_id] = {}
-                circuit_by_traces[circuit_id][trace_name] = trace
-
-                if 'trace_a' in circuit_by_traces[circuit_id] \
-                        and 'trace_z' in circuit_by_traces[circuit_id]:
-                    circuits_checked[circuit_id] = EVCDeploy.check_trace(
-                        circuit, circuit_by_traces
+        try:
+            for i, circuit in enumerate(list_circuits):
+                trace_a = traces[2*i]
+                trace_z = traces[2*i+1]
+                circuits_checked[circuit.id] = EVCDeploy.check_trace(
+                        circuit, trace_a, trace_z
                     )
+        except IndexError as err:
+            log.error(
+                f"Bulk sdntraces returned fewer items than expected."
+                f"Error = {err}"
+            )
 
         return circuits_checked
 
@@ -1320,7 +1298,8 @@ class LinkProtection(EVCDeploy):
             success = self.deploy_to_path()
 
         if success:
-            emit_event(self._controller, "redeployed_link_up", evc_id=self.id)
+            emit_event(self._controller, "redeployed_link_up",
+                       content=map_evc_event_content(self))
             return True
 
         return True
