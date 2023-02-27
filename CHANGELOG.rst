@@ -14,6 +14,8 @@ Added
 
 Changed
 =======
+- Hid ui primary and secondary constraints on ``k-toolbar`` in the meantime
+- Moved request circuit ``k-button`` out of k-accordion-item since it's mandatory
 
 Removed
 =======
@@ -24,6 +26,20 @@ Fixed
 - fixed attribute list for path constraints to include ``reliability``
 - fixed unnecessary redeploy of an intra-switch EVC on link up events
 - fixed ``check_list_traces`` to work with the new version of SDN traces 
+
+[2022.3.1] - 2023-02-14
+***********************
+
+Added
+=====
+- Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
+
+Fixed
+=====
+- fixed ``minimum_flexible_hits`` EVC attribute to be persistent
+- fixed attribute list for path constraints to include ``reliability``
+- fixed unnecessary redeploy of an intra-switch EVC on link up events
+
 
 [2022.3.0] - 2023-01-23
 ***********************
