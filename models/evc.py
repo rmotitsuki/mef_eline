@@ -811,6 +811,7 @@ class EVCDeploy(EVCBase):
             return {}
         return self._prepare_uni_flows(self.failover_path, skip_out=True)
 
+    # pylint: disable=too-many-branches
     def _prepare_direct_uni_flows(self):
         """Prepare flows connecting two UNIs for intra-switch EVC."""
         vlan_a = self._get_value_from_uni_tag(self.uni_a)
