@@ -278,54 +278,24 @@ class TestEVC(TestCase):
                             expected_flow_mod["actions"].insert(0, new_action)
                     self.assertEqual(expected_flow_mod, flow_mod)
 
-    def test_prepare_push_flow_any_untagged(self):
-        """Test _prepare_push_flow"""
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "custom_name",
-            "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
-            "uni_z": get_uni_mocked(interface_port=2, is_valid=True),
-        }
-        evc = EVC(**attributes)
-        interface_a = evc.uni_a.interface
-        interface_z = evc.uni_z.interface
-        out_vlan_a = 20
-        for in_vlan_a in ("4096/4096", None):
-            for in_vlan_z in (0, None):
-                with self.subTest(in_vlan_a=in_vlan_a, in_vlan_z=in_vlan_z):
-                    # pylint: disable=protected-access
-                    flow_mod = evc._prepare_push_flow(interface_a, interface_z,
-                                                      in_vlan_a, out_vlan_a,
-                                                      in_vlan_z)
-                    expected_flow_mod = {
-                        'match': {'in_port': interface_a.port_number},
-                        'cookie': evc.get_cookie(),
-                        'actions': [
-                            {'action_type': 'push_vlan', 'tag_type': 's'},
-                            {'action_type': 'set_vlan', 'vlan_id': out_vlan_a},
-                            {
-                                'action_type': 'output',
-                                'port': interface_z.port_number
-                            }
-                        ],
-                        "priority": EPL_SB_PRIORITY,
-                    }
-                    if in_vlan_a and in_vlan_z is not None:
-                        del expected_flow_mod["actions"][1]
-                        expected_flow_mod['match']['dl_vlan'] = in_vlan_a
-                        expected_flow_mod['priority'] = EVPL_SB_PRIORITY
-                    elif in_vlan_a:
-                        del expected_flow_mod["actions"][1]
-                        expected_flow_mod['match']['dl_vlan'] = in_vlan_a
-                        expected_flow_mod['actions'].insert(0, {
-                            'action_type': 'pop_vlan'
-                        })
-                        expected_flow_mod["priority"] = EVPL_SB_PRIORITY
-                    elif in_vlan_z is not None:
-                        expected_flow_mod['actions'].insert(0, {
-                            'action_type': 'push_vlan', 'tag_type': 'c'
-                        })
-                        expected_flow_mod["priority"] = EPL_SB_PRIORITY
+                    if in_vlan_z not in {"4096/4096", 0, None}:
+                        new_action = {"action_type": "set_vlan",
+                                      "vlan_id": in_vlan_z}
+                        expected_flow_mod["actions"].insert(0, new_action)
+
+                    if in_vlan_a not in {"4096/4096", 0, None}:
+                        if in_vlan_z == 0:
+                            new_action = {"action_type": "pop_vlan"}
+                            expected_flow_mod["actions"].insert(0, new_action)
+                    elif in_vlan_a == "4096/4096":
+                        if in_vlan_z == 0:
+                            new_action = {"action_type": "pop_vlan"}
+                            expected_flow_mod["actions"].insert(0, new_action)
+                    elif not in_vlan_a:
+                        if in_vlan_z not in {"4096/4096", 0, None}:
+                            new_action = {"action_type": "push_vlan",
+                                          "tag_type": "c"}
+                            expected_flow_mod["actions"].insert(0, new_action)
                     self.assertEqual(expected_flow_mod, flow_mod)
 
     @staticmethod
