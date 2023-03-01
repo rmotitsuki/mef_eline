@@ -1105,6 +1105,7 @@ class TestEVC(TestCase):
         }
         return EVC(**attributes)
 
+    # pylint: disable=too-many-branches
     @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     def test_deploy_direct_uni_flows(send_flow_mods_mock):
