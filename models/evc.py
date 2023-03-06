@@ -811,7 +811,6 @@ class EVCDeploy(EVCBase):
             return {}
         return self._prepare_uni_flows(self.failover_path, skip_out=True)
 
-    # pylint: disable=too-many-branches
     def _prepare_direct_uni_flows(self):
         """Prepare flows connecting two UNIs for intra-switch EVC."""
         vlan_a = self._get_value_from_uni_tag(self.uni_a)
@@ -834,13 +833,18 @@ class EVCDeploy(EVCBase):
         if vlan_z is not None:
             flow_mod_za["match"]["dl_vlan"] = vlan_z
 
+        if vlan_z not in {None, "4096/4096", 0}:
+            flow_mod_az["actions"].insert(
+                0, {"action_type": "set_vlan", "vlan_id": vlan_z}
+            )
+            if not vlan_a:
+                flow_mod_az["actions"].insert(
+                    0, {"action_type": "push_vlan", "tag_type": "c"}
+                )
+
         if vlan_a not in {None, "4096/4096", 0}:
             flow_mod_za["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_a}
-                )
-            if vlan_z not in {None, "4096/4096", 0}:
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
                 )
             if not vlan_z:
                 flow_mod_za["actions"].insert(
@@ -849,33 +853,11 @@ class EVCDeploy(EVCBase):
             if vlan_z == 0:
                 flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
 
-        elif vlan_a == "4096/4096":
-            if vlan_z not in {None, "4096/4096", 0}:
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-                )
-            if vlan_z == 0:
-                flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
+        elif vlan_a == "4096/4096" and vlan_z == 0:
+            flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
 
-        elif vlan_a == 0:
-            if vlan_z not in {None, "4096/4096", 0}:
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-                )
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "push_vlan", "tag_type": "c"}
-                )
-            if vlan_z:
-                flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
-
-        elif vlan_a is None:
-            if vlan_z not in {None, "4096/4096", 0}:
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-                )
-                flow_mod_az["actions"].insert(
-                    0, {"action_type": "push_vlan", "tag_type": "c"}
-                )
+        elif vlan_a == 0 and vlan_z:
+            flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
 
         return (
             self.uni_a.interface.switch.id, [flow_mod_az, flow_mod_za]
@@ -1083,7 +1065,6 @@ class EVCDeploy(EVCBase):
 
         return flow_mod
 
-    # pylint: disable=too-many-arguments
     def _prepare_push_flow(self, *args, queue_id=None):
         """Prepare push flow.
 
@@ -1116,23 +1097,27 @@ class EVCDeploy(EVCBase):
             flow_mod["match"]["dl_vlan"] = in_vlan
 
         if new_c_vlan not in {"4096/4096", 0, None}:
+            # new_in_vlan is an integer but zero, action to set is required
             new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
             flow_mod["actions"].insert(0, new_action)
 
-        if in_vlan not in {"4096/4096", 0, None}:
-            if new_c_vlan == 0:
-                new_action = {"action_type": "pop_vlan"}
-                flow_mod["actions"].insert(0, new_action)
+        if in_vlan not in {"4096/4096", 0, None} and new_c_vlan == 0:
+            # # new_in_vlan is an integer but zero and new_c_vlan does not
+            # a pop action is required
+            new_action = {"action_type": "pop_vlan"}
+            flow_mod["actions"].insert(0, new_action)
 
-        elif in_vlan == "4096/4096":
-            if new_c_vlan == 0:
-                new_action = {"action_type": "pop_vlan"}
-                flow_mod["actions"].insert(0, new_action)
+        elif in_vlan == "4096/4096" and new_c_vlan == 0:
+            # if in_vlan match with any tags and new_c_vlan does not
+            # a pop action is required
+            new_action = {"action_type": "pop_vlan"}
+            flow_mod["actions"].insert(0, new_action)
 
-        elif not in_vlan:
-            if new_c_vlan not in {"4096/4096", 0, None}:
-                new_action = {"action_type": "push_vlan", "tag_type": "c"}
-                flow_mod["actions"].insert(0, new_action)
+        elif not in_vlan and new_c_vlan not in {"4096/4096", 0, None}:
+            # new_in_vlan is an integer but zero and in_vlan is not set
+            # then it is set now
+            new_action = {"action_type": "push_vlan", "tag_type": "c"}
+            flow_mod["actions"].insert(0, new_action)
 
         return flow_mod
 

@@ -220,6 +220,7 @@ class TestEVC(TestCase):
         }
         self.assertEqual(expected_flow_mod, flow_mod)
 
+    # pylint: disable=too-many-branches
     def test_prepare_push_flow(self):
         """Test prepare push flow method."""
         attributes = {
@@ -257,26 +258,6 @@ class TestEVC(TestCase):
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
                     else:
                         expected_flow_mod['priority'] = EPL_SB_PRIORITY
-
-                    if in_vlan_z not in {"4096/4096", 0, None}:
-                        new_action = {"action_type": "set_vlan",
-                                      "vlan_id": in_vlan_z}
-                        expected_flow_mod["actions"].insert(0, new_action)
-
-                    if in_vlan_a not in {"4096/4096", 0, None}:
-                        if in_vlan_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    elif in_vlan_a == "4096/4096":
-                        if in_vlan_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    elif not in_vlan_a:
-                        if in_vlan_z not in {"4096/4096", 0, None}:
-                            new_action = {"action_type": "push_vlan",
-                                          "tag_type": "c"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    self.assertEqual(expected_flow_mod, flow_mod)
 
                     if in_vlan_z not in {"4096/4096", 0, None}:
                         new_action = {"action_type": "set_vlan",
