@@ -816,22 +816,20 @@ class EVCDeploy(EVCBase):
         vlan_a = self._get_value_from_uni_tag(self.uni_a)
         vlan_z = self._get_value_from_uni_tag(self.uni_z)
 
-        is_EVPL = (vlan_a is not None)
         flow_mod_az = self._prepare_flow_mod(
             self.uni_a.interface, self.uni_z.interface,
-            self.queue_id, is_EVPL
+            self.queue_id, vlan_a
         )
-        is_EVPL = (vlan_z is not None)
         flow_mod_za = self._prepare_flow_mod(
             self.uni_z.interface, self.uni_a.interface,
-            self.queue_id, is_EVPL
+            self.queue_id, vlan_z
         )
 
         if vlan_a is not None:
-            flow_mod_az["match"]["dl_vlan"] = vlan_a
+            flow_mod_az["match"]["dl_vlan"] = str(vlan_a)
 
         if vlan_z is not None:
-            flow_mod_za["match"]["dl_vlan"] = vlan_z
+            flow_mod_za["match"]["dl_vlan"] = str(vlan_z)
 
         if vlan_z not in {None, "4096/4096", 0}:
             flow_mod_az["actions"].insert(
@@ -1029,7 +1027,7 @@ class EVCDeploy(EVCBase):
         return f"{evc_id:x}".zfill(14)
 
     def _prepare_flow_mod(self, in_interface, out_interface,
-                          queue_id=None, is_EVPL=True):
+                          queue_id=None, vlan=True):
         """Prepare a common flow mod."""
         default_actions = [
             {"action_type": "output", "port": out_interface.port_number}
@@ -1047,8 +1045,12 @@ class EVCDeploy(EVCBase):
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
         else:
-            if is_EVPL:
+            if vlan not in {"4096/4096", None}:
+                # EVPL, untagged and the rest
                 flow_mod["priority"] = settings.EVPL_SB_PRIORITY
+            elif vlan == "4096/4096":
+                # Any
+                flow_mod["priority"] = settings.ANY_SB_PRIORITY
             else:
                 flow_mod["priority"] = settings.EPL_SB_PRIORITY
         return flow_mod
@@ -1059,7 +1061,7 @@ class EVCDeploy(EVCBase):
         flow_mod = self._prepare_flow_mod(
             in_interface, out_interface, queue_id
         )
-        flow_mod["match"]["dl_vlan"] = in_vlan
+        flow_mod["match"]["dl_vlan"] = str(in_vlan)
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
 
@@ -1081,9 +1083,8 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
-        is_EVPL = (in_vlan is not None)
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id, is_EVPL
+            in_interface, out_interface, queue_id, in_vlan
         )
         # the service tag must be always pushed
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
@@ -1094,7 +1095,7 @@ class EVCDeploy(EVCBase):
 
         if in_vlan is not None:
             # if in_vlan is set, it must be included in the match
-            flow_mod["match"]["dl_vlan"] = in_vlan
+            flow_mod["match"]["dl_vlan"] = str(in_vlan)
 
         if new_c_vlan not in {"4096/4096", 0, None}:
             # new_in_vlan is an integer but zero, action to set is required
@@ -1129,7 +1130,7 @@ class EVCDeploy(EVCBase):
         flow_mod = self._prepare_flow_mod(
             in_interface, out_interface, queue_id
         )
-        flow_mod["match"]["dl_vlan"] = out_vlan
+        flow_mod["match"]["dl_vlan"] = str(out_vlan)
         new_action = {"action_type": "pop_vlan"}
         flow_mod["actions"].insert(0, new_action)
         return flow_mod

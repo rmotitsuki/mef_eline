@@ -18,7 +18,9 @@ from napps.kytos.mef_eline.settings import (
     MANAGER_URL,
     SDN_TRACE_CP_URL,
     EVPL_SB_PRIORITY,
-    EPL_SB_PRIORITY
+    EPL_SB_PRIORITY,
+    ANY_SB_PRIORITY,
+    UNTAGGED_SB_PRIORITY
 )  # NOQA
 from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
 from napps.kytos.mef_eline.tests.helpers import (
@@ -210,7 +212,8 @@ class TestEVC(TestCase):
         )
 
         expected_flow_mod = {
-            "match": {"in_port": interface_a.port_number, "dl_vlan": in_vlan},
+            "match": {"in_port": interface_a.port_number,
+                      "dl_vlan": str(in_vlan)},
             "cookie": evc.get_cookie(),
             "actions": [
                 {"action_type": "pop_vlan"},
@@ -255,7 +258,7 @@ class TestEVC(TestCase):
                         "priority": EVPL_SB_PRIORITY,
                     }
                     if in_vlan_a is not None:
-                        expected_flow_mod['match']['dl_vlan'] = in_vlan_a
+                        expected_flow_mod['match']['dl_vlan'] = str(in_vlan_a)
                     else:
                         expected_flow_mod['priority'] = EPL_SB_PRIORITY
 
@@ -269,6 +272,7 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
                     elif in_vlan_a == "4096/4096":
+                        expected_flow_mod['priority'] = ANY_SB_PRIORITY
                         if in_vlan_z == 0:
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
@@ -299,7 +303,7 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.uni_a.interface.port_number,
-                    "dl_vlan": evc.uni_a.user_tag.value,
+                    "dl_vlan": str(evc.uni_a.user_tag.value),
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -324,9 +328,9 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.primary_links[0].endpoint_a.port_number,
-                    "dl_vlan": evc.primary_links[0]
-                    .get_metadata("s_vlan")
-                    .value,
+                    "dl_vlan": str(evc.primary_links[0]
+                                   .get_metadata("s_vlan")
+                                   .value),
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -348,7 +352,7 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.uni_z.interface.port_number,
-                    "dl_vlan": evc.uni_z.user_tag.value,
+                    "dl_vlan": str(evc.uni_z.user_tag.value),
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -373,9 +377,9 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.primary_links[-1].endpoint_b.port_number,
-                    "dl_vlan": evc.primary_links[-1]
-                    .get_metadata("s_vlan")
-                    .value,
+                    "dl_vlan": str(evc.primary_links[-1]
+                                   .get_metadata("s_vlan")
+                                   .value),
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -456,7 +460,7 @@ class TestEVC(TestCase):
 
         expected_flow_mods = [
             {
-                "match": {"in_port": in_port, "dl_vlan": in_vlan},
+                "match": {"in_port": in_port, "dl_vlan": str(in_vlan)},
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": out_vlan},
@@ -465,7 +469,7 @@ class TestEVC(TestCase):
                 "priority": EVPL_SB_PRIORITY
             },
             {
-                "match": {"in_port": out_port, "dl_vlan": out_vlan},
+                "match": {"in_port": out_port, "dl_vlan": str(out_vlan)},
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": in_vlan},
@@ -1141,17 +1145,21 @@ class TestEVC(TestCase):
                 expected_dpid = evc.uni_a.interface.switch.id
                 evc._install_direct_uni_flows()
                 if uni_a is not None:
-                    expected_flows[0]["match"]["dl_vlan"] = uni_a
-                    expected_flows[0]["priority"] = EVPL_SB_PRIORITY
+                    expected_flows[0]["match"]["dl_vlan"] = str(uni_a)
                 if uni_z is not None:
-                    expected_flows[1]["match"]["dl_vlan"] = uni_z
-                    expected_flows[1]["priority"] = EVPL_SB_PRIORITY
+                    expected_flows[1]["match"]["dl_vlan"] = str(uni_z)
 
                 if uni_z not in {None, "4096/4096", 0}:
+                    expected_flows[1]["priority"] = EVPL_SB_PRIORITY
                     expected_flows[0]["actions"].insert(
                         0, {"action_type": "set_vlan", "vlan_id": uni_z}
                     )
+                elif uni_z == "4096/4096":
+                    expected_flows[1]["priority"] = ANY_SB_PRIORITY
+                elif uni_z == 0:
+                    expected_flows[1]["priority"] = UNTAGGED_SB_PRIORITY
                 if uni_a not in {None, "4096/4096", 0}:
+                    expected_flows[0]["priority"] = EVPL_SB_PRIORITY
                     expected_flows[1]["actions"].insert(
                             0, {"action_type": "set_vlan", "vlan_id": uni_a}
                         )
@@ -1160,13 +1168,16 @@ class TestEVC(TestCase):
                             0, {"action_type": "push_vlan", "tag_type": "c"}
                         )
                     if uni_z == 0:
+                        expected_flows[1]["priority"] = UNTAGGED_SB_PRIORITY
                         new_action = {"action_type": "pop_vlan"}
                         expected_flows[0]["actions"].insert(0, new_action)
                 elif uni_a == "4096/4096":
+                    expected_flows[0]["priority"] = ANY_SB_PRIORITY
                     if uni_z == 0:
                         new_action = {"action_type": "pop_vlan"}
                         expected_flows[0]["actions"].insert(0, new_action)
                 elif uni_a == 0:
+                    expected_flows[0]["priority"] = UNTAGGED_SB_PRIORITY
                     if uni_z not in {None, "4096/4096", 0}:
                         expected_flows[0]["actions"].insert(
                             0, {"action_type": "push_vlan", "tag_type": "c"}
@@ -1182,91 +1193,6 @@ class TestEVC(TestCase):
                 send_flow_mods_mock.assert_called_with(
                     expected_dpid, expected_flows
                 )
-
-    @staticmethod
-    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_deploy_direct_uni_flows_untagged_any(send_flow_mods_mock):
-        """Test _install_direct_uni_flows with untagged and any."""
-        evc = TestEVC.create_evc_intra_switch()
-
-        evc.uni_a = get_uni_mocked(tag_value="untagged", is_valid=True)
-        evc.uni_z = get_uni_mocked(tag_value="untagged", is_valid=True)
-        expected_dpid = evc.uni_a.interface.switch.id
-        expected_flows = [
-            {
-                "match": {"in_port": 1, "dl_vlan": 0},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            },
-            {
-                "match": {"in_port": 1, "dl_vlan": 0},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            }
-        ]
-        evc._install_direct_uni_flows()
-        send_flow_mods_mock.assert_called_with(
-            expected_dpid, expected_flows
-        )
-
-        evc.uni_a = get_uni_mocked(tag_value="any", is_valid=True)
-        evc.uni_z = get_uni_mocked(tag_value="any", is_valid=True)
-        expected_dpid = evc.uni_a.interface.switch.id
-        expected_flows = [
-            {
-                "match": {"in_port": 1, "dl_vlan": "4096/4096"},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            },
-            {
-                "match": {"in_port": 1, "dl_vlan": "4096/4096"},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            }
-        ]
-        evc._install_direct_uni_flows()
-        send_flow_mods_mock.assert_called_with(
-            expected_dpid, expected_flows
-        )
-
-        evc.uni_a = get_uni_mocked(tag_value="any", is_valid=True)
-        evc.uni_z = get_uni_mocked(tag_value=100, is_valid=True)
-        expected_dpid = evc.uni_a.interface.switch.id
-        expected_flows = [
-            {
-                "match": {"in_port": 1, "dl_vlan": "4096/4096"},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "set_vlan", "vlan_id": 100},
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            },
-            {
-                "match": {"in_port": 1, "dl_vlan": 100},
-                "cookie": evc.get_cookie(),
-                "actions": [
-                    {"action_type": "output", "port": 1},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            }
-        ]
-        evc._install_direct_uni_flows()
-        send_flow_mods_mock.assert_called_with(
-            expected_dpid, expected_flows
-        )
 
     def test_is_affected_by_link(self):
         """Test is_affected_by_link method"""
@@ -1359,26 +1285,26 @@ class TestEVC(TestCase):
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 9, 'dl_vlan':  5}
+                'match': {'in_port': 9, 'dl_vlan':  '5'}
             },
         ]
         expected_flows_2 = [
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 10, 'dl_vlan': 5}
+                'match': {'in_port': 10, 'dl_vlan': '5'}
             },
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 11, 'dl_vlan': 6}
+                'match': {'in_port': 11, 'dl_vlan': '6'}
             },
         ]
         expected_flows_3 = [
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 12, 'dl_vlan': 6}
+                'match': {'in_port': 12, 'dl_vlan': '6'}
             },
         ]
 
