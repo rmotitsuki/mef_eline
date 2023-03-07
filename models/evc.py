@@ -826,10 +826,10 @@ class EVCDeploy(EVCBase):
         )
 
         if vlan_a is not None:
-            flow_mod_az["match"]["dl_vlan"] = str(vlan_a)
+            flow_mod_az["match"]["dl_vlan"] = vlan_a
 
         if vlan_z is not None:
-            flow_mod_za["match"]["dl_vlan"] = str(vlan_z)
+            flow_mod_za["match"]["dl_vlan"] = vlan_z
 
         if vlan_z not in {None, "4096/4096", 0}:
             flow_mod_az["actions"].insert(
@@ -1061,7 +1061,7 @@ class EVCDeploy(EVCBase):
         flow_mod = self._prepare_flow_mod(
             in_interface, out_interface, queue_id
         )
-        flow_mod["match"]["dl_vlan"] = str(in_vlan)
+        flow_mod["match"]["dl_vlan"] = in_vlan
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
 
@@ -1095,7 +1095,7 @@ class EVCDeploy(EVCBase):
 
         if in_vlan is not None:
             # if in_vlan is set, it must be included in the match
-            flow_mod["match"]["dl_vlan"] = str(in_vlan)
+            flow_mod["match"]["dl_vlan"] = in_vlan
 
         if new_c_vlan not in {"4096/4096", 0, None}:
             # new_in_vlan is an integer but zero, action to set is required
@@ -1130,7 +1130,7 @@ class EVCDeploy(EVCBase):
         flow_mod = self._prepare_flow_mod(
             in_interface, out_interface, queue_id
         )
-        flow_mod["match"]["dl_vlan"] = str(out_vlan)
+        flow_mod["match"]["dl_vlan"] = out_vlan
         new_action = {"action_type": "pop_vlan"}
         flow_mod["actions"].insert(0, new_action)
         return flow_mod

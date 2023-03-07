@@ -213,7 +213,7 @@ class TestEVC(TestCase):
 
         expected_flow_mod = {
             "match": {"in_port": interface_a.port_number,
-                      "dl_vlan": str(in_vlan)},
+                      "dl_vlan": in_vlan},
             "cookie": evc.get_cookie(),
             "actions": [
                 {"action_type": "pop_vlan"},
@@ -258,7 +258,7 @@ class TestEVC(TestCase):
                         "priority": EVPL_SB_PRIORITY,
                     }
                     if in_vlan_a is not None:
-                        expected_flow_mod['match']['dl_vlan'] = str(in_vlan_a)
+                        expected_flow_mod['match']['dl_vlan'] = in_vlan_a
                     else:
                         expected_flow_mod['priority'] = EPL_SB_PRIORITY
 
@@ -303,7 +303,7 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.uni_a.interface.port_number,
-                    "dl_vlan": str(evc.uni_a.user_tag.value),
+                    "dl_vlan": evc.uni_a.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -328,9 +328,9 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.primary_links[0].endpoint_a.port_number,
-                    "dl_vlan": str(evc.primary_links[0]
-                                   .get_metadata("s_vlan")
-                                   .value),
+                    "dl_vlan": evc.primary_links[0]
+                    .get_metadata("s_vlan")
+                    .value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -352,7 +352,7 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.uni_z.interface.port_number,
-                    "dl_vlan": str(evc.uni_z.user_tag.value),
+                    "dl_vlan": evc.uni_z.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -377,9 +377,9 @@ class TestEVC(TestCase):
             {
                 "match": {
                     "in_port": evc.primary_links[-1].endpoint_b.port_number,
-                    "dl_vlan": str(evc.primary_links[-1]
-                                   .get_metadata("s_vlan")
-                                   .value),
+                    "dl_vlan": evc.primary_links[-1]
+                    .get_metadata("s_vlan")
+                    .value,
                 },
                 "cookie": evc.get_cookie(),
                 "actions": [
@@ -460,7 +460,7 @@ class TestEVC(TestCase):
 
         expected_flow_mods = [
             {
-                "match": {"in_port": in_port, "dl_vlan": str(in_vlan)},
+                "match": {"in_port": in_port, "dl_vlan": in_vlan},
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": out_vlan},
@@ -469,7 +469,7 @@ class TestEVC(TestCase):
                 "priority": EVPL_SB_PRIORITY
             },
             {
-                "match": {"in_port": out_port, "dl_vlan": str(out_vlan)},
+                "match": {"in_port": out_port, "dl_vlan": out_vlan},
                 "cookie": evc.get_cookie(),
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": in_vlan},
@@ -1145,9 +1145,9 @@ class TestEVC(TestCase):
                 expected_dpid = evc.uni_a.interface.switch.id
                 evc._install_direct_uni_flows()
                 if uni_a is not None:
-                    expected_flows[0]["match"]["dl_vlan"] = str(uni_a)
+                    expected_flows[0]["match"]["dl_vlan"] = uni_a
                 if uni_z is not None:
-                    expected_flows[1]["match"]["dl_vlan"] = str(uni_z)
+                    expected_flows[1]["match"]["dl_vlan"] = uni_z
 
                 if uni_z not in {None, "4096/4096", 0}:
                     expected_flows[1]["priority"] = EVPL_SB_PRIORITY
@@ -1285,26 +1285,26 @@ class TestEVC(TestCase):
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 9, 'dl_vlan':  '5'}
+                'match': {'in_port': 9, 'dl_vlan':  5}
             },
         ]
         expected_flows_2 = [
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 10, 'dl_vlan': '5'}
+                'match': {'in_port': 10, 'dl_vlan': 5}
             },
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 11, 'dl_vlan': '6'}
+                'match': {'in_port': 11, 'dl_vlan': 6}
             },
         ]
         expected_flows_3 = [
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
-                'match': {'in_port': 12, 'dl_vlan': '6'}
+                'match': {'in_port': 12, 'dl_vlan': 6}
             },
         ]
 
