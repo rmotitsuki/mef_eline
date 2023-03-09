@@ -1154,9 +1154,25 @@ class EVCDeploy(EVCBase):
         return response.json()
 
     @staticmethod
+    def trace_invalid(trace):
+        """Auxiliar function to check traces"""
+        if not trace or trace[-1]['type'] != 'last':
+            return True
+        return False
+
+    # pylint: disable=too-many-return-statements
+    @staticmethod
     def check_trace(circuit, trace_a, trace_z):
         """Auxiliar function to check an individual trace"""
-        if not trace_a or not trace_z:
+        if EVCDeploy.trace_invalid(trace_a):
+            log.warning(
+                f"Invalid trace from trace_a: {trace_a}"
+            )
+            return False
+        if EVCDeploy.trace_invalid(trace_z):
+            log.warning(
+                f"Invalid trace from trace_z: {trace_z}"
+            )
             return False
         if (
             len(trace_a) != len(circuit.current_path) + 1
