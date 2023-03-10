@@ -72,15 +72,12 @@ class ELineController:
     def upsert_evc(self, evc: Dict) -> Optional[Dict]:
         """Update or insert an EVC"""
         utc_now = datetime.utcnow()
-        try:
-            model = EVCBaseDoc(
-                **{
-                    **evc,
-                    **{"_id": evc["id"]}
-                }
-            )
-        except ValidationError as err:
-            raise err
+        model = EVCBaseDoc(
+            **{
+                **evc,
+                **{"_id": evc["id"]}
+            }
+        )
 
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},

@@ -1026,6 +1026,17 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
+    @staticmethod
+    def get_priority(vlan):
+        """Return priority value depending on vlan value"""
+        if vlan not in {"4096/4096", None, 0}:
+            return settings.EVPL_SB_PRIORITY
+        if vlan == 0:
+            return settings.UNTAGGED_SB_PRIORITY
+        if vlan == "4096/4096":
+            return settings.ANY_SB_PRIORITY
+        return settings.EPL_SB_PRIORITY
+
     def _prepare_flow_mod(self, in_interface, out_interface,
                           queue_id=None, vlan=True):
         """Prepare a common flow mod."""
@@ -1045,14 +1056,7 @@ class EVCDeploy(EVCBase):
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
         else:
-            if vlan not in {"4096/4096", None}:
-                # EVPL, untagged and the rest
-                flow_mod["priority"] = settings.EVPL_SB_PRIORITY
-            elif vlan == "4096/4096":
-                # Any
-                flow_mod["priority"] = settings.ANY_SB_PRIORITY
-            else:
-                flow_mod["priority"] = settings.EPL_SB_PRIORITY
+            flow_mod["priority"] = self.get_priority(vlan)
         return flow_mod
 
     def _prepare_nni_flow(self, *args, queue_id=None):

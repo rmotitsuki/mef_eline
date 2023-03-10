@@ -257,10 +257,9 @@ class TestEVC(TestCase):
                         ],
                         "priority": EVPL_SB_PRIORITY,
                     }
+                    expected_flow_mod["priority"] = evc.get_priority(in_vlan_a)
                     if in_vlan_a is not None:
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
-                    else:
-                        expected_flow_mod['priority'] = EPL_SB_PRIORITY
 
                     if in_vlan_z not in {"4096/4096", 0, None}:
                         new_action = {"action_type": "set_vlan",
@@ -272,7 +271,6 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
                     elif in_vlan_a == "4096/4096":
-                        expected_flow_mod['priority'] = ANY_SB_PRIORITY
                         if in_vlan_z == 0:
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
@@ -1111,88 +1109,86 @@ class TestEVC(TestCase):
         return EVC(**attributes)
 
     # pylint: disable=too-many-branches
-    @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_deploy_direct_uni_flows(send_flow_mods_mock):
+    def test_deploy_direct_uni_flows(self, send_flow_mods_mock):
         """Test _install_direct_uni_flows"""
         evc = TestEVC.create_evc_intra_switch()
         expected_dpid = evc.uni_a.interface.switch.id
 
         for uni_a in [100, "4096/4096", 0, None]:
             for uni_z in [100, "4096/4096", 0, None]:
-                expected_flows = [
-                    {
-                        "match": {"in_port": 1},
-                        "cookie": evc.get_cookie(),
-                        "actions": [
-                            {"action_type": "output", "port": 3},
-                        ],
-                        "priority": EPL_SB_PRIORITY
-                    },
-                    {
-                        "match": {"in_port": 3},
-                        "cookie": evc.get_cookie(),
-                        "actions": [
-                            {"action_type": "output", "port": 1},
-                        ],
-                        "priority": EPL_SB_PRIORITY
-                    }
-                ]
-                evc.uni_a = get_uni_mocked(tag_value=uni_a, is_valid=True)
-                evc.uni_a.interface.port_number = 1
-                evc.uni_z = get_uni_mocked(tag_value=uni_z, is_valid=True)
-                evc.uni_z.interface.port_number = 3
-                expected_dpid = evc.uni_a.interface.switch.id
-                evc._install_direct_uni_flows()
-                if uni_a is not None:
-                    expected_flows[0]["match"]["dl_vlan"] = uni_a
-                if uni_z is not None:
-                    expected_flows[1]["match"]["dl_vlan"] = uni_z
+                with self.subTest(uni_a=uni_a, uni_z=uni_z):
+                    expected_flows = [
+                        {
+                            "match": {"in_port": 1},
+                            "cookie": evc.get_cookie(),
+                            "actions": [
+                                {"action_type": "output", "port": 3},
+                            ],
+                            "priority": EPL_SB_PRIORITY
+                        },
+                        {
+                            "match": {"in_port": 3},
+                            "cookie": evc.get_cookie(),
+                            "actions": [
+                                {"action_type": "output", "port": 1},
+                            ],
+                            "priority": EPL_SB_PRIORITY
+                        }
+                    ]
+                    evc.uni_a = get_uni_mocked(tag_value=uni_a, is_valid=True)
+                    evc.uni_a.interface.port_number = 1
+                    evc.uni_z = get_uni_mocked(tag_value=uni_z, is_valid=True)
+                    evc.uni_z.interface.port_number = 3
+                    expected_dpid = evc.uni_a.interface.switch.id
+                    evc._install_direct_uni_flows()
+                    if uni_a is not None:
+                        expected_flows[0]["match"]["dl_vlan"] = uni_a
+                    if uni_z is not None:
+                        expected_flows[1]["match"]["dl_vlan"] = uni_z
+                    expected_flows[0]["priority"] = EVC.get_priority(uni_a)
+                    expected_flows[1]["priority"] = EVC.get_priority(uni_z)
 
-                if uni_z not in {None, "4096/4096", 0}:
-                    expected_flows[1]["priority"] = EVPL_SB_PRIORITY
-                    expected_flows[0]["actions"].insert(
-                        0, {"action_type": "set_vlan", "vlan_id": uni_z}
-                    )
-                elif uni_z == "4096/4096":
-                    expected_flows[1]["priority"] = ANY_SB_PRIORITY
-                elif uni_z == 0:
-                    expected_flows[1]["priority"] = UNTAGGED_SB_PRIORITY
-                if uni_a not in {None, "4096/4096", 0}:
-                    expected_flows[0]["priority"] = EVPL_SB_PRIORITY
-                    expected_flows[1]["actions"].insert(
-                            0, {"action_type": "set_vlan", "vlan_id": uni_a}
+                    if uni_z not in {None, "4096/4096", 0}:
+                        expected_flows[0]["actions"].insert(
+                            0, {"action_type": "set_vlan", "vlan_id": uni_z}
                         )
-                    if not uni_z:
+
+                    if uni_a not in {None, "4096/4096", 0}:
                         expected_flows[1]["actions"].insert(
-                            0, {"action_type": "push_vlan", "tag_type": "c"}
-                        )
-                    if uni_z == 0:
-                        expected_flows[1]["priority"] = UNTAGGED_SB_PRIORITY
-                        new_action = {"action_type": "pop_vlan"}
-                        expected_flows[0]["actions"].insert(0, new_action)
-                elif uni_a == "4096/4096":
-                    expected_flows[0]["priority"] = ANY_SB_PRIORITY
-                    if uni_z == 0:
-                        new_action = {"action_type": "pop_vlan"}
-                        expected_flows[0]["actions"].insert(0, new_action)
-                elif uni_a == 0:
-                    expected_flows[0]["priority"] = UNTAGGED_SB_PRIORITY
-                    if uni_z not in {None, "4096/4096", 0}:
-                        expected_flows[0]["actions"].insert(
-                            0, {"action_type": "push_vlan", "tag_type": "c"}
-                        )
-                    if uni_z:
-                        new_action = {"action_type": "pop_vlan"}
-                        expected_flows[1]["actions"].insert(0, new_action)
-                elif uni_a is None:
-                    if uni_z not in {None, "4096/4096", 0}:
-                        expected_flows[0]["actions"].insert(
-                            0, {"action_type": "push_vlan", "tag_type": "c"}
-                        )
-                send_flow_mods_mock.assert_called_with(
-                    expected_dpid, expected_flows
-                )
+                                0, {"action_type": "set_vlan",
+                                    "vlan_id": uni_a}
+                            )
+                        if not uni_z:
+                            expected_flows[1]["actions"].insert(
+                                0, {"action_type": "push_vlan",
+                                    "tag_type": "c"}
+                            )
+                        if uni_z == 0:
+                            new_action = {"action_type": "pop_vlan"}
+                            expected_flows[0]["actions"].insert(0, new_action)
+                    elif uni_a == "4096/4096":
+                        if uni_z == 0:
+                            new_action = {"action_type": "pop_vlan"}
+                            expected_flows[0]["actions"].insert(0, new_action)
+                    elif uni_a == 0:
+                        if uni_z not in {None, "4096/4096", 0}:
+                            expected_flows[0]["actions"].insert(
+                                0, {"action_type": "push_vlan",
+                                    "tag_type": "c"}
+                            )
+                        if uni_z:
+                            new_action = {"action_type": "pop_vlan"}
+                            expected_flows[1]["actions"].insert(0, new_action)
+                    elif uni_a is None:
+                        if uni_z not in {None, "4096/4096", 0}:
+                            expected_flows[0]["actions"].insert(
+                                0, {"action_type": "push_vlan",
+                                    "tag_type": "c"}
+                            )
+                    send_flow_mods_mock.assert_called_with(
+                        expected_dpid, expected_flows
+                    )
 
     def test_is_affected_by_link(self):
         """Test is_affected_by_link method"""
@@ -1516,3 +1512,17 @@ class TestEVC(TestCase):
         uni = get_uni_mocked(tag_value=100)
         value = EVC._get_value_from_uni_tag(uni)
         self.assertEqual(value, 100)
+
+    def test_get_priority(self):
+        """Test get_priority_from_vlan"""
+        evpl_value = EVC.get_priority(100)
+        self.assertEqual(evpl_value, EVPL_SB_PRIORITY)
+
+        untagged_value = EVC.get_priority(0)
+        self.assertEqual(untagged_value, UNTAGGED_SB_PRIORITY)
+
+        any_value = EVC.get_priority("4096/4096")
+        self.assertEqual(any_value, ANY_SB_PRIORITY)
+
+        epl_value = EVC.get_priority(None)
+        self.assertEqual(epl_value, EPL_SB_PRIORITY)

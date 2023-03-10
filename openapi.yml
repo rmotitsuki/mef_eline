@@ -607,6 +607,9 @@ components:
             - type: integer
               format: int32
             - type: string
+              enum:
+                - any
+                - untagged
 
     CircuitSchedule: # Can be referenced via '#/components/schemas/CircuitSchedule'
       type: object
