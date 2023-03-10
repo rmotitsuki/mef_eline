@@ -155,6 +155,9 @@ class EVCBase(GenericEntity):
         # dict with the user original request (input)
         self._requested = kwargs
 
+        # Special cases: No tag, any, untagged
+        self.special_cases = {None, "4096/4096", 0}
+
     def sync(self):
         """Sync this EVC in the MongoDB."""
         self.updated_at = now()
@@ -831,7 +834,7 @@ class EVCDeploy(EVCBase):
         if vlan_z is not None:
             flow_mod_za["match"]["dl_vlan"] = vlan_z
 
-        if vlan_z not in {None, "4096/4096", 0}:
+        if vlan_z not in self.special_cases:
             flow_mod_az["actions"].insert(
                 0, {"action_type": "set_vlan", "vlan_id": vlan_z}
             )
@@ -840,7 +843,7 @@ class EVCDeploy(EVCBase):
                     0, {"action_type": "push_vlan", "tag_type": "c"}
                 )
 
-        if vlan_a not in {None, "4096/4096", 0}:
+        if vlan_a not in self.special_cases:
             flow_mod_za["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_a}
                 )

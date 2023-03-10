@@ -5,7 +5,6 @@ from datetime import datetime
 from typing import Dict, Optional
 
 import pymongo
-from pydantic import ValidationError
 from pymongo.collection import ReturnDocument
 from pymongo.errors import AutoReconnect
 from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
@@ -78,7 +77,6 @@ class ELineController:
                 **{"_id": evc["id"]}
             }
         )
-
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},
             {

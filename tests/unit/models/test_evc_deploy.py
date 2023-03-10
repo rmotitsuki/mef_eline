@@ -1149,12 +1149,12 @@ class TestEVC(TestCase):
                     expected_flows[0]["priority"] = EVC.get_priority(uni_a)
                     expected_flows[1]["priority"] = EVC.get_priority(uni_z)
 
-                    if uni_z not in {None, "4096/4096", 0}:
+                    if uni_z not in evc.special_cases:
                         expected_flows[0]["actions"].insert(
                             0, {"action_type": "set_vlan", "vlan_id": uni_z}
                         )
 
-                    if uni_a not in {None, "4096/4096", 0}:
+                    if uni_a not in evc.special_cases:
                         expected_flows[1]["actions"].insert(
                                 0, {"action_type": "set_vlan",
                                     "vlan_id": uni_a}
@@ -1172,7 +1172,7 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flows[0]["actions"].insert(0, new_action)
                     elif uni_a == 0:
-                        if uni_z not in {None, "4096/4096", 0}:
+                        if uni_z not in evc.special_cases:
                             expected_flows[0]["actions"].insert(
                                 0, {"action_type": "push_vlan",
                                     "tag_type": "c"}
@@ -1181,7 +1181,7 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flows[1]["actions"].insert(0, new_action)
                     elif uni_a is None:
-                        if uni_z not in {None, "4096/4096", 0}:
+                        if uni_z not in evc.special_cases:
                             expected_flows[0]["actions"].insert(
                                 0, {"action_type": "push_vlan",
                                     "tag_type": "c"}
