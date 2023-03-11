@@ -16,6 +16,7 @@ Changed
 =======
 - Hid ui primary and secondary constraints on ``k-toolbar`` in the meantime
 - Moved request circuit ``k-button`` out of k-accordion-item since it's mandatory
+- The traces being check rely on ``type``: ``last`` to be considered valid.
 
 Removed
 =======
