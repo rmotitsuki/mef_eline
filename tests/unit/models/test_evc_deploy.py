@@ -261,12 +261,12 @@ class TestEVC(TestCase):
                     if in_vlan_a is not None:
                         expected_flow_mod['match']['dl_vlan'] = in_vlan_a
 
-                    if in_vlan_z not in {"4096/4096", 0, None}:
+                    if in_vlan_z not in evc.special_cases:
                         new_action = {"action_type": "set_vlan",
                                       "vlan_id": in_vlan_z}
                         expected_flow_mod["actions"].insert(0, new_action)
 
-                    if in_vlan_a not in {"4096/4096", 0, None}:
+                    if in_vlan_a not in evc.special_cases:
                         if in_vlan_z == 0:
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
@@ -275,7 +275,7 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
                     elif not in_vlan_a:
-                        if in_vlan_z not in {"4096/4096", 0, None}:
+                        if in_vlan_z not in evc.special_cases:
                             new_action = {"action_type": "push_vlan",
                                           "tag_type": "c"}
                             expected_flow_mod["actions"].insert(0, new_action)

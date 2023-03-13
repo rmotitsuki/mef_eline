@@ -1032,7 +1032,7 @@ class EVCDeploy(EVCBase):
     @staticmethod
     def get_priority(vlan):
         """Return priority value depending on vlan value"""
-        if vlan not in {"4096/4096", None, 0}:
+        if vlan not in {None, "4096/4096", 0}:
             return settings.EVPL_SB_PRIORITY
         if vlan == 0:
             return settings.UNTAGGED_SB_PRIORITY
@@ -1104,12 +1104,12 @@ class EVCDeploy(EVCBase):
             # if in_vlan is set, it must be included in the match
             flow_mod["match"]["dl_vlan"] = in_vlan
 
-        if new_c_vlan not in {"4096/4096", 0, None}:
+        if new_c_vlan not in self.special_cases:
             # new_in_vlan is an integer but zero, action to set is required
             new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
             flow_mod["actions"].insert(0, new_action)
 
-        if in_vlan not in {"4096/4096", 0, None} and new_c_vlan == 0:
+        if in_vlan not in self.special_cases and new_c_vlan == 0:
             # # new_in_vlan is an integer but zero and new_c_vlan does not
             # a pop action is required
             new_action = {"action_type": "pop_vlan"}
@@ -1121,7 +1121,7 @@ class EVCDeploy(EVCBase):
             new_action = {"action_type": "pop_vlan"}
             flow_mod["actions"].insert(0, new_action)
 
-        elif not in_vlan and new_c_vlan not in {"4096/4096", 0, None}:
+        elif not in_vlan and new_c_vlan not in self.special_cases:
             # new_in_vlan is an integer but zero and in_vlan is not set
             # then it is set now
             new_action = {"action_type": "push_vlan", "tag_type": "c"}

@@ -302,6 +302,8 @@ class Main(KytosNApp):
             enable, redeploy = evc.update(
                 **self._evc_dict_with_instances(data)
             )
+        except ValidationError as exception:
+            raise BadRequest(str(exception)) from exception
         except ValueError as exception:
             log.error(exception)
             log.debug("update result %s %s", exception, 400)
