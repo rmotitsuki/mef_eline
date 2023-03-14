@@ -11,6 +11,7 @@ Added
 - Added more content keys ``evc_id, name, metadata, active, enabled, uni_a, uni_z`` to events from ``mef_eline``
 - Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
 - Added ``metadata`` to EVC schema
+- Allow the creation of ``any`` and ``untagged`` EVC.
 
 Changed
 =======

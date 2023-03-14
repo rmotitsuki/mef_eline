@@ -155,6 +155,9 @@ class EVCBase(GenericEntity):
         # dict with the user original request (input)
         self._requested = kwargs
 
+        # Special cases: No tag, any, untagged
+        self.special_cases = {None, "4096/4096", 0}
+
     def sync(self):
         """Sync this EVC in the MongoDB."""
         self.updated_at = now()
@@ -251,7 +254,10 @@ class EVCBase(GenericEntity):
                     raise ValueError(f"{attribute} is an invalid UNI.")
 
                 if not uni.is_valid():
-                    tag = uni.user_tag.value
+                    try:
+                        tag = uni.user_tag.value
+                    except AttributeError:
+                        tag = None
                     message = f"VLAN tag {tag} is not available in {attribute}"
                     raise ValueError(message)
 
@@ -810,41 +816,50 @@ class EVCDeploy(EVCBase):
 
     def _prepare_direct_uni_flows(self):
         """Prepare flows connecting two UNIs for intra-switch EVC."""
-        vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
-        vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        vlan_a = self._get_value_from_uni_tag(self.uni_a)
+        vlan_z = self._get_value_from_uni_tag(self.uni_z)
 
-        is_EVPL = (vlan_a is not None)
         flow_mod_az = self._prepare_flow_mod(
             self.uni_a.interface, self.uni_z.interface,
-            self.queue_id, is_EVPL
+            self.queue_id, vlan_a
         )
-        is_EVPL = (vlan_z is not None)
         flow_mod_za = self._prepare_flow_mod(
             self.uni_z.interface, self.uni_a.interface,
-            self.queue_id, is_EVPL
+            self.queue_id, vlan_z
         )
 
-        if vlan_a and vlan_z:
+        if vlan_a is not None:
             flow_mod_az["match"]["dl_vlan"] = vlan_a
+
+        if vlan_z is not None:
             flow_mod_za["match"]["dl_vlan"] = vlan_z
+
+        if vlan_z not in self.special_cases:
             flow_mod_az["actions"].insert(
                 0, {"action_type": "set_vlan", "vlan_id": vlan_z}
             )
+            if not vlan_a:
+                flow_mod_az["actions"].insert(
+                    0, {"action_type": "push_vlan", "tag_type": "c"}
+                )
+
+        if vlan_a not in self.special_cases:
             flow_mod_za["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_a}
-            )
-        elif vlan_a:
-            flow_mod_az["match"]["dl_vlan"] = vlan_a
+                    0, {"action_type": "set_vlan", "vlan_id": vlan_a}
+                )
+            if not vlan_z:
+                flow_mod_za["actions"].insert(
+                    0, {"action_type": "push_vlan", "tag_type": "c"}
+                )
+            if vlan_z == 0:
+                flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
+
+        elif vlan_a == "4096/4096" and vlan_z == 0:
             flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
-            flow_mod_za["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_a}
-            )
-        elif vlan_z:
-            flow_mod_za["match"]["dl_vlan"] = vlan_z
+
+        elif vlan_a == 0 and vlan_z:
             flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
-            flow_mod_az["actions"].insert(
-                0, {"action_type": "set_vlan", "vlan_id": vlan_z}
-            )
+
         return (
             self.uni_a.interface.switch.id, [flow_mod_az, flow_mod_za]
         )
@@ -895,6 +910,19 @@ class EVCDeploy(EVCBase):
         for dpid, flows in self._prepare_nni_flows(path).items():
             self._send_flow_mods(dpid, flows)
 
+    @staticmethod
+    def _get_value_from_uni_tag(uni):
+        """Returns the value from tag. In case of any and untagged
+        it should return 4096/4096 and 0 respectively"""
+        special = {"any": "4096/4096", "untagged": 0}
+
+        if uni.user_tag:
+            value = uni.user_tag.value
+            if isinstance(value, str):
+                return special.get(value, value)
+            return value
+        return None
+
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):
         """Prepare flows to install UNIs."""
         uni_flows = {}
@@ -903,10 +931,10 @@ class EVCDeploy(EVCBase):
             return uni_flows
 
         # Determine VLANs
-        in_vlan_a = self.uni_a.user_tag.value if self.uni_a.user_tag else None
+        in_vlan_a = self._get_value_from_uni_tag(self.uni_a)
         out_vlan_a = path[0].get_metadata("s_vlan").value
 
-        in_vlan_z = self.uni_z.user_tag.value if self.uni_z.user_tag else None
+        in_vlan_z = self._get_value_from_uni_tag(self.uni_z)
         out_vlan_z = path[-1].get_metadata("s_vlan").value
 
         # Flows for the first UNI
@@ -1001,8 +1029,19 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
+    @staticmethod
+    def get_priority(vlan):
+        """Return priority value depending on vlan value"""
+        if vlan not in {None, "4096/4096", 0}:
+            return settings.EVPL_SB_PRIORITY
+        if vlan == 0:
+            return settings.UNTAGGED_SB_PRIORITY
+        if vlan == "4096/4096":
+            return settings.ANY_SB_PRIORITY
+        return settings.EPL_SB_PRIORITY
+
     def _prepare_flow_mod(self, in_interface, out_interface,
-                          queue_id=None, is_EVPL=True):
+                          queue_id=None, vlan=True):
         """Prepare a common flow mod."""
         default_actions = [
             {"action_type": "output", "port": out_interface.port_number}
@@ -1020,10 +1059,7 @@ class EVCDeploy(EVCBase):
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
         else:
-            if is_EVPL:
-                flow_mod["priority"] = settings.EVPL_SB_PRIORITY
-            else:
-                flow_mod["priority"] = settings.EPL_SB_PRIORITY
+            flow_mod["priority"] = self.get_priority(vlan)
         return flow_mod
 
     def _prepare_nni_flow(self, *args, queue_id=None):
@@ -1033,13 +1069,11 @@ class EVCDeploy(EVCBase):
             in_interface, out_interface, queue_id
         )
         flow_mod["match"]["dl_vlan"] = in_vlan
-
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
 
         return flow_mod
 
-    # pylint: disable=too-many-arguments
     def _prepare_push_flow(self, *args, queue_id=None):
         """Prepare push flow.
 
@@ -1056,11 +1090,9 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
-        is_EVPL = (in_vlan is not None)
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id, is_EVPL
+            in_interface, out_interface, queue_id, in_vlan
         )
-
         # the service tag must be always pushed
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
         flow_mod["actions"].insert(0, new_action)
@@ -1068,23 +1100,33 @@ class EVCDeploy(EVCBase):
         new_action = {"action_type": "push_vlan", "tag_type": "s"}
         flow_mod["actions"].insert(0, new_action)
 
-        if in_vlan:
+        if in_vlan is not None:
             # if in_vlan is set, it must be included in the match
             flow_mod["match"]["dl_vlan"] = in_vlan
-        if new_c_vlan:
-            # new_in_vlan is set, so an action to set it is necessary
+
+        if new_c_vlan not in self.special_cases:
+            # new_in_vlan is an integer but zero, action to set is required
             new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
             flow_mod["actions"].insert(0, new_action)
-            if not in_vlan:
-                # new_in_vlan is set, but in_vlan is not, so there was no
-                # vlan set; then it is set now
-                new_action = {"action_type": "push_vlan", "tag_type": "c"}
-                flow_mod["actions"].insert(0, new_action)
-        elif in_vlan:
-            # in_vlan is set, but new_in_vlan is not, so the existing vlan
-            # must be removed
+
+        if in_vlan not in self.special_cases and new_c_vlan == 0:
+            # # new_in_vlan is an integer but zero and new_c_vlan does not
+            # a pop action is required
             new_action = {"action_type": "pop_vlan"}
             flow_mod["actions"].insert(0, new_action)
+
+        elif in_vlan == "4096/4096" and new_c_vlan == 0:
+            # if in_vlan match with any tags and new_c_vlan does not
+            # a pop action is required
+            new_action = {"action_type": "pop_vlan"}
+            flow_mod["actions"].insert(0, new_action)
+
+        elif not in_vlan and new_c_vlan not in self.special_cases:
+            # new_in_vlan is an integer but zero and in_vlan is not set
+            # then it is set now
+            new_action = {"action_type": "push_vlan", "tag_type": "c"}
+            flow_mod["actions"].insert(0, new_action)
+
         return flow_mod
 
     def _prepare_pop_flow(
