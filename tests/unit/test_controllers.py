@@ -67,3 +67,12 @@ class TestControllers(TestCase):
 
         self.eline.upsert_evc(self.evc_dict)
         assert self.eline.db.evcs.find_one_and_update.call_count == 1
+
+    def test_update_bulk_evc(self):
+        """Test update_bulk_evc"""
+        circuit_ids = ["123", "456", "789"]
+        metadata = {"$set": {"metadata.info": "testing"}}
+        self.eline.update_bulk_evc(circuit_ids, metadata)
+        arg = self.eline.db.evcs.bulk_write.call_args[0][0]
+        assert len(arg) == 3
+        assert self.eline.db.evcs.bulk_write.call_count == 1

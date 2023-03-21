@@ -918,9 +918,7 @@ class EVCDeploy(EVCBase):
 
         if uni.user_tag:
             value = uni.user_tag.value
-            if isinstance(value, str):
-                return special.get(value, value)
-            return value
+            return special.get(value, value)
         return None
 
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):

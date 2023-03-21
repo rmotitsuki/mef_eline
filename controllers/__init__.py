@@ -7,6 +7,7 @@ from typing import Dict, Optional
 import pymongo
 from pymongo.collection import ReturnDocument
 from pymongo.errors import AutoReconnect
+from pymongo.operations import UpdateOne
 from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
 
 from kytos.core import log
@@ -47,14 +48,17 @@ class ELineController:
                     f"Created DB index {keys}, collection: {collection}"
                 )
 
-    def get_circuits(self, archived: Optional[bool] = False) -> Dict:
+    def get_circuits(self, archived: Optional[bool] = False,
+                     match: dict = None) -> Dict:
         """Get all circuits from database."""
         aggregation = []
         match_filters = {"$match": {}}
         if archived is not None:
             match_filters["$match"]["archived"] = archived
             aggregation.append(match_filters)
-
+        if match:
+            key = next(iter(match))
+            match_filters["$match"][key] = match[key]
         aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},
@@ -87,3 +91,20 @@ class ELineController:
             upsert=True,
         )
         return updated
+
+    def update_bulk_evc(self, circuit_ids: list, payload: dict):
+        """Update a bulk of EVC"""
+        utc_now = datetime.utcnow()
+        ops = []
+        for _id in circuit_ids:
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    {
+                        **payload,
+                        "$setOnInsert": {"inserted_at": utc_now}
+                    },
+                    upsert=False,
+                )
+            )
+        return self.db.evcs.bulk_write(ops).modified_count
