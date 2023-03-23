@@ -3,8 +3,8 @@ import functools
 from pathlib import Path
 
 from flask import request
-from openapi_core.spec.shortcuts import create_spec
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
+from openapi_core.spec.shortcuts import create_spec
 from openapi_core.validation.request import openapi_request_validator
 from openapi_spec_validator import validate_spec
 from openapi_spec_validator.readers import read_from_filename
