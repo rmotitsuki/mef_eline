@@ -3,9 +3,9 @@ import functools
 from pathlib import Path
 
 from flask import request
-from openapi_core import create_spec
+from openapi_core.spec.shortcuts import create_spec
 from openapi_core.contrib.flask import FlaskOpenAPIRequest
-from openapi_core.validation.request.validators import RequestValidator
+from openapi_core.validation.request import openapi_request_validator
 from openapi_spec_validator import validate_spec
 from openapi_spec_validator.readers import read_from_filename
 from werkzeug.exceptions import BadRequest, UnsupportedMediaType
@@ -100,9 +100,8 @@ def validate(spec):
                 log.debug("update result %s %s", result, 415)
                 raise UnsupportedMediaType(result)
 
-            validator = RequestValidator(spec)
             openapi_request = FlaskOpenAPIRequest(request)
-            result = validator.validate(openapi_request)
+            result = openapi_request_validator.validate(spec, openapi_request)
             if result.errors:
                 error_response = (
                     "The request body contains invalid API data."
