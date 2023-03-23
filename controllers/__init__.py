@@ -49,16 +49,20 @@ class ELineController:
                 )
 
     def get_circuits(self, archived: Optional[bool] = False,
-                     match: dict = None) -> Dict:
+                     metadata: dict = None) -> Dict:
         """Get all circuits from database."""
         aggregation = []
         match_filters = {"$match": {}}
+        aggregation.append(match_filters)
         if archived is not None:
             match_filters["$match"]["archived"] = archived
-            aggregation.append(match_filters)
-        if match:
-            key = next(iter(match))
-            match_filters["$match"][key] = match[key]
+        if metadata:
+            for key in metadata:
+                if "metadata." in key:
+                    try:
+                        match_filters["$match"][key] = int(metadata[key])
+                    except ValueError:
+                        match_filters["$match"][key] = metadata[key]
         aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},
@@ -92,9 +96,14 @@ class ELineController:
         )
         return updated
 
-    def update_bulk_evc(self, circuit_ids: list, payload: dict):
+    def update_evcs(self, circuit_ids: list, metadata: dict, action: str):
         """Update a bulk of EVC"""
         utc_now = datetime.utcnow()
+        metadata = {f"metadata.{k}": v for k, v in metadata.items()}
+        if action == "add":
+            payload = {"$set": metadata}
+        elif action == "del":
+            payload = {"$unset": metadata}
         ops = []
         for _id in circuit_ids:
             ops.append(

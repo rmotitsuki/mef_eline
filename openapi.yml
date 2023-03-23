@@ -281,6 +281,51 @@ paths:
           description:  Can´t change data. Circuit is deleted and archived.
         '404':
           description:  Schedule id not found.
+
+  /v2/evc/metadata:
+    post:
+      summary: Add metadata to a bulk of EVCs
+      description: Add metadata to multiple EVCs based on the body content
+      operationId: bulk_add_metadata
+      responses:
+        '200':
+          description: Operation successful
+        '400':
+          description: The request body is not a well-formed JSON or circuit_ids is missing
+        '404':
+          description: There were EVCs not found.
+          content:
+            aplication/json:
+              schema:
+                type: array
+        '415':
+          description: The request body mimetype is not application/json
+
+  /v2/evc/metadata/{key}:
+    delete:
+      summary: Delete metadata to a bulk of EVCs
+      description: Delete metadata from multiple EVCs based on the given key
+      operationId: bulk_delete_metadata
+      parameters:            
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operation successful
+        '400':
+          description: The request body is not a well-formed JSON or circuit_ids is missing
+        '404':
+          description: There were EVCs not found.
+          content:
+            aplication/json:
+              schema:
+                type: array
+        '415':
+          description: The request body mimetype is not application/json
+
 components:
   #-------------------------------
   # Reusable schemas (data models)

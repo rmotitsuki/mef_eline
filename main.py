@@ -141,16 +141,12 @@ class Main(KytosNApp):
         accordingly, by default only non archived evcs will be listed
         """
         log.debug("list_circuits /v2/evc")
-        archived = request.args.get("archived", "false").lower()
+        args = request.args.to_dict()
+        archived = args.pop("archived", "false")
         archived_to_optional = {"null": None, "true": True, "false": False}
         archived = archived_to_optional.get(archived, False)
-        arg_k = request.args.get("metadata_key")
-        arg_v = request.args.get("metadata_value")
-        if arg_k:
-            circuits = self.mongo_controller.get_circuits(archived=archived,
-                                                          match={arg_k: arg_v})
-        else:
-            circuits = self.mongo_controller.get_circuits(archived=archived)
+        circuits = self.mongo_controller.get_circuits(archived=archived,
+                                                      metadata=args)
         circuits = circuits['circuits']
         return jsonify(circuits), 200
 
@@ -385,44 +381,24 @@ class Main(KytosNApp):
             raise NotFound(f"circuit_id {circuit_id} not found.") from error
 
     @rest("v2/evc/metadata", methods=["POST"])
-    def add_bulk_metadata(self):
+    @validate(spec)
+    def bulk_add_metadata(self, data):
         """Add metadata to a bulk of EVCs."""
-        try:
-            metadata = request.get_json()
-            content_type = request.content_type
-        except BadRequest as error:
-            result = "The request body is not a well-formed JSON."
-            raise BadRequest(result) from error
-        if content_type is None:
-            result = "The request body is empty."
-            raise BadRequest(result)
-        if metadata is None:
-            if content_type != "application/json":
-                result = (
-                    "The content type must be application/json "
-                    f"(received {content_type})."
-                )
-            else:
-                result = "Metadata is empty."
-            raise UnsupportedMediaType(result)
-
-        circuit_ids = metadata.pop("circuit_ids", None)
+        circuit_ids = data.pop("circuit_ids", None)
         if circuit_ids is None:
             raise BadRequest("The key 'circuit_ids' is missing.")
-        payload = {f"metadata.{k}": v for k, v in metadata.items()}
-        self.mongo_controller.update_bulk_evc(circuit_ids, {"$set": payload})
+        self.mongo_controller.update_evcs(circuit_ids, data, "add")
 
-        fail_evcs = set()
+        fail_evcs = []
         for _id in circuit_ids:
             try:
                 evc = self.circuits[_id]
-                evc.extend_metadata(metadata)
-                evc.sync()
+                evc.extend_metadata(data)
             except KeyError:
-                fail_evcs.add(_id)
+                fail_evcs.append(_id)
 
         if fail_evcs:
-            raise NotFound(f"Circuits {str(fail_evcs)} were not found")
+            return jsonify(fail_evcs), 404
         return jsonify("Operation successful"), 201
 
     @rest("v2/evc/<circuit_id>/metadata", methods=["POST"])
@@ -457,44 +433,24 @@ class Main(KytosNApp):
         return jsonify("Operation successful"), 201
 
     @rest("v2/evc/metadata/<key>", methods=["DELETE"])
-    def delete_bulk_metadata(self, key):
+    @validate(spec)
+    def bulk_delete_metadata(self, data, key):
         """Delete metada from a bulk of EVCs"""
-        try:
-            metadata = request.get_json()
-            content_type = request.content_type
-        except BadRequest as error:
-            result = "The request body is not a well-formed JSON."
-            raise BadRequest(result) from error
-        if content_type is None:
-            result = "The request body is empty."
-            raise BadRequest(result)
-        if metadata is None:
-            if content_type != "application/json":
-                result = (
-                    "The content type must be application/json "
-                    f"(received {content_type})."
-                )
-            else:
-                result = "Request is empty."
-            raise UnsupportedMediaType(result)
-
-        circuit_ids = metadata.pop("circuit_ids", None)
+        circuit_ids = data.pop("circuit_ids", None)
         if circuit_ids is None:
             raise BadRequest("The key 'circuit_ids' is missing.")
-        payload = {f"metadata.{key}": ""}
-        self.mongo_controller.update_bulk_evc(circuit_ids, {"$unset": payload})
+        self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
 
-        fail_evcs = set()
+        fail_evcs = []
         for _id in circuit_ids:
             try:
                 evc = self.circuits[_id]
                 evc.remove_metadata(key)
-                evc.sync()
             except KeyError:
-                fail_evcs.add(_id)
+                fail_evcs.append(_id)
 
         if fail_evcs:
-            raise NotFound(f"Circuits {str(fail_evcs)} were not found")
+            return jsonify(fail_evcs), 404
         return jsonify("Operation successful"), 200
 
     @rest("v2/evc/<circuit_id>/metadata/<key>", methods=["DELETE"])
