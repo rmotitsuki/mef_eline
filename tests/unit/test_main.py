@@ -389,7 +389,7 @@ class TestMain(TestCase):
 
         response = api.get(url)
         expected_result = circuits["circuits"]
-        get_circuits.assert_called_with(archived=False, metadata={})
+        get_circuits.assert_called_with(archived="false", metadata={})
         self.assertEqual(json.loads(response.data), expected_result)
 
     def test_list_with_archived_circuits_archived(self):
@@ -407,7 +407,7 @@ class TestMain(TestCase):
         url = f"{self.server_name_url}/v2/evc/?archived=true&metadata.a=1"
 
         response = api.get(url)
-        get_circuits.assert_called_with(archived=True,
+        get_circuits.assert_called_with(archived="true",
                                         metadata={"metadata.a": "1"})
         expected_result = {"1": circuits["circuits"]["1"]}
         self.assertEqual(json.loads(response.data), expected_result)

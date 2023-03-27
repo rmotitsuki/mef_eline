@@ -59,7 +59,7 @@ class TestControllers(TestCase):
 
     def test_get_circuits_archived_true(self):
         """Test get_circuits with archive being true"""
-        self.eline.get_circuits(archived=True)
+        self.eline.get_circuits(archived="true")
         args = self.eline.db.evcs.aggregate.call_args[0][0][0]
         assert args["$match"] == {'archived': True}
 

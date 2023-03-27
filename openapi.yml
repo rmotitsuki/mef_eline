@@ -175,7 +175,7 @@ paths:
           description: EVC not found
         '415':
           description: Wrong type
-  /v2/evc/{circuit_id}/metadata/key:
+  /v2/evc/{circuit_id}/metadata/{key}:
     delete:
       summary: Remove a metadata
       operationId: delete_metadata
@@ -287,6 +287,21 @@ paths:
       summary: Add metadata to a bulk of EVCs
       description: Add metadata to multiple EVCs based on the body content
       operationId: bulk_add_metadata
+      requestBody:
+        description: Metadata to be added to the EVCs
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - circuit_ids
+              properties:
+                circuit_ids:
+                  type: array
+                  items:
+                    type: string
+            
       responses:
         '200':
           description: Operation successful
@@ -298,6 +313,8 @@ paths:
             aplication/json:
               schema:
                 type: array
+                items:
+                  type: string
         '415':
           description: The request body mimetype is not application/json
 
@@ -306,6 +323,20 @@ paths:
       summary: Delete metadata to a bulk of EVCs
       description: Delete metadata from multiple EVCs based on the given key
       operationId: bulk_delete_metadata
+      requestBody:
+        description: Metadata to be deleted from the EVCs
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - circuit_ids
+              properties:
+                circuit_ids:
+                  type: array
+                  items:
+                    type: string
       parameters:            
         - name: key
           in: path
@@ -323,6 +354,8 @@ paths:
             aplication/json:
               schema:
                 type: array
+                items:
+                  type: string
         '415':
           description: The request body mimetype is not application/json
 

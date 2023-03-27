@@ -52,17 +52,21 @@ class ELineController:
                      metadata: dict = None) -> Dict:
         """Get all circuits from database."""
         aggregation = []
+        options = {"null": None, "true": True, "false": False}
         match_filters = {"$match": {}}
         aggregation.append(match_filters)
         if archived is not None:
+            archived = options.get(archived, False)
             match_filters["$match"]["archived"] = archived
         if metadata:
             for key in metadata:
-                if "metadata." in key:
+                if "metadata." in key[:9]:
                     try:
                         match_filters["$match"][key] = int(metadata[key])
                     except ValueError:
-                        match_filters["$match"][key] = metadata[key]
+                        item = metadata[key].lower()
+                        match_filters["$match"][key] = options.get(item, item)
+        print("AGREE -> ", aggregation)
         aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},

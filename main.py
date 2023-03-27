@@ -142,9 +142,7 @@ class Main(KytosNApp):
         """
         log.debug("list_circuits /v2/evc")
         args = request.args.to_dict()
-        archived = args.pop("archived", "false")
-        archived_to_optional = {"null": None, "true": True, "false": False}
-        archived = archived_to_optional.get(archived, False)
+        archived = args.pop("archived", "false").lower()
         circuits = self.mongo_controller.get_circuits(archived=archived,
                                                       metadata=args)
         circuits = circuits['circuits']
@@ -384,9 +382,7 @@ class Main(KytosNApp):
     @validate(spec)
     def bulk_add_metadata(self, data):
         """Add metadata to a bulk of EVCs."""
-        circuit_ids = data.pop("circuit_ids", None)
-        if circuit_ids is None:
-            raise BadRequest("The key 'circuit_ids' is missing.")
+        circuit_ids = data.pop("circuit_ids")
         self.mongo_controller.update_evcs(circuit_ids, data, "add")
 
         fail_evcs = []
@@ -436,9 +432,7 @@ class Main(KytosNApp):
     @validate(spec)
     def bulk_delete_metadata(self, data, key):
         """Delete metada from a bulk of EVCs"""
-        circuit_ids = data.pop("circuit_ids", None)
-        if circuit_ids is None:
-            raise BadRequest("The key 'circuit_ids' is missing.")
+        circuit_ids = data.pop("circuit_ids")
         self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
 
         fail_evcs = []
