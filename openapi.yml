@@ -18,6 +18,15 @@ paths:
             type: string
           description: "Filter for archived value, if not null. It's false by default"
           required: false
+        - name: metadata
+          in: query
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+              - type: boolean
+          description: Filter for metadata values with format metadata.key=value, e.g. "metadata.required=false"
+          required: false
       responses:
         '200':
           description: OK

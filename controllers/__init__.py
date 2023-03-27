@@ -64,9 +64,9 @@ class ELineController:
                     try:
                         match_filters["$match"][key] = int(metadata[key])
                     except ValueError:
-                        item = metadata[key].lower()
-                        match_filters["$match"][key] = options.get(item, item)
-        print("AGREE -> ", aggregation)
+                        item = metadata[key]
+                        item = options.get(item.lower(), item)
+                        match_filters["$match"][key] = item
         aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},
