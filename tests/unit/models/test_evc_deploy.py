@@ -1421,6 +1421,8 @@ class TestEVC(TestCase):
                                     json=expected_payload,
                                     timeout=30
                                 )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert args['eth'] == {'dl_type': 33024, 'dl_vlan': 10}
 
         expected_payload[0]['trace']['eth'] = {
             'dl_type': 0x8100,

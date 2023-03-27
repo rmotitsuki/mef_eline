@@ -1148,7 +1148,6 @@ class EVCDeploy(EVCBase):
         dl_vlan = untagged or 0 -> None
         dl_vlan = any or "4096/4096" -> 1
         dl_vlan = "num1/num2" -> int in [1, 4095]"""
-
         special_unttaged = ["untagged", 0]
         if value in special_unttaged:
             return None
