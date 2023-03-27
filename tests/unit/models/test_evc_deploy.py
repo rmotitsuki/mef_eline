@@ -1345,6 +1345,95 @@ class TestEVC(TestCase):
         result = EVCDeploy.run_bulk_sdntraces([evc.uni_a])
         self.assertEqual(result, {"result": []})
 
+    def test_map_dl_vlan(self):
+        """Test map_dl_vlan"""
+        cases = {0: None, 'untagged': None, 'any': 1, '4096/4096': 1, 10: 10}
+        for value, mapped in cases.items():
+            result = EVCDeploy.map_dl_vlan(value)
+            assert result == mapped
+
+    @patch("requests.put")
+    def test_run_bulk_sdntraces_special_vlan(self, put_mock):
+        """Test run_bulk_sdntraces method for bulk request."""
+        evc = self.create_evc_inter_switch()
+        response = MagicMock()
+        response.status_code = 200
+        put_mock.return_value = response
+
+        expected_endpoint = f"{SDN_TRACE_CP_URL}/traces"
+        expected_payload = [
+                            {
+                                'trace': {
+                                    'switch': {'dpid': 1, 'in_port': 2}
+                                }
+                            }
+                        ]
+
+        evc.uni_a.user_tag.value = 'untagged'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]
+        assert 'eth' not in args
+
+        evc.uni_a.user_tag.value = 0
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert 'eth' not in args
+
+        expected_payload[0]['trace']['eth'] = {'dl_type': 0x8100, 'dl_vlan': 1}
+        evc.uni_a.user_tag.value = 'any'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert args['eth'] == {'dl_type': 33024, 'dl_vlan': 1}
+
+        evc.uni_a.user_tag.value = '4096/4096'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert args['eth'] == {'dl_type': 33024, 'dl_vlan': 1}
+
+        expected_payload[0]['trace']['eth'] = {
+            'dl_type': 0x8100,
+            'dl_vlan': 10
+            }
+        evc.uni_a.user_tag.value = '10/10'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+
+        expected_payload[0]['trace']['eth'] = {
+            'dl_type': 0x8100,
+            'dl_vlan': 10
+            }
+        evc.uni_a.user_tag.value = 10
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
     def test_check_list_traces(self, run_bulk_sdntraces_mock, _):

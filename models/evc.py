@@ -1143,6 +1143,23 @@ class EVCDeploy(EVCBase):
         return flow_mod
 
     @staticmethod
+    def map_dl_vlan(value):
+        """Map dl_vlan value with the following criteria:
+        dl_vlan = untagged or 0 -> None
+        dl_vlan = any or "4096/4096" -> 1
+        dl_vlan = "num1/num2" -> int in [1, 4095]"""
+
+        special_unttaged = ["untagged", 0]
+        if value in special_unttaged:
+            return None
+        special_any = {"any": 1, "4096/4096": 1}
+        value = special_any.get(value, value)
+        if isinstance(value, int):
+            return value
+        value, mask = map(int, value.split('/'))
+        return value & (mask & 4095)
+
+    @staticmethod
     def run_bulk_sdntraces(uni_list):
         """Run SDN traces on control plane starting from EVC UNIs."""
         endpoint = f"{settings.SDN_TRACE_CP_URL}/traces"
@@ -1157,9 +1174,11 @@ class EVCDeploy(EVCBase):
                         }
                 }
             if uni.user_tag:
-                data_uni["trace"]["eth"] = {
+                uni_dl_vlan = EVCDeploy.map_dl_vlan(uni.user_tag.value)
+                if uni_dl_vlan:
+                    data_uni["trace"]["eth"] = {
                                             "dl_type": 0x8100,
-                                            "dl_vlan": uni.user_tag.value,
+                                            "dl_vlan": uni_dl_vlan,
                                             }
             data.append(data_uni)
         try:
