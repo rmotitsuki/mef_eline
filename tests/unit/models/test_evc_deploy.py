@@ -1316,31 +1316,6 @@ class TestEVC(TestCase):
         log_mock.error.assert_called()
 
     @patch("requests.put")
-    def test_run_sdntrace(self, put_mock):
-        """Test run_sdntrace method."""
-        evc = self.create_evc_inter_switch()
-        response = MagicMock()
-        response.status_code = 200
-        response.json.return_value = {"result": "ok"}
-        put_mock.return_value = response
-
-        expected_endpoint = f"{SDN_TRACE_CP_URL}/trace"
-        expected_payload = {
-            'trace': {
-                'switch': {'dpid': 1, 'in_port': 2},
-                'eth': {'dl_type': 0x8100, 'dl_vlan': 82}
-            }
-        }
-
-        result = evc.run_sdntrace(evc.uni_a)
-        put_mock.assert_called_with(expected_endpoint, json=expected_payload)
-        self.assertEqual(result, "ok")
-
-        response.status_code = 400
-        result = evc.run_sdntrace(evc.uni_a)
-        self.assertEqual(result, [])
-
-    @patch("requests.put")
     def test_run_bulk_sdntraces(self, put_mock):
         """Test run_bulk_sdntraces method for bulk request."""
         evc = self.create_evc_inter_switch()

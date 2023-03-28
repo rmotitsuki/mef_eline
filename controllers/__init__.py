@@ -7,6 +7,7 @@ from typing import Dict, Optional
 import pymongo
 from pymongo.collection import ReturnDocument
 from pymongo.errors import AutoReconnect
+from pymongo.operations import UpdateOne
 from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
 
 from kytos.core import log
@@ -47,14 +48,25 @@ class ELineController:
                     f"Created DB index {keys}, collection: {collection}"
                 )
 
-    def get_circuits(self, archived: Optional[bool] = False) -> Dict:
+    def get_circuits(self, archived: Optional[bool] = False,
+                     metadata: dict = None) -> Dict:
         """Get all circuits from database."""
         aggregation = []
+        options = {"null": None, "true": True, "false": False}
         match_filters = {"$match": {}}
+        aggregation.append(match_filters)
         if archived is not None:
+            archived = options.get(archived, False)
             match_filters["$match"]["archived"] = archived
-            aggregation.append(match_filters)
-
+        if metadata:
+            for key in metadata:
+                if "metadata." in key[:9]:
+                    try:
+                        match_filters["$match"][key] = int(metadata[key])
+                    except ValueError:
+                        item = metadata[key]
+                        item = options.get(item.lower(), item)
+                        match_filters["$match"][key] = item
         aggregation.extend([
                 {"$sort": {"_id": 1}},
                 {"$project": EVCBaseDoc.projection()},
@@ -87,3 +99,25 @@ class ELineController:
             upsert=True,
         )
         return updated
+
+    def update_evcs(self, circuit_ids: list, metadata: dict, action: str):
+        """Update a bulk of EVC"""
+        utc_now = datetime.utcnow()
+        metadata = {f"metadata.{k}": v for k, v in metadata.items()}
+        if action == "add":
+            payload = {"$set": metadata}
+        elif action == "del":
+            payload = {"$unset": metadata}
+        ops = []
+        for _id in circuit_ids:
+            ops.append(
+                UpdateOne(
+                    {"_id": _id},
+                    {
+                        **payload,
+                        "$setOnInsert": {"inserted_at": utc_now}
+                    },
+                    upsert=False,
+                )
+            )
+        return self.db.evcs.bulk_write(ops).modified_count

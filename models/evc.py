@@ -918,9 +918,7 @@ class EVCDeploy(EVCBase):
 
         if uni.user_tag:
             value = uni.user_tag.value
-            if isinstance(value, str):
-                return special.get(value, value)
-            return value
+            return special.get(value, value)
         return None
 
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):
@@ -1141,29 +1139,6 @@ class EVCDeploy(EVCBase):
         new_action = {"action_type": "pop_vlan"}
         flow_mod["actions"].insert(0, new_action)
         return flow_mod
-
-    @staticmethod
-    def run_sdntrace(uni):
-        """Run SDN trace on control plane starting from EVC UNIs."""
-        endpoint = f"{settings.SDN_TRACE_CP_URL}/trace"
-        data_uni = {
-            "trace": {
-                "switch": {
-                    "dpid": uni.interface.switch.dpid,
-                    "in_port": uni.interface.port_number,
-                }
-            }
-        }
-        if uni.user_tag:
-            data_uni["trace"]["eth"] = {
-                "dl_type": 0x8100,
-                "dl_vlan": uni.user_tag.value,
-            }
-        response = requests.put(endpoint, json=data_uni)
-        if response.status_code >= 400:
-            log.error(f"Failed to run sdntrace-cp: {response.text}")
-            return []
-        return response.json().get('result', [])
 
     @staticmethod
     def run_bulk_sdntraces(uni_list):

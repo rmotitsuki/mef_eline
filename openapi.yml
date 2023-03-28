@@ -18,13 +18,22 @@ paths:
             type: string
           description: "Filter for archived value, if not null. It's false by default"
           required: false
+        - name: metadata
+          in: query
+          schema:
+            oneOf:
+              - type: string
+              - type: integer
+              - type: boolean
+          description: Filter for metadata values with format metadata.key=value, e.g. "metadata.required=false"
+          required: false
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                type: array
+                type: object
                 items:
                   $ref: '#/components/schemas/Circuit'
 
@@ -175,7 +184,7 @@ paths:
           description: EVC not found
         '415':
           description: Wrong type
-  /v2/evc/{circuit_id}/metadata/key:
+  /v2/evc/{circuit_id}/metadata/{key}:
     delete:
       summary: Remove a metadata
       operationId: delete_metadata
@@ -281,6 +290,84 @@ paths:
           description:  Can´t change data. Circuit is deleted and archived.
         '404':
           description:  Schedule id not found.
+
+  /v2/evc/metadata:
+    post:
+      summary: Add metadata to a bulk of EVCs
+      description: Add metadata to multiple EVCs based on the body content
+      operationId: bulk_add_metadata
+      requestBody:
+        description: Metadata to be added to the EVCs
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - circuit_ids
+              properties:
+                circuit_ids:
+                  type: array
+                  items:
+                    type: string
+            
+      responses:
+        '200':
+          description: Operation successful
+        '400':
+          description: The request body is not a well-formed JSON or circuit_ids is missing
+        '404':
+          description: There were EVCs not found.
+          content:
+            aplication/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '415':
+          description: The request body mimetype is not application/json
+
+  /v2/evc/metadata/{key}:
+    delete:
+      summary: Delete metadata to a bulk of EVCs
+      description: Delete metadata from multiple EVCs based on the given key
+      operationId: bulk_delete_metadata
+      requestBody:
+        description: Metadata to be deleted from the EVCs
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - circuit_ids
+              properties:
+                circuit_ids:
+                  type: array
+                  items:
+                    type: string
+      parameters:            
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Operation successful
+        '400':
+          description: The request body is not a well-formed JSON or circuit_ids is missing
+        '404':
+          description: There were EVCs not found.
+          content:
+            aplication/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '415':
+          description: The request body mimetype is not application/json
+
 components:
   #-------------------------------
   # Reusable schemas (data models)
