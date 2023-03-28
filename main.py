@@ -141,10 +141,10 @@ class Main(KytosNApp):
         accordingly, by default only non archived evcs will be listed
         """
         log.debug("list_circuits /v2/evc")
-        archived = request.args.get("archived", "false").lower()
-        archived_to_optional = {"null": None, "true": True, "false": False}
-        archived = archived_to_optional.get(archived, False)
-        circuits = self.mongo_controller.get_circuits(archived=archived)
+        args = request.args.to_dict()
+        archived = args.pop("archived", "false").lower()
+        circuits = self.mongo_controller.get_circuits(archived=archived,
+                                                      metadata=args)
         circuits = circuits['circuits']
         return jsonify(circuits), 200
 
@@ -378,6 +378,25 @@ class Main(KytosNApp):
         except KeyError as error:
             raise NotFound(f"circuit_id {circuit_id} not found.") from error
 
+    @rest("v2/evc/metadata", methods=["POST"])
+    @validate(spec)
+    def bulk_add_metadata(self, data):
+        """Add metadata to a bulk of EVCs."""
+        circuit_ids = data.pop("circuit_ids")
+        self.mongo_controller.update_evcs(circuit_ids, data, "add")
+
+        fail_evcs = []
+        for _id in circuit_ids:
+            try:
+                evc = self.circuits[_id]
+                evc.extend_metadata(data)
+            except KeyError:
+                fail_evcs.append(_id)
+
+        if fail_evcs:
+            return jsonify(fail_evcs), 404
+        return jsonify("Operation successful"), 201
+
     @rest("v2/evc/<circuit_id>/metadata", methods=["POST"])
     def add_metadata(self, circuit_id):
         """Add metadata to an EVC."""
@@ -408,6 +427,25 @@ class Main(KytosNApp):
         evc.extend_metadata(metadata)
         evc.sync()
         return jsonify("Operation successful"), 201
+
+    @rest("v2/evc/metadata/<key>", methods=["DELETE"])
+    @validate(spec)
+    def bulk_delete_metadata(self, data, key):
+        """Delete metada from a bulk of EVCs"""
+        circuit_ids = data.pop("circuit_ids")
+        self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
+
+        fail_evcs = []
+        for _id in circuit_ids:
+            try:
+                evc = self.circuits[_id]
+                evc.remove_metadata(key)
+            except KeyError:
+                fail_evcs.append(_id)
+
+        if fail_evcs:
+            return jsonify(fail_evcs), 404
+        return jsonify("Operation successful"), 200
 
     @rest("v2/evc/<circuit_id>/metadata/<key>", methods=["DELETE"])
     def delete_metadata(self, circuit_id, key):
