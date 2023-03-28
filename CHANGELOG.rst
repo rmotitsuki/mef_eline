@@ -33,6 +33,10 @@ Fixed
 - fixed unnecessary redeploy of an intra-switch EVC on link up events
 - fixed ``check_list_traces`` to work with the new version of SDN traces 
 
+General Information
+===================
+- Replaced ``@validate`` with ``@validate_openapi`` from kytos core
+
 [2022.3.1] - 2023-02-14
 ***********************
 
