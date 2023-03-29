@@ -1389,6 +1389,16 @@ class TestEVC(TestCase):
         args = put_mock.call_args[1]['json'][0]['trace']
         assert 'eth' not in args
 
+        evc.uni_a.user_tag.value = '5/2'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert 'eth' not in args
+
         expected_payload[0]['trace']['eth'] = {'dl_type': 0x8100, 'dl_vlan': 1}
         evc.uni_a.user_tag.value = 'any'
         EVCDeploy.run_bulk_sdntraces([evc.uni_a])
@@ -1423,6 +1433,20 @@ class TestEVC(TestCase):
                                 )
         args = put_mock.call_args[1]['json'][0]['trace']
         assert args['eth'] == {'dl_type': 33024, 'dl_vlan': 10}
+
+        expected_payload[0]['trace']['eth'] = {
+            'dl_type': 0x8100,
+            'dl_vlan': 1
+            }
+        evc.uni_a.user_tag.value = '5/3'
+        EVCDeploy.run_bulk_sdntraces([evc.uni_a])
+        put_mock.assert_called_with(
+                                    expected_endpoint,
+                                    json=expected_payload,
+                                    timeout=30
+                                )
+        args = put_mock.call_args[1]['json'][0]['trace']
+        assert args['eth'] == {'dl_type': 33024, 'dl_vlan': 1}
 
         expected_payload[0]['trace']['eth'] = {
             'dl_type': 0x8100,
