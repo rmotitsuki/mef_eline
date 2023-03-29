@@ -88,6 +88,16 @@ class TestMain(TestCase):
             ),
             (
                 {},
+                {"OPTIONS", "DELETE"},
+                "/api/kytos/mef_eline/v2/evc/metadata",
+            ),
+            (
+                {},
+                {"OPTIONS", "POST"},
+                "/api/kytos/mef_eline/v2/evc/metadata",
+            ),
+            (
+                {},
                 {"OPTIONS", "GET", "HEAD"},
                 "/api/kytos/mef_eline/v2/evc/schedule",
             ),
@@ -379,7 +389,7 @@ class TestMain(TestCase):
 
         response = api.get(url)
         expected_result = circuits["circuits"]
-        get_circuits.assert_called_with(archived=False)
+        get_circuits.assert_called_with(archived="false", metadata={})
         self.assertEqual(json.loads(response.data), expected_result)
 
     def test_list_with_archived_circuits_archived(self):
@@ -394,10 +404,11 @@ class TestMain(TestCase):
         get_circuits.return_value = circuits
 
         api = self.get_app_test_client(self.napp)
-        url = f"{self.server_name_url}/v2/evc/?archived=true"
+        url = f"{self.server_name_url}/v2/evc/?archived=true&metadata.a=1"
 
         response = api.get(url)
-        get_circuits.assert_called_with(archived=True)
+        get_circuits.assert_called_with(archived="true",
+                                        metadata={"metadata.a": "1"})
         expected_result = {"1": circuits["circuits"]["1"]}
         self.assertEqual(json.loads(response.data), expected_result)
 
@@ -2277,3 +2288,84 @@ class TestMain(TestCase):
         self.napp.circuits = {"00000000000011": evc}
         self.napp.handle_flow_delete(event)
         evc.set_flow_removed_at.assert_called_once()
+
+    def test_add_bulk_metadata(self):
+        """Test add_bulk_metadata method"""
+        evc_mock = create_autospec(EVC)
+        evc_mock.id = 1234
+        self.napp.circuits = {"1234": evc_mock}
+        api = self.get_app_test_client(self.napp)
+        payload = {
+            "circuit_ids": ["1234"],
+            "metadata1": 1,
+            "metadata2": 2
+        }
+        response = api.post(
+            f"{self.server_name_url}/v2/evc/metadata",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        args = self.napp.mongo_controller.update_evcs.call_args[0]
+        ids = payload.pop("circuit_ids")
+        self.assertEqual(args[0], ids)
+        self.assertEqual(args[1], payload)
+        self.assertEqual(args[2], "add")
+        calls = self.napp.mongo_controller.update_evcs.call_count
+        self.assertEqual(calls, 1)
+        evc_mock.extend_metadata.assert_called_with(payload)
+
+    def test_add_bulk_metadata_no_id(self):
+        """Test add_bulk_metadata with unknown evc id"""
+        evc_mock = create_autospec(EVC)
+        evc_mock.id = 1234
+        self.napp.circuits = {"1234": evc_mock}
+        api = self.get_app_test_client(self.napp)
+        payload = {
+            "circuit_ids": ["1234", "4567"]
+        }
+        response = api.post(
+            f"{self.server_name_url}/v2/evc/metadata",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_add_bulk_metadata_no_circuits(self):
+        """Test add_bulk_metadata without circuit_ids"""
+        evc_mock = create_autospec(EVC)
+        evc_mock.id = 1234
+        self.napp.circuits = {"1234": evc_mock}
+        api = self.get_app_test_client(self.napp)
+        payload = {
+            "metadata": "data"
+        }
+        response = api.post(
+            f"{self.server_name_url}/v2/evc/metadata",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_delete_bulk_metadata(self):
+        """Test delete_metadata method"""
+        evc_mock = create_autospec(EVC)
+        evc_mock.id = 1234
+        self.napp.circuits = {"1234": evc_mock}
+        api = self.get_app_test_client(self.napp)
+        payload = {
+            "circuit_ids": ["1234"]
+        }
+        response = api.delete(
+            f"{self.server_name_url}/v2/evc/metadata/metadata1",
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        args = self.napp.mongo_controller.update_evcs.call_args[0]
+        self.assertEqual(args[0], payload["circuit_ids"])
+        self.assertEqual(args[1], {"metadata1": ""})
+        self.assertEqual(args[2], "del")
+        calls = self.napp.mongo_controller.update_evcs.call_count
+        self.assertEqual(calls, 1)
+        self.assertEqual(evc_mock.remove_metadata.call_count, 1)

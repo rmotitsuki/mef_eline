@@ -51,19 +51,36 @@ class TestControllers(TestCase):
         assert "circuits" in self.eline.get_circuits()
         assert self.eline.db.evcs.aggregate.call_count == 1
 
-    def test_get_circuits_archived(self):
-        """Test get_circuits archived filter"""
-
+    def test_get_circuits_archived_false(self):
+        """Test get_circuits with archive being false"""
         self.eline.get_circuits(archived=None)
-        arg1 = self.eline.db.evcs.aggregate.call_args[0]
-        assert "$match" not in arg1[0][0]
+        args = self.eline.db.evcs.aggregate.call_args[0][0][0]
+        assert args["$match"] == {}
 
-        self.eline.get_circuits(archived=True)
-        arg1 = self.eline.db.evcs.aggregate.call_args[0]
-        assert arg1[0][0]["$match"] == {'archived': True}
+    def test_get_circuits_archived_true(self):
+        """Test get_circuits with archive being true"""
+        self.eline.get_circuits(archived="true")
+        args = self.eline.db.evcs.aggregate.call_args[0][0][0]
+        assert args["$match"] == {'archived': True}
+
+    def test_get_circuits_metadata(self):
+        """Test get_circuits with metadata"""
+        metadata = {"metadata.test": "123"}
+        self.eline.get_circuits(archived=True, metadata=metadata)
+        args = self.eline.db.evcs.aggregate.call_args[0][0][0]
+        assert args["$match"]["metadata.test"] == 123
 
     def test_upsert_evc(self):
         """Test upsert_evc"""
 
         self.eline.upsert_evc(self.evc_dict)
         assert self.eline.db.evcs.find_one_and_update.call_count == 1
+
+    def test_update_evcs(self):
+        """Test update_evcs"""
+        circuit_ids = ["123", "456", "789"]
+        metadata = {"info": "testing"}
+        self.eline.update_evcs(circuit_ids, metadata, "add")
+        arg = self.eline.db.evcs.bulk_write.call_args[0][0]
+        assert len(arg) == 3
+        assert self.eline.db.evcs.bulk_write.call_count == 1

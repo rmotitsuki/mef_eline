@@ -12,13 +12,17 @@ Added
 - Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
 - Added ``metadata`` to EVC schema
 - Allow the creation of ``any`` and ``untagged`` EVC.
+- Added api request ``POST /v2/evc/metadata`` to add metadata to EVCs
+- Added api request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
 
 Changed
 =======
 - Hid ui primary and secondary constraints on ``k-toolbar`` in the meantime
 - Moved request circuit ``k-button`` out of k-accordion-item since it's mandatory
 - The traces being check rely on ``type``: ``last`` to be considered valid.
-- ``dl_vlan`` value is mapped to an integer in range [1, 4095] for the ``/traces``requests to ``sdntrace_cp``. 
+- ``dl_vlan`` value is mapped to an integer in range [1, 4095] for the ``/traces`` requests to ``sdntrace_cp``
+- Augmented ``GET /v2/evc/`` to accept parameters ``metadata.key=item``
+- Upgraded ``openapi-core`` to ``0.16.6`` from ``0.14.5``.
 
 Removed
 =======
