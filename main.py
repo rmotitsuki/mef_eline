@@ -3,6 +3,7 @@
 
 NApp to provision circuits from user request.
 """
+import pathlib
 import time
 from threading import Lock
 
@@ -13,7 +14,7 @@ from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
-from kytos.core.helpers import listen_to
+from kytos.core.helpers import listen_to, load_spec, validate_openapi
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import controllers, settings
@@ -21,8 +22,7 @@ from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import (emit_event, load_spec,
-                                         map_evc_event_content, validate)
+from napps.kytos.mef_eline.utils import emit_event, map_evc_event_content
 
 
 # pylint: disable=too-many-public-methods
@@ -32,7 +32,7 @@ class Main(KytosNApp):
     This class is the entry point for this napp.
     """
 
-    spec = load_spec()
+    spec = load_spec(pathlib.Path(__file__).parent / "openapi.yml")
 
     def setup(self):
         """Replace the '__init__' method for the KytosNApp subclass.
@@ -162,7 +162,7 @@ class Main(KytosNApp):
         return jsonify(circuit), status
 
     @rest("/v2/evc/", methods=["POST"])
-    @validate(spec)
+    @validate_openapi(spec)
     def create_circuit(self, data):
         """Try to create a new circuit.
 
@@ -379,7 +379,7 @@ class Main(KytosNApp):
             raise NotFound(f"circuit_id {circuit_id} not found.") from error
 
     @rest("v2/evc/metadata", methods=["POST"])
-    @validate(spec)
+    @validate_openapi(spec)
     def bulk_add_metadata(self, data):
         """Add metadata to a bulk of EVCs."""
         circuit_ids = data.pop("circuit_ids")
@@ -429,7 +429,7 @@ class Main(KytosNApp):
         return jsonify("Operation successful"), 201
 
     @rest("v2/evc/metadata/<key>", methods=["DELETE"])
-    @validate(spec)
+    @validate_openapi(spec)
     def bulk_delete_metadata(self, data, key):
         """Delete metada from a bulk of EVCs"""
         circuit_ids = data.pop("circuit_ids")
