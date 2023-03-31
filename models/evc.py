@@ -17,7 +17,7 @@ from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
-                                         map_evc_event_content,
+                                         map_dl_vlan, map_evc_event_content,
                                          notify_link_available_tags)
 
 from .path import DynamicPathManager, Path
@@ -1155,16 +1155,17 @@ class EVCDeploy(EVCBase):
                         }
                 }
             if uni.user_tag:
-                data_uni["trace"]["eth"] = {
+                uni_dl_vlan = map_dl_vlan(uni.user_tag.value)
+                if uni_dl_vlan:
+                    data_uni["trace"]["eth"] = {
                                             "dl_type": 0x8100,
-                                            "dl_vlan": uni.user_tag.value,
+                                            "dl_vlan": uni_dl_vlan,
                                             }
             data.append(data_uni)
         try:
             response = requests.put(endpoint, json=data, timeout=30)
         except ConnectTimeout as exception:
             log.error(f"Request has timed out: {exception}")
-
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
             return {"result": []}

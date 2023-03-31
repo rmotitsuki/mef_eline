@@ -20,6 +20,7 @@ Changed
 - Hid ui primary and secondary constraints on ``k-toolbar`` in the meantime
 - Moved request circuit ``k-button`` out of k-accordion-item since it's mandatory
 - The traces being check rely on ``type``: ``last`` to be considered valid.
+- ``dl_vlan`` value is mapped to an integer in range [1, 4095] for the ``/traces`` requests to ``sdntrace_cp``
 - Augmented ``GET /v2/evc/`` to accept parameters ``metadata.key=item``
 - Upgraded ``openapi-core`` to ``0.16.6`` from ``0.14.5``.
 
