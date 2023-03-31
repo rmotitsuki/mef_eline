@@ -42,6 +42,22 @@ def compare_endpoint_trace(endpoint, vlan, trace):
     )
 
 
+def map_dl_vlan(value):
+    """Map dl_vlan value with the following criteria:
+    dl_vlan = untagged or 0 -> None
+    dl_vlan = any or "4096/4096" -> 1
+    dl_vlan = "num1/num2" -> int in [1, 4095]"""
+    special_untagged = {"untagged", 0}
+    if value in special_untagged:
+        return None
+    special_any = {"any": 1, "4096/4096": 1}
+    value = special_any.get(value, value)
+    if isinstance(value, int):
+        return value
+    value, mask = map(int, value.split('/'))
+    return value & (mask & 4095)
+
+
 def compare_uni_out_trace(uni, trace):
     """Check if the trace last step (output) matches the UNI attributes."""
     # keep compatibility for old versions of sdntrace-cp
@@ -49,7 +65,7 @@ def compare_uni_out_trace(uni, trace):
         return True
     if not isinstance(trace["out"], dict):
         return False
-    uni_vlan = uni.user_tag.value if uni.user_tag else None
+    uni_vlan = map_dl_vlan(uni.user_tag.value) if uni.user_tag else None
     return (
         uni.interface.port_number == trace["out"].get("port")
         and uni_vlan == trace["out"].get("vlan")

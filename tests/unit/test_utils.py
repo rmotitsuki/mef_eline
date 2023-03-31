@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 from napps.kytos.mef_eline.utils import (
-    compare_endpoint_trace, compare_uni_out_trace
+    compare_endpoint_trace, compare_uni_out_trace, map_dl_vlan
 )
 
 
@@ -58,3 +58,10 @@ class TestUtils(TestCase):
         # case5: UNI dont have VLAN but trace has, should return False
         trace = {"out": {"port": 1, "vlan": 123}}
         self.assertFalse(compare_uni_out_trace(uni, trace))
+
+    def test_map_dl_vlan(self):
+        """Test map_dl_vlan"""
+        cases = {0: None, 'untagged': None, 'any': 1, '4096/4096': 1, 10: 10}
+        for value, mapped in cases.items():
+            result = map_dl_vlan(value)
+            assert result == mapped

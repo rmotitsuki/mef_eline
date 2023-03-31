@@ -17,7 +17,7 @@ from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
-                                         map_evc_event_content,
+                                         map_dl_vlan, map_evc_event_content,
                                          notify_link_available_tags)
 
 from .path import DynamicPathManager, Path
@@ -1141,22 +1141,6 @@ class EVCDeploy(EVCBase):
         return flow_mod
 
     @staticmethod
-    def map_dl_vlan(value):
-        """Map dl_vlan value with the following criteria:
-        dl_vlan = untagged or 0 -> None
-        dl_vlan = any or "4096/4096" -> 1
-        dl_vlan = "num1/num2" -> int in [1, 4095]"""
-        special_untagged = {"untagged", 0}
-        if value in special_untagged:
-            return None
-        special_any = {"any": 1, "4096/4096": 1}
-        value = special_any.get(value, value)
-        if isinstance(value, int):
-            return value
-        value, mask = map(int, value.split('/'))
-        return value & (mask & 4095)
-
-    @staticmethod
     def run_bulk_sdntraces(uni_list):
         """Run SDN traces on control plane starting from EVC UNIs."""
         endpoint = f"{settings.SDN_TRACE_CP_URL}/traces"
@@ -1171,7 +1155,7 @@ class EVCDeploy(EVCBase):
                         }
                 }
             if uni.user_tag:
-                uni_dl_vlan = EVCDeploy.map_dl_vlan(uni.user_tag.value)
+                uni_dl_vlan = map_dl_vlan(uni.user_tag.value)
                 if uni_dl_vlan:
                     data_uni["trace"]["eth"] = {
                                             "dl_type": 0x8100,
@@ -1182,7 +1166,6 @@ class EVCDeploy(EVCBase):
             response = requests.put(endpoint, json=data, timeout=30)
         except ConnectTimeout as exception:
             log.error(f"Request has timed out: {exception}")
-
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
             return {"result": []}
