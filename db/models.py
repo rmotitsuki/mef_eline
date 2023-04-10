@@ -47,7 +47,8 @@ class TAGDoc(BaseModel):
             return value
         if isinstance(value, str) and value in ("any", "untagged"):
             return value
-        raise ValueError("value as string allows 'any' and 'untagged'")
+        raise ValueError(f"{value} is not allowed as {type(value)}. " +
+                         "Allowed strings are 'any' and 'untagged'.")
 
 
 class UNIDoc(BaseModel):
