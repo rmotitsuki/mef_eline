@@ -10,7 +10,7 @@ MANAGER_URL = "http://localhost:8181/api/kytos/flow_manager/v2"
 TOPOLOGY_URL = "http://localhost:8181/api/kytos/topology/v3"
 
 # Base URL of SDN trace CP
-SDN_TRACE_CP_URL = "http://localhost:8181/api/amlight/sdntrace_cp"
+SDN_TRACE_CP_URL = "http://localhost:8181/api/amlight/sdntrace_cp/v1"
 
 # EVC consistency interval
 DEPLOY_EVCS_INTERVAL = 60
