@@ -167,7 +167,9 @@ class EVCBase(GenericEntity):
         """Update evc attributes.
 
         This method will raises an error trying to change the following
-        attributes: [name, uni_a and uni_z]
+        attributes: [creation_time, active, current_path, failover_path,
+        _id, archived]
+        [name, uni_a and uni_z]
 
         Returns:
             the values for enable and a redeploy attribute, if exists and None

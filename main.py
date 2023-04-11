@@ -269,10 +269,12 @@ class Main(KytosNApp):
             evc.set_flow_removed_at()
 
     @rest("/v2/evc/<circuit_id>", methods=["PATCH"])
-    def update(self, circuit_id):
+    @validate_openapi(spec)
+    def update(self, data, circuit_id):
         """Update a circuit based on payload.
 
-        The EVC required attributes (name, uni_a, uni_z) can't be updated.
+        The EVC attributes (creation_time, active, current_path,
+        failover_path, _id, archived) can't be updated.
         """
         log.debug("update /v2/evc/%s", circuit_id)
         try:
@@ -286,17 +288,6 @@ class Main(KytosNApp):
             result = "Can't update archived EVC"
             log.debug("update result %s %s", result, 405)
             raise MethodNotAllowed(["GET"], result)
-
-        try:
-            data = request.get_json()
-        except BadRequest:
-            result = "The request body is not a well-formed JSON."
-            log.debug("update result %s %s", result, 400)
-            raise BadRequest(result) from BadRequest
-        if data is None:
-            result = "The request body mimetype is not application/json."
-            log.debug("update result %s %s", result, 415)
-            raise UnsupportedMediaType(result) from UnsupportedMediaType
 
         try:
             enable, redeploy = evc.update(
@@ -513,7 +504,8 @@ class Main(KytosNApp):
         return jsonify(result), status
 
     @rest("/v2/evc/schedule/", methods=["POST"])
-    def create_schedule(self):
+    @validate_openapi(spec)
+    def create_schedule(self, data):
         """
         Create a new schedule for a given circuit.
 
@@ -530,25 +522,8 @@ class Main(KytosNApp):
             }
         """
         log.debug("create_schedule /v2/evc/schedule/")
-
-        json_data = self._json_from_request("create_schedule")
-        try:
-            circuit_id = json_data["circuit_id"]
-        except TypeError:
-            result = "The payload should have a dictionary."
-            log.debug("create_schedule result %s %s", result, 400)
-            raise BadRequest(result) from BadRequest
-        except KeyError:
-            result = "Missing circuit_id."
-            log.debug("create_schedule result %s %s", result, 400)
-            raise BadRequest(result) from BadRequest
-
-        try:
-            schedule_data = json_data["schedule"]
-        except KeyError:
-            result = "Missing schedule data."
-            log.debug("create_schedule result %s %s", result, 400)
-            raise BadRequest(result) from BadRequest
+        circuit_id = data["circuit_id"]
+        schedule_data = data["schedule"]
 
         # Get EVC from circuits buffer
         circuits = self._get_circuits_buffer()
@@ -590,7 +565,8 @@ class Main(KytosNApp):
         return jsonify(result), status
 
     @rest("/v2/evc/schedule/<schedule_id>", methods=["PATCH"])
-    def update_schedule(self, schedule_id):
+    @validate_openapi(spec)
+    def update_schedule(self, data, schedule_id):
         """Update a schedule.
 
         Change all attributes from the given schedule from a EVC circuit.
@@ -617,8 +593,6 @@ class Main(KytosNApp):
             result = f"Circuit {evc.id} is archived. Update is forbidden."
             log.debug("update_schedule result %s %s", result, 403)
             raise Forbidden(result) from Forbidden
-
-        data = self._json_from_request("update_schedule")
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -990,27 +964,3 @@ class Main(KytosNApp):
                 evc = self._evc_from_dict(circuit)
                 self.circuits[c_id] = evc
         return self.circuits
-
-    @staticmethod
-    def _json_from_request(caller):
-        """Return a json from request.
-
-        If it was not possible to get a json from the request, log, for debug,
-        who was the caller and the error that ocurred, and raise an
-        Exception.
-        """
-        try:
-            json_data = request.get_json()
-        except ValueError as exception:
-            log.error(exception)
-            log.debug(f"{caller} result {exception} 400")
-            raise BadRequest(str(exception)) from BadRequest
-        except BadRequest:
-            result = "The request is not a valid JSON."
-            log.debug(f"{caller} result {result} 400")
-            raise BadRequest(result) from BadRequest
-        if json_data is None:
-            result = "Content-Type must be application/json"
-            log.debug(f"{caller} result {result} 415")
-            raise UnsupportedMediaType(result)
-        return json_data
