@@ -23,6 +23,7 @@ Changed
 - ``dl_vlan`` value is mapped to an integer in range [1, 4095] for the ``/traces`` requests to ``sdntrace_cp``
 - Augmented ``GET /v2/evc/`` to accept parameters ``metadata.key=item``
 - Upgraded ``openapi-core`` to ``0.16.6`` from ``0.14.5``.
+- Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 
 Removed
 =======
