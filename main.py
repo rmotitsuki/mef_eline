@@ -1,5 +1,5 @@
 # pylint: disable=protected-access, too-many-lines
-"""Main module of kytos/mef_eline Kytos Network Application.
+"""Main module of kytos/mef_eline Kytos POST Application.
 
 NApp to provision circuits from user request.
 """
@@ -7,16 +7,14 @@ import pathlib
 import time
 from threading import Lock
 
-from flask import jsonify, request
 from pydantic import ValidationError
-from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
-                                 MethodNotAllowed, NotFound,
-                                 UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
 from kytos.core.helpers import listen_to, load_spec, validate_openapi
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
+from kytos.core.rest_api import (HTTPException, JSONResponse, Request,
+                                 get_json_or_400)
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
@@ -134,36 +132,70 @@ class Main(KytosNApp):
         """
 
     @rest("/v2/evc/", methods=["GET"])
-    def list_circuits(self):
+    def list_circuits(self, request: Request) -> JSONResponse:
         """Endpoint to return circuits stored.
 
         archive query arg if defined (not null) will be filtered
         accordingly, by default only non archived evcs will be listed
         """
         log.debug("list_circuits /v2/evc")
-        args = request.args.to_dict()
-        archived = args.pop("archived", "false").lower()
+        args = request.query_params
+        archived = args.get("archived", "false").lower()
+        args = {k: v for k, v in args.items() if k not in {"archived"}}
         circuits = self.mongo_controller.get_circuits(archived=archived,
                                                       metadata=args)
         circuits = circuits['circuits']
-        return jsonify(circuits), 200
+        return JSONResponse(circuits)
 
-    @rest("/v2/evc/<circuit_id>", methods=["GET"])
-    def get_circuit(self, circuit_id):
+    @rest("/v2/evc/schedule", methods=["GET"])
+    def list_schedules(self, _request: Request) -> JSONResponse:
+        """Endpoint to return all schedules stored for all circuits.
+
+        Return a JSON with the following template:
+        [{"schedule_id": <schedule_id>,
+         "circuit_id": <circuit_id>,
+         "schedule": <schedule object>}]
+        """
+        log.debug("list_schedules /v2/evc/schedule")
+        circuits = self.mongo_controller.get_circuits()['circuits'].values()
+        if not circuits:
+            result = {}
+            status = 200
+            return JSONResponse(result, status_code=status)
+
+        result = []
+        status = 200
+        for circuit in circuits:
+            circuit_scheduler = circuit.get("circuit_scheduler")
+            if circuit_scheduler:
+                for scheduler in circuit_scheduler:
+                    value = {
+                        "schedule_id": scheduler.get("id"),
+                        "circuit_id": circuit.get("id"),
+                        "schedule": scheduler,
+                    }
+                    result.append(value)
+
+        log.debug("list_schedules result %s %s", result, status)
+        return JSONResponse(result, status_code=status)
+
+    @rest("/v2/evc/{circuit_id}", methods=["GET"])
+    def get_circuit(self, request: Request) -> JSONResponse:
         """Endpoint to return a circuit based on id."""
+        circuit_id = request.path_params["circuit_id"]
         log.debug("get_circuit /v2/evc/%s", circuit_id)
         circuit = self.mongo_controller.get_circuit(circuit_id)
         if not circuit:
             result = f"circuit_id {circuit_id} not found"
             log.debug("get_circuit result %s %s", result, 404)
-            raise NotFound(result)
+            raise HTTPException(404, detail=result)
         status = 200
         log.debug("get_circuit result %s %s", circuit, status)
-        return jsonify(circuit), status
+        return JSONResponse(circuit, status_code=status)
 
     @rest("/v2/evc/", methods=["POST"])
     @validate_openapi(spec)
-    def create_circuit(self, data):
+    def create_circuit(self, request: Request) -> JSONResponse:
         """Try to create a new circuit.
 
         Firstly, for EVPL: E-Line NApp verifies if UNI_A's requested C-VID and
@@ -189,12 +221,13 @@ class Main(KytosNApp):
         """
         # Try to create the circuit object
         log.debug("create_circuit /v2/evc/")
+        data = get_json_or_400(request)
 
         try:
             evc = self._evc_from_dict(data)
         except ValueError as exception:
             log.debug("create_circuit result %s %s", exception, 400)
-            raise BadRequest(str(exception)) from BadRequest
+            raise HTTPException(400, detail=str(exception)) from exception
 
         if evc.primary_path:
             try:
@@ -204,8 +237,9 @@ class Main(KytosNApp):
                     bool(evc.circuit_scheduler),
                 )
             except InvalidPath as exception:
-                raise BadRequest(
-                    f"primary_path is not valid: {exception}"
+                raise HTTPException(
+                    400,
+                    detail=f"primary_path is not valid: {exception}"
                 ) from exception
         if evc.backup_path:
             try:
@@ -215,26 +249,27 @@ class Main(KytosNApp):
                     bool(evc.circuit_scheduler),
                 )
             except InvalidPath as exception:
-                raise BadRequest(
-                    f"backup_path is not valid: {exception}"
+                raise HTTPException(
+                    400,
+                    detail=f"backup_path is not valid: {exception}"
                 ) from exception
 
         # verify duplicated evc
         if self._is_duplicated_evc(evc):
             result = "The EVC already exists."
             log.debug("create_circuit result %s %s", result, 409)
-            raise Conflict(result)
+            raise HTTPException(409, detail=result)
 
         try:
             evc._validate_has_primary_or_dynamic()
         except ValueError as exception:
-            raise BadRequest(str(exception)) from exception
+            raise HTTPException(400, detail=str(exception)) from exception
 
         # save circuit
         try:
             evc.sync()
         except ValidationError as exception:
-            raise BadRequest(str(exception)) from exception
+            raise HTTPException(400, detail=str(exception)) from exception
 
         # store circuit in dictionary
         self.circuits[evc.id] = evc
@@ -253,7 +288,7 @@ class Main(KytosNApp):
         log.debug("create_circuit result %s %s", result, status)
         emit_event(self.controller, name="created",
                    content=map_evc_event_content(evc))
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
     @listen_to('kytos/flow_manager.flow.removed')
     def on_flow_delete(self, event):
@@ -268,37 +303,39 @@ class Main(KytosNApp):
             log.debug("Flow removed in EVC %s", evc.id)
             evc.set_flow_removed_at()
 
-    @rest("/v2/evc/<circuit_id>", methods=["PATCH"])
+    @rest("/v2/evc/{circuit_id}", methods=["PATCH"])
     @validate_openapi(spec)
-    def update(self, data, circuit_id):
+    def update(self, request: Request) -> JSONResponse:
         """Update a circuit based on payload.
 
         The EVC attributes (creation_time, active, current_path,
         failover_path, _id, archived) can't be updated.
         """
+        data = get_json_or_400(request)
+        circuit_id = request.path_params["circuit_id"]
         log.debug("update /v2/evc/%s", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
             result = f"circuit_id {circuit_id} not found"
             log.debug("update result %s %s", result, 404)
-            raise NotFound(result) from NotFound
+            raise HTTPException(404, detail=result) from KeyError
 
         if evc.archived:
             result = "Can't update archived EVC"
-            log.debug("update result %s %s", result, 405)
-            raise MethodNotAllowed(["GET"], result)
+            log.debug("update result %s %s", result, 409)
+            raise HTTPException(409, detail=result)
 
         try:
             enable, redeploy = evc.update(
                 **self._evc_dict_with_instances(data)
             )
         except ValidationError as exception:
-            raise BadRequest(str(exception)) from exception
+            raise HTTPException(400, detail=str(exception)) from exception
         except ValueError as exception:
             log.error(exception)
             log.debug("update result %s %s", exception, 400)
-            raise BadRequest(str(exception)) from BadRequest
+            raise HTTPException(400, detail=str(exception)) from exception
 
         if evc.is_active():
             if enable is False:  # disable if active
@@ -318,27 +355,28 @@ class Main(KytosNApp):
         log.debug("update result %s %s", result, status)
         emit_event(self.controller, "updated",
                    content=map_evc_event_content(evc, **data))
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
-    @rest("/v2/evc/<circuit_id>", methods=["DELETE"])
-    def delete_circuit(self, circuit_id):
+    @rest("/v2/evc/{circuit_id}", methods=["DELETE"])
+    def delete_circuit(self, request: Request) -> JSONResponse:
         """Remove a circuit.
 
         First, the flows are removed from the switches, and then the EVC is
         disabled.
         """
+        circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
             result = f"circuit_id {circuit_id} not found"
             log.debug("delete_circuit result %s %s", result, 404)
-            raise NotFound(result) from NotFound
+            raise HTTPException(404, detail=result) from KeyError
 
         if evc.archived:
             result = f"Circuit {circuit_id} already removed"
             log.debug("delete_circuit result %s %s", result, 404)
-            raise NotFound(result) from NotFound
+            raise HTTPException(404, detail=result)
 
         log.info("Removing %s", evc)
         with evc.lock:
@@ -356,24 +394,29 @@ class Main(KytosNApp):
         log.debug("delete_circuit result %s %s", result, status)
         emit_event(self.controller, "deleted",
                    content=map_evc_event_content(evc))
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
-    @rest("v2/evc/<circuit_id>/metadata", methods=["GET"])
-    def get_metadata(self, circuit_id):
+    @rest("v2/evc/{circuit_id}/metadata", methods=["GET"])
+    def get_metadata(self, request: Request) -> JSONResponse:
         """Get metadata from an EVC."""
+        circuit_id = request.path_params["circuit_id"]
         try:
             return (
-                jsonify({"metadata": self.circuits[circuit_id].metadata}),
-                200,
+                JSONResponse({"metadata": self.circuits[circuit_id].metadata})
             )
         except KeyError as error:
-            raise NotFound(f"circuit_id {circuit_id} not found.") from error
+            raise HTTPException(
+                404,
+                detail=f"circuit_id {circuit_id} not found."
+            ) from error
 
     @rest("v2/evc/metadata", methods=["POST"])
     @validate_openapi(spec)
-    def bulk_add_metadata(self, data):
+    def bulk_add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to a bulk of EVCs."""
+        data = get_json_or_400(request)
         circuit_ids = data.pop("circuit_ids")
+
         self.mongo_controller.update_evcs(circuit_ids, data, "add")
 
         fail_evcs = []
@@ -385,44 +428,35 @@ class Main(KytosNApp):
                 fail_evcs.append(_id)
 
         if fail_evcs:
-            return jsonify(fail_evcs), 404
-        return jsonify("Operation successful"), 201
+            raise HTTPException(404, detail=fail_evcs)
+        return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v2/evc/<circuit_id>/metadata", methods=["POST"])
-    def add_metadata(self, circuit_id):
+    @rest("v2/evc/{circuit_id}/metadata", methods=["POST"])
+    @validate_openapi(spec)
+    def add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to an EVC."""
-        try:
-            metadata = request.get_json()
-            content_type = request.content_type
-        except BadRequest as error:
-            result = "The request body is not a well-formed JSON."
-            raise BadRequest(result) from error
-        if content_type is None:
-            result = "The request body is empty."
-            raise BadRequest(result)
-        if metadata is None:
-            if content_type != "application/json":
-                result = (
-                    "The content type must be application/json "
-                    f"(received {content_type})."
-                )
-            else:
-                result = "Metadata is empty."
-            raise UnsupportedMediaType(result)
-
+        circuit_id = request.path_params["circuit_id"]
+        metadata = get_json_or_400(request)
+        if not isinstance(metadata, dict):
+            raise HTTPException(400, "Invalid metadata value: {metadata}")
         try:
             evc = self.circuits[circuit_id]
         except KeyError as error:
-            raise NotFound(f"circuit_id {circuit_id} not found.") from error
+            raise HTTPException(
+                404,
+                detail=f"circuit_id {circuit_id} not found."
+            ) from error
 
         evc.extend_metadata(metadata)
         evc.sync()
-        return jsonify("Operation successful"), 201
+        return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v2/evc/metadata/<key>", methods=["DELETE"])
+    @rest("v2/evc/metadata/{key}", methods=["DELETE"])
     @validate_openapi(spec)
-    def bulk_delete_metadata(self, data, key):
+    def bulk_delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metada from a bulk of EVCs"""
+        data = get_json_or_400(request)
+        key = request.path_params["key"]
         circuit_ids = data.pop("circuit_ids")
         self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
 
@@ -435,30 +469,38 @@ class Main(KytosNApp):
                 fail_evcs.append(_id)
 
         if fail_evcs:
-            return jsonify(fail_evcs), 404
-        return jsonify("Operation successful"), 200
+            raise HTTPException(404, detail=fail_evcs)
+        return JSONResponse("Operation successful")
 
-    @rest("v2/evc/<circuit_id>/metadata/<key>", methods=["DELETE"])
-    def delete_metadata(self, circuit_id, key):
+    @rest("v2/evc/{circuit_id}/metadata/{key}", methods=["DELETE"])
+    def delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metadata from an EVC."""
+        circuit_id = request.path_params["circuit_id"]
+        key = request.path_params["key"]
         try:
             evc = self.circuits[circuit_id]
         except KeyError as error:
-            raise NotFound(f"circuit_id {circuit_id} not found.") from error
+            raise HTTPException(
+                404,
+                detail=f"circuit_id {circuit_id} not found."
+            ) from error
 
         evc.remove_metadata(key)
         evc.sync()
-        return jsonify("Operation successful"), 200
+        return JSONResponse("Operation successful")
 
-    @rest("/v2/evc/<circuit_id>/redeploy", methods=["PATCH"])
-    def redeploy(self, circuit_id):
+    @rest("/v2/evc/{circuit_id}/redeploy", methods=["PATCH"])
+    def redeploy(self, request: Request) -> JSONResponse:
         """Endpoint to force the redeployment of an EVC."""
+        circuit_id = request.path_params["circuit_id"]
         log.debug("redeploy /v2/evc/%s/redeploy", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
-            result = f"circuit_id {circuit_id} not found"
-            raise NotFound(result) from NotFound
+            raise HTTPException(
+                404,
+                detail=f"circuit_id {circuit_id} not found"
+            ) from KeyError
         if evc.is_enabled():
             with evc.lock:
                 evc.remove_current_flows()
@@ -469,43 +511,11 @@ class Main(KytosNApp):
             result = {"response": f"Circuit {circuit_id} is disabled."}
             status = 409
 
-        return jsonify(result), status
-
-    @rest("/v2/evc/schedule", methods=["GET"])
-    def list_schedules(self):
-        """Endpoint to return all schedules stored for all circuits.
-
-        Return a JSON with the following template:
-        [{"schedule_id": <schedule_id>,
-         "circuit_id": <circuit_id>,
-         "schedule": <schedule object>}]
-        """
-        log.debug("list_schedules /v2/evc/schedule")
-        circuits = self.mongo_controller.get_circuits()['circuits'].values()
-        if not circuits:
-            result = {}
-            status = 200
-            return jsonify(result), status
-
-        result = []
-        status = 200
-        for circuit in circuits:
-            circuit_scheduler = circuit.get("circuit_scheduler")
-            if circuit_scheduler:
-                for scheduler in circuit_scheduler:
-                    value = {
-                        "schedule_id": scheduler.get("id"),
-                        "circuit_id": circuit.get("id"),
-                        "schedule": scheduler,
-                    }
-                    result.append(value)
-
-        log.debug("list_schedules result %s %s", result, status)
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
     @rest("/v2/evc/schedule/", methods=["POST"])
     @validate_openapi(spec)
-    def create_schedule(self, data):
+    def create_schedule(self, request: Request) -> JSONResponse:
         """
         Create a new schedule for a given circuit.
 
@@ -522,6 +532,7 @@ class Main(KytosNApp):
             }
         """
         log.debug("create_schedule /v2/evc/schedule/")
+        data = get_json_or_400(request)
         circuit_id = data["circuit_id"]
         schedule_data = data["schedule"]
 
@@ -535,12 +546,12 @@ class Main(KytosNApp):
         if not evc:
             result = f"circuit_id {circuit_id} not found"
             log.debug("create_schedule result %s %s", result, 404)
-            raise NotFound(result) from NotFound
+            raise HTTPException(404, detail=result)
         # Can not modify circuits deleted and archived
         if evc.archived:
             result = f"Circuit {circuit_id} is archived. Update is forbidden."
-            log.debug("create_schedule result %s %s", result, 403)
-            raise Forbidden(result) from Forbidden
+            log.debug("create_schedule result %s %s", result, 409)
+            raise HTTPException(409, detail=result)
 
         # new schedule from dict
         new_schedule = CircuitSchedule.from_dict(schedule_data)
@@ -562,11 +573,11 @@ class Main(KytosNApp):
         status = 201
 
         log.debug("create_schedule result %s %s", result, status)
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
-    @rest("/v2/evc/schedule/<schedule_id>", methods=["PATCH"])
+    @rest("/v2/evc/schedule/{schedule_id}", methods=["PATCH"])
     @validate_openapi(spec)
-    def update_schedule(self, data, schedule_id):
+    def update_schedule(self, request: Request) -> JSONResponse:
         """Update a schedule.
 
         Change all attributes from the given schedule from a EVC circuit.
@@ -579,6 +590,8 @@ class Main(KytosNApp):
               "action": "create"
             }
         """
+        data = get_json_or_400(request)
+        schedule_id = request.path_params["schedule_id"]
         log.debug("update_schedule /v2/evc/schedule/%s", schedule_id)
 
         # Try to find a circuit schedule
@@ -588,11 +601,11 @@ class Main(KytosNApp):
         if not found_schedule:
             result = f"schedule_id {schedule_id} not found"
             log.debug("update_schedule result %s %s", result, 404)
-            raise NotFound(result) from NotFound
+            raise HTTPException(404, detail=result)
         if evc.archived:
             result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("update_schedule result %s %s", result, 403)
-            raise Forbidden(result) from Forbidden
+            log.debug("update_schedule result %s %s", result, 409)
+            raise HTTPException(409, detail=result)
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -612,16 +625,17 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("update_schedule result %s %s", result, status)
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
-    @rest("/v2/evc/schedule/<schedule_id>", methods=["DELETE"])
-    def delete_schedule(self, schedule_id):
+    @rest("/v2/evc/schedule/{schedule_id}", methods=["DELETE"])
+    def delete_schedule(self, request: Request) -> JSONResponse:
         """Remove a circuit schedule.
 
         Remove the Schedule from EVC.
         Remove the Schedule from cron job.
         Save the EVC to the Storehouse.
         """
+        schedule_id = request.path_params["schedule_id"]
         log.debug("delete_schedule /v2/evc/schedule/%s", schedule_id)
         evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
 
@@ -629,12 +643,12 @@ class Main(KytosNApp):
         if not found_schedule:
             result = f"schedule_id {schedule_id} not found"
             log.debug("delete_schedule result %s %s", result, 404)
-            raise NotFound(result)
+            raise HTTPException(404, detail=result)
 
         if evc.archived:
             result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("delete_schedule result %s %s", result, 403)
-            raise Forbidden(result)
+            log.debug("delete_schedule result %s %s", result, 409)
+            raise HTTPException(409, detail=result)
 
         # Remove the old schedule
         evc.circuit_scheduler.remove(found_schedule)
@@ -648,7 +662,7 @@ class Main(KytosNApp):
         status = 200
 
         log.debug("delete_schedule result %s %s", result, status)
-        return jsonify(result), status
+        return JSONResponse(result, status_code=status)
 
     def _is_duplicated_evc(self, evc):
         """Verify if the circuit given is duplicated with the stored evcs.
