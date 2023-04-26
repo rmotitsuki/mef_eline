@@ -25,6 +25,10 @@ Changed
 - Upgraded ``openapi-core`` to ``0.16.6`` from ``0.14.5``.
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 
+General Information
+===================
+- ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
+
 Removed
 =======
 
