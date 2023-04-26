@@ -1,5 +1,5 @@
 # pylint: disable=protected-access, too-many-lines
-"""Main module of kytos/mef_eline Kytos POST Application.
+"""Main module of kytos/mef_eline Kytos Network Application.
 
 NApp to provision circuits from user request.
 """
