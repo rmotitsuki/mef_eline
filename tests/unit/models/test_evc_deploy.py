@@ -171,6 +171,7 @@ class TestEVC(TestCase):
         interface_a = Interface("eth0", 1, Mock(spec=Switch))
         interface_z = Interface("eth1", 3, Mock(spec=Switch))
         attributes = {
+            "table_group": {"base": 0},
             "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(is_valid=True),
@@ -186,16 +187,20 @@ class TestEVC(TestCase):
         expected_flow_mod = {
             "match": {"in_port": interface_a.port_number},
             "cookie": evc.get_cookie(),
+            "owner": "mef_eline",
             "actions": [
                 {"action_type": "output", "port": interface_z.port_number}
             ],
             "priority": EVPL_SB_PRIORITY,
+            "table_group": "EVPL",
+            "table_id": 0,
         }
         self.assertEqual(expected_flow_mod, flow_mod)
 
     def test_prepare_pop_flow(self):
         """Test prepare pop flow  method."""
         attributes = {
+            "table_group": {"base": 0},
             "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
@@ -215,11 +220,14 @@ class TestEVC(TestCase):
             "match": {"in_port": interface_a.port_number,
                       "dl_vlan": in_vlan},
             "cookie": evc.get_cookie(),
+            "owner": "mef_eline",
             "actions": [
                 {"action_type": "pop_vlan"},
                 {"action_type": "output", "port": interface_z.port_number},
             ],
             "priority": EVPL_SB_PRIORITY,
+            "table_group": "EVPL",
+            "table_id": 0,
         }
         self.assertEqual(expected_flow_mod, flow_mod)
 
@@ -227,6 +235,7 @@ class TestEVC(TestCase):
     def test_prepare_push_flow(self):
         """Test prepare push flow method."""
         attributes = {
+            "table_group": {"EVPL": 3, "EPL": 4},
             "controller": get_controller_mock(),
             "name": "custom_name",
             "uni_a": get_uni_mocked(interface_port=1, is_valid=True),
@@ -247,6 +256,9 @@ class TestEVC(TestCase):
                     expected_flow_mod = {
                         'match': {'in_port': interface_a.port_number},
                         'cookie': evc.get_cookie(),
+                        'owner': 'mef_eline',
+                        'table_id': 3,
+                        'table_group': 'EVPL',
                         'actions': [
                             {'action_type': 'push_vlan', 'tag_type': 's'},
                             {'action_type': 'set_vlan', 'vlan_id': out_vlan_a},
@@ -275,6 +287,9 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "pop_vlan"}
                             expected_flow_mod["actions"].insert(0, new_action)
                     elif not in_vlan_a:
+                        if in_vlan_a is None:
+                            expected_flow_mod["table_group"] = "EPL"
+                            expected_flow_mod["table_id"] = 4
                         if in_vlan_z not in evc.special_cases:
                             new_action = {"action_type": "push_vlan",
                                           "tag_type": "c"}
@@ -304,6 +319,9 @@ class TestEVC(TestCase):
                     "dl_vlan": evc.uni_a.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {
                         "action_type": "set_vlan",
@@ -331,6 +349,9 @@ class TestEVC(TestCase):
                     .value,
                 },
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {"action_type": "pop_vlan"},
                     {
@@ -353,6 +374,9 @@ class TestEVC(TestCase):
                     "dl_vlan": evc.uni_z.user_tag.value,
                 },
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {
                         "action_type": "set_vlan",
@@ -380,6 +404,9 @@ class TestEVC(TestCase):
                     .value,
                 },
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {"action_type": "pop_vlan"},
                     {
@@ -435,6 +462,7 @@ class TestEVC(TestCase):
                     metadata={"s_vlan": 6},
                 ),
             ],
+            "table_group": {"base": 0}
         }
         return EVC(**attributes)
 
@@ -460,6 +488,9 @@ class TestEVC(TestCase):
             {
                 "match": {"in_port": in_port, "dl_vlan": in_vlan},
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": out_vlan},
                     {"action_type": "output", "port": out_port},
@@ -469,6 +500,9 @@ class TestEVC(TestCase):
             {
                 "match": {"in_port": out_port, "dl_vlan": out_vlan},
                 "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_group": "EVPL",
+                "table_id": 0,
                 "actions": [
                     {"action_type": "set_vlan", "vlan_id": in_vlan},
                     {"action_type": "output", "port": in_port},
@@ -1099,6 +1133,7 @@ class TestEVC(TestCase):
         uni_a.interface = interface_a
         uni_z.interface = interface_z
         attributes = {
+            "table_group": {"base": 0},
             "controller": get_controller_mock(),
             "name": "custom_name",
             "id": "1",
@@ -1122,6 +1157,9 @@ class TestEVC(TestCase):
                         {
                             "match": {"in_port": 1},
                             "cookie": evc.get_cookie(),
+                            "owner": "mef_eline",
+                            "table_id": 0,
+                            "table_group": "EPL",
                             "actions": [
                                 {"action_type": "output", "port": 3},
                             ],
@@ -1130,6 +1168,9 @@ class TestEVC(TestCase):
                         {
                             "match": {"in_port": 3},
                             "cookie": evc.get_cookie(),
+                            "owner": "mef_eline",
+                            "table_id": 0,
+                            "table_group": "EPL",
                             "actions": [
                                 {"action_type": "output", "port": 1},
                             ],
@@ -1144,8 +1185,10 @@ class TestEVC(TestCase):
                     evc._install_direct_uni_flows()
                     if uni_a is not None:
                         expected_flows[0]["match"]["dl_vlan"] = uni_a
+                        expected_flows[0]["table_group"] = "EVPL"
                     if uni_z is not None:
                         expected_flows[1]["match"]["dl_vlan"] = uni_z
+                        expected_flows[1]["table_group"] = "EVPL"
                     expected_flows[0]["priority"] = EVC.get_priority(uni_a)
                     expected_flows[1]["priority"] = EVC.get_priority(uni_z)
 
@@ -1846,3 +1889,19 @@ class TestEVC(TestCase):
 
         epl_value = EVC.get_priority(None)
         self.assertEqual(epl_value, EPL_SB_PRIORITY)
+
+    def test_set_flow_table_grou_id(self):
+        """Test set_flow_table_grou_id"""
+        self.evc_deploy.table_group = {"EPL": 3, "EVPL": 4}
+        flow_mod = {}
+        self.evc_deploy.set_flow_table_grou_id(flow_mod, 100)
+        self.assertEqual(flow_mod["table_group"], "EVPL")
+        self.assertEqual(flow_mod["table_id"], 4)
+        self.evc_deploy.set_flow_table_grou_id(flow_mod, None)
+        self.assertEqual(flow_mod["table_group"], "EPL")
+        self.assertEqual(flow_mod["table_id"], 3)
+
+        self.evc_deploy.table_group = {"EPL": 3, "base": 0}
+        self.evc_deploy.set_flow_table_grou_id(flow_mod, 200)
+        self.assertEqual(flow_mod["table_group"], "EVPL")
+        self.assertEqual(flow_mod["table_id"], 0)

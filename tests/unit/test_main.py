@@ -1,7 +1,14 @@
 """Module to test the main napp file."""
 import json
 from unittest import TestCase
-from unittest.mock import MagicMock, PropertyMock, call, create_autospec, patch
+from unittest.mock import (
+    AsyncMock,
+    MagicMock,
+    PropertyMock,
+    call,
+    create_autospec,
+    patch
+)
 
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
@@ -9,6 +16,31 @@ from kytos.lib.helpers import get_controller_mock
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
+
+
+async def test_on_table_enabled():
+    """Test on_table_enabled"""
+    # pylint: disable=import-outside-toplevel
+    from napps.kytos.mef_eline.main import Main
+    controller = get_controller_mock()
+    controller.buffers.app.aput = AsyncMock()
+    Main.get_eline_controller = MagicMock()
+    napp = Main(controller)
+
+    # Succesfully setting table groups
+    content = {"mef_eline": {"base": 123}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert napp.table_group == content["mef_eline"]
+    assert controller.buffers.app.aput.call_count == 1
+
+    # Failure at setting table groups
+    content = {"mef_eline": {"unknown": 123}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert controller.buffers.app.aput.call_count == 1
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
@@ -527,6 +559,7 @@ class TestMain(TestCase):
         # verify validation called
         validate_mock.assert_called_once()
         validate_mock.assert_called_with(
+            table_group={'base': 0},
             frequency="* * * * *",
             name="my evc1",
             uni_a=uni1,
