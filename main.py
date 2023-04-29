@@ -221,7 +221,7 @@ class Main(KytosNApp):
         """
         # Try to create the circuit object
         log.debug("create_circuit /v2/evc/")
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
 
         try:
             evc = self._evc_from_dict(data)
@@ -311,7 +311,7 @@ class Main(KytosNApp):
         The EVC attributes (creation_time, active, current_path,
         failover_path, _id, archived) can't be updated.
         """
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
         circuit_id = request.path_params["circuit_id"]
         log.debug("update /v2/evc/%s", circuit_id)
         try:
@@ -414,7 +414,7 @@ class Main(KytosNApp):
     @validate_openapi(spec)
     def bulk_add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to a bulk of EVCs."""
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
         circuit_ids = data.pop("circuit_ids")
 
         self.mongo_controller.update_evcs(circuit_ids, data, "add")
@@ -436,7 +436,7 @@ class Main(KytosNApp):
     def add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to an EVC."""
         circuit_id = request.path_params["circuit_id"]
-        metadata = get_json_or_400(request)
+        metadata = get_json_or_400(request, self.controller.loop)
         if not isinstance(metadata, dict):
             raise HTTPException(400, "Invalid metadata value: {metadata}")
         try:
@@ -455,7 +455,7 @@ class Main(KytosNApp):
     @validate_openapi(spec)
     def bulk_delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metada from a bulk of EVCs"""
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
         key = request.path_params["key"]
         circuit_ids = data.pop("circuit_ids")
         self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
@@ -532,7 +532,7 @@ class Main(KytosNApp):
             }
         """
         log.debug("create_schedule /v2/evc/schedule/")
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
         circuit_id = data["circuit_id"]
         schedule_data = data["schedule"]
 
@@ -590,7 +590,7 @@ class Main(KytosNApp):
               "action": "create"
             }
         """
-        data = get_json_or_400(request)
+        data = get_json_or_400(request, self.controller.loop)
         schedule_id = request.path_params["schedule_id"]
         log.debug("update_schedule /v2/evc/schedule/%s", schedule_id)
 
