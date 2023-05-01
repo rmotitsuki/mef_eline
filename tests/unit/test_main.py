@@ -28,11 +28,12 @@ async def test_on_table_enabled():
     napp = Main(controller)
 
     # Succesfully setting table groups
-    content = {"mef_eline": {"epl": 0, "evpl": 0}}
+    content = {"mef_eline": {"epl": 2}}
     event = KytosEvent(name="kytos/of_multi_table.enable_table",
                        content=content)
     await napp.on_table_enabled(event)
-    assert napp.table_group == content["mef_eline"]
+    assert napp.table_group["epl"] == 2
+    assert napp.table_group["evpl"] == 0
     assert controller.buffers.app.aput.call_count == 1
 
     # Failure at setting table groups

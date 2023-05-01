@@ -1,32 +1,28 @@
 """Method to thest EVCDeploy class."""
 import sys
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import MagicMock, Mock, call, patch
+
+import pytest
+from kytos.lib.helpers import get_controller_mock
 
 from kytos.core.common import EntityStatus
 from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.interface import Interface
 from kytos.core.switch import Switch
-from kytos.lib.helpers import get_controller_mock
 
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
-from napps.kytos.mef_eline.settings import (
-    MANAGER_URL,
-    SDN_TRACE_CP_URL,
-    EVPL_SB_PRIORITY,
-    EPL_SB_PRIORITY,
-    ANY_SB_PRIORITY,
-    UNTAGGED_SB_PRIORITY
-)  # NOQA
 from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
-from napps.kytos.mef_eline.tests.helpers import (
-    get_link_mocked,
-    get_uni_mocked,
-)  # NOQA
+from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
+from napps.kytos.mef_eline.settings import (ANY_SB_PRIORITY,  # NOQA
+                                            EPL_SB_PRIORITY, EVPL_SB_PRIORITY,
+                                            MANAGER_URL, SDN_TRACE_CP_URL,
+                                            UNTAGGED_SB_PRIORITY)
+from napps.kytos.mef_eline.tests.helpers import (get_link_mocked,  # NOQA
+                                                 get_uni_mocked)
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
@@ -74,7 +70,7 @@ class TestEVC(TestCase):
         }
         evc = EVC(**attributes)
 
-        self.assertFalse(evc.should_deploy(attributes["primary_links"]))
+        assert evc.should_deploy(attributes["primary_links"]) is False
         log_mock.debug.assert_called_with(f"{evc} is disabled.")
 
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -90,7 +86,7 @@ class TestEVC(TestCase):
             "enabled": True,
         }
         evc = EVC(**attributes)
-        self.assertTrue(evc.should_deploy(attributes["primary_links"]))
+        assert evc.should_deploy(attributes["primary_links"]) is True
         log_mock.debug.assert_called_with(f"{evc} will be deployed.")
 
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -107,7 +103,7 @@ class TestEVC(TestCase):
             "active": True,
         }
         evc = EVC(**attributes)
-        self.assertFalse(evc.should_deploy(attributes["primary_links"]))
+        assert evc.should_deploy(attributes["primary_links"]) is False
 
     @patch("napps.kytos.mef_eline.models.evc.requests")
     def test_send_flow_mods_case1(self, requests_mock):
@@ -124,7 +120,7 @@ class TestEVC(TestCase):
 
         expected_endpoint = f"{MANAGER_URL}/flows/{switch.id}"
         expected_data = {"flows": flow_mods, "force": False}
-        self.assertEqual(requests_mock.post.call_count, 1)
+        assert requests_mock.post.call_count == 1
         requests_mock.post.assert_called_once_with(
             expected_endpoint, json=expected_data
         )
@@ -143,7 +139,7 @@ class TestEVC(TestCase):
 
         expected_endpoint = f"{MANAGER_URL}/delete/{switch.id}"
         expected_data = {"flows": flow_mods, "force": True}
-        self.assertEqual(requests_mock.post.call_count, 1)
+        assert requests_mock.post.call_count == 1
         requests_mock.post.assert_called_once_with(
             expected_endpoint, json=expected_data
         )
@@ -158,7 +154,7 @@ class TestEVC(TestCase):
         requests_mock.post.return_value = response
 
         # pylint: disable=protected-access
-        with self.assertRaises(FlowModException):
+        with pytest.raises(FlowModException):
             EVC._send_flow_mods(
                 switch.id,
                 flow_mods,
@@ -195,7 +191,7 @@ class TestEVC(TestCase):
             "table_group": "evpl",
             "table_id": 0,
         }
-        self.assertEqual(expected_flow_mod, flow_mod)
+        assert expected_flow_mod == flow_mod
 
     def test_prepare_pop_flow(self):
         """Test prepare pop flow  method."""
@@ -229,7 +225,7 @@ class TestEVC(TestCase):
             "table_group": "evpl",
             "table_id": 0,
         }
-        self.assertEqual(expected_flow_mod, flow_mod)
+        assert expected_flow_mod == flow_mod
 
     # pylint: disable=too-many-branches
     def test_prepare_push_flow(self):
@@ -294,7 +290,7 @@ class TestEVC(TestCase):
                             new_action = {"action_type": "push_vlan",
                                           "tag_type": "c"}
                             expected_flow_mod["actions"].insert(0, new_action)
-                    self.assertEqual(expected_flow_mod, flow_mod)
+                    assert expected_flow_mod == flow_mod
 
     @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
@@ -546,20 +542,20 @@ class TestEVC(TestCase):
         evc = self.create_evc_inter_switch()
         deployed = evc.deploy_to_path(evc.primary_links)
 
-        self.assertEqual(should_deploy_mock.call_count, 1)
-        self.assertEqual(activate_mock.call_count, 1)
-        self.assertEqual(install_uni_flows_mock.call_count, 1)
-        self.assertEqual(install_nni_flows.call_count, 1)
-        self.assertEqual(chose_vlans_mock.call_count, 1)
+        assert should_deploy_mock.call_count == 1
+        assert activate_mock.call_count == 1
+        assert install_uni_flows_mock.call_count == 1
+        assert install_nni_flows.call_count == 1
+        assert chose_vlans_mock.call_count == 1
         log_mock.info.assert_called_with(f"{evc} was deployed.")
-        self.assertTrue(deployed)
+        assert deployed is True
 
         # intra switch EVC
         evc = self.create_evc_intra_switch()
-        self.assertTrue(evc.deploy_to_path(evc.primary_links))
-        self.assertEqual(install_direct_uni_flows_mock.call_count, 1)
-        self.assertEqual(activate_mock.call_count, 2)
-        self.assertEqual(log_mock.info.call_count, 2)
+        assert evc.deploy_to_path(evc.primary_links) is True
+        assert install_direct_uni_flows_mock.call_count == 1
+        assert activate_mock.call_count == 2
+        assert log_mock.info.call_count == 2
         log_mock.info.assert_called_with(f"{evc} was deployed.")
 
     @patch("requests.post")
@@ -595,26 +591,26 @@ class TestEVC(TestCase):
         discover_new_paths_mock.return_value = []
         deployed = evc.deploy_to_path()
 
-        self.assertEqual(discover_new_paths_mock.call_count, 1)
-        self.assertEqual(should_deploy_mock.call_count, 1)
-        self.assertEqual(activate_mock.call_count, 0)
-        self.assertEqual(install_uni_flows_mock.call_count, 0)
-        self.assertEqual(install_nni_flows.call_count, 0)
-        self.assertEqual(choose_vlans_mock.call_count, 0)
-        self.assertEqual(log_mock.info.call_count, 0)
-        self.assertEqual(sync_mock.call_count, 1)
-        self.assertFalse(deployed)
+        assert discover_new_paths_mock.call_count == 1
+        assert should_deploy_mock.call_count == 1
+        assert activate_mock.call_count == 0
+        assert install_uni_flows_mock.call_count == 0
+        assert install_nni_flows.call_count == 0
+        assert choose_vlans_mock.call_count == 0
+        assert log_mock.info.call_count == 0
+        assert sync_mock.call_count == 1
+        assert deployed is False
 
         # NoTagAvailable on static path
         should_deploy_mock.return_value = True
         choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
-        self.assertFalse(evc.deploy_to_path(evc.primary_links))
+        assert evc.deploy_to_path(evc.primary_links) is False
 
         # NoTagAvailable on dynamic path
         should_deploy_mock.return_value = False
         discover_new_paths_mock.return_value = [Path(['a', 'b'])]
         choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
-        self.assertFalse(evc.deploy_to_path(evc.primary_links))
+        assert evc.deploy_to_path(evc.primary_links) is False
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch(
@@ -680,14 +676,14 @@ class TestEVC(TestCase):
 
         deployed = evc.deploy_to_path(path)
 
-        self.assertEqual(discover_new_paths.call_count, 0)
-        self.assertEqual(should_deploy_mock.call_count, 1)
-        self.assertEqual(install_nni_flows.call_count, 1)
-        self.assertEqual(choose_vlans_mock.call_count, 1)
-        self.assertEqual(log_mock.error.call_count, 1)
-        self.assertEqual(sync_mock.call_count, 0)
-        self.assertEqual(remove_current_flows.call_count, 2)
-        self.assertFalse(deployed)
+        assert discover_new_paths.call_count == 0
+        assert should_deploy_mock.call_count == 1
+        assert install_nni_flows.call_count == 1
+        assert choose_vlans_mock.call_count == 1
+        assert log_mock.error.call_count == 1
+        assert sync_mock.call_count == 0
+        assert remove_current_flows.call_count == 2
+        assert deployed is False
 
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.get_failover_path_candidates")
@@ -709,15 +705,15 @@ class TestEVC(TestCase):
         # case1: early return intra switch
         evc1 = self.create_evc_intra_switch()
 
-        self.assertFalse(evc1.setup_failover_path())
-        self.assertEqual(sync_mock.call_count, 0)
+        assert evc1.setup_failover_path() is False
+        assert sync_mock.call_count == 0
 
         # case2: early return not eligible for path failover
         evc2 = self.create_evc_inter_switch()
         evc2.is_eligible_for_failover_path = MagicMock(return_value=False)
 
-        self.assertFalse(evc2.setup_failover_path())
-        self.assertEqual(sync_mock.call_count, 0)
+        assert evc2.setup_failover_path() is False
+        assert sync_mock.call_count == 0
 
         # case3: success failover_path setup
         evc2.is_eligible_for_failover_path = MagicMock(return_value=True)
@@ -726,23 +722,23 @@ class TestEVC(TestCase):
         path_mock.__iter__.return_value = ["link3"]
         get_failover_path_candidates_mock.return_value = [None, path_mock]
 
-        self.assertTrue(evc2.setup_failover_path())
+        assert evc2.setup_failover_path() is True
         remove_path_flows_mock.assert_called_with(["link1", "link2"])
         path_mock.choose_vlans.assert_called()
         notify_mock.assert_called()
         install_nni_flows_mock.assert_called_with(path_mock)
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
-        self.assertEqual(evc2.failover_path, path_mock)
-        self.assertEqual(sync_mock.call_count, 1)
+        assert evc2.failover_path == path_mock
+        assert sync_mock.call_count == 1
 
         # case 4: failed to setup failover_path - No Tag available
         evc2.failover_path = []
         path_mock.choose_vlans.side_effect = KytosNoTagAvailableError("error")
         sync_mock.call_count = 0
 
-        self.assertFalse(evc2.setup_failover_path())
-        self.assertEqual(list(evc2.failover_path), [])
-        self.assertEqual(sync_mock.call_count, 1)
+        assert evc2.setup_failover_path() is False
+        assert len(list(evc2.failover_path)) == 0
+        assert sync_mock.call_count == 1
 
         # case 5: failed to setup failover_path - FlowMod exception
         evc2.failover_path = []
@@ -750,9 +746,9 @@ class TestEVC(TestCase):
         install_nni_flows_mock.side_effect = FlowModException("error")
         sync_mock.call_count = 0
 
-        self.assertFalse(evc2.setup_failover_path())
-        self.assertEqual(list(evc2.failover_path), [])
-        self.assertEqual(sync_mock.call_count, 1)
+        assert evc2.setup_failover_path() is False
+        assert len(list(evc2.failover_path)) == 0
+        assert sync_mock.call_count == 1
         remove_path_flows_mock.assert_called_with(path_mock)
 
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy_to_path")
@@ -784,7 +780,7 @@ class TestEVC(TestCase):
         deployed = evc.deploy_to_backup_path()
 
         deploy_to_path_mocked.assert_called_once_with()
-        self.assertEqual(deployed, True)
+        assert deployed is True
 
     @patch("requests.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
@@ -857,14 +853,14 @@ class TestEVC(TestCase):
 
         deployed = evc.deploy_to_path()
 
-        self.assertEqual(should_deploy_mock.call_count, 1)
-        self.assertEqual(discover_new_paths_mocked.call_count, 1)
-        self.assertEqual(activate_mock.call_count, 1)
-        self.assertEqual(install_uni_flows_mock.call_count, 1)
-        self.assertEqual(install_nni_flows.call_count, 1)
-        self.assertEqual(chose_vlans_mock.call_count, 1)
+        assert should_deploy_mock.call_count == 1
+        assert discover_new_paths_mocked.call_count == 1
+        assert activate_mock.call_count == 1
+        assert install_uni_flows_mock.call_count == 1
+        assert install_nni_flows.call_count == 1
+        assert chose_vlans_mock.call_count == 1
         log_mock.info.assert_called_with(f"{evc} was deployed.")
-        self.assertTrue(deployed)
+        assert deployed is True
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_primary_path")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_backup_path")
@@ -876,24 +872,24 @@ class TestEVC(TestCase):
         # case 1: deploy to primary
         self.evc_deploy.archived = False
         deploy_primary_mock.return_value = True
-        self.assertTrue(self.evc_deploy.deploy())
-        self.assertEqual(emit_event_mock.call_count, 1)
+        assert self.evc_deploy.deploy()
+        assert emit_event_mock.call_count == 1
 
         # case 2: deploy to backup
         deploy_primary_mock.return_value = False
         deploy_backup_mock.return_value = True
-        self.assertTrue(self.evc_deploy.deploy())
-        self.assertEqual(emit_event_mock.call_count, 2)
+        assert self.evc_deploy.deploy()
+        assert emit_event_mock.call_count == 2
 
         # case 3: fail to deploy to primary and backup
         deploy_backup_mock.return_value = False
-        self.assertFalse(self.evc_deploy.deploy())
-        self.assertEqual(emit_event_mock.call_count, 2)
+        assert self.evc_deploy.deploy() is False
+        assert emit_event_mock.call_count == 2
 
         # case 4: archived
         self.evc_deploy.archived = True
-        self.assertFalse(self.evc_deploy.deploy())
-        self.assertEqual(emit_event_mock.call_count, 2)
+        assert self.evc_deploy.deploy() is False
+        assert emit_event_mock.call_count == 2
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.sync")
@@ -905,7 +901,7 @@ class TestEVC(TestCase):
         remove_flows_mock.assert_called()
         sync_mock.assert_called()
         emit_event_mock.assert_called()
-        self.assertFalse(self.evc_deploy.is_enabled())
+        assert self.evc_deploy.is_enabled() is False
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
@@ -963,8 +959,8 @@ class TestEVC(TestCase):
         evc.remove_current_flows()
         notify_mock.assert_called()
 
-        self.assertEqual(send_flow_mods_mocked.call_count, 5)
-        self.assertFalse(evc.is_active())
+        assert send_flow_mods_mocked.call_count == 5
+        assert evc.is_active() is False
         flows = [
             {"cookie": evc.get_cookie(), "cookie_mask": 18446744073709551615}
         ]
@@ -1236,29 +1232,29 @@ class TestEVC(TestCase):
     def test_is_affected_by_link(self):
         """Test is_affected_by_link method"""
         self.evc_deploy.current_path = Path(['a', 'b', 'c'])
-        self.assertTrue(self.evc_deploy.is_affected_by_link('b'))
+        assert self.evc_deploy.is_affected_by_link('b') is True
 
     def test_is_backup_path_affected_by_link(self):
         """Test is_backup_path_affected_by_link method"""
         self.evc_deploy.backup_path = Path(['a', 'b', 'c'])
-        self.assertFalse(self.evc_deploy.is_backup_path_affected_by_link('d'))
+        assert self.evc_deploy.is_backup_path_affected_by_link('d') is False
 
     def test_is_primary_path_affected_by_link(self):
         """Test is_primary_path_affected_by_link method"""
         self.evc_deploy.primary_path = Path(['a', 'b', 'c'])
-        self.assertTrue(self.evc_deploy.is_primary_path_affected_by_link('c'))
+        assert self.evc_deploy.is_primary_path_affected_by_link('c') is True
 
     def test_is_using_primary_path(self):
         """Test is_using_primary_path method"""
         self.evc_deploy.primary_path = Path(['a', 'b', 'c'])
         self.evc_deploy.current_path = Path(['e', 'f', 'g'])
-        self.assertFalse(self.evc_deploy.is_using_primary_path())
+        assert self.evc_deploy.is_using_primary_path() is False
 
     def test_is_using_backup_path(self):
         """Test is_using_backup_path method"""
         self.evc_deploy.backup_path = Path(['a', 'b', 'c'])
         self.evc_deploy.current_path = Path(['e', 'f', 'g'])
-        self.assertFalse(self.evc_deploy.is_using_backup_path())
+        assert self.evc_deploy.is_using_backup_path() is False
 
     @patch('napps.kytos.mef_eline.models.path.Path.status')
     def test_is_using_dynamic_path(self, mock_status):
@@ -1266,38 +1262,29 @@ class TestEVC(TestCase):
         mock_status.return_value = False
         self.evc_deploy.backup_path = Path([])
         self.evc_deploy.primary_path = Path([])
-        self.assertFalse(self.evc_deploy.is_using_dynamic_path())
+        assert self.evc_deploy.is_using_dynamic_path() is False
 
     def test_get_path_status(self):
         """Test get_path_status method"""
         path = Path([])
-        self.assertEqual(
-            self.evc_deploy.get_path_status(path),
-            EntityStatus.DISABLED
-        )
+        assert self.evc_deploy.get_path_status(path) == EntityStatus.DISABLED
         path = Path([
             get_link_mocked(status=EntityStatus.UP),
             get_link_mocked(status=EntityStatus.DOWN)
         ])
-        self.assertEqual(
-            self.evc_deploy.get_path_status(path),
-            EntityStatus.DOWN
-        )
+        assert self.evc_deploy.get_path_status(path) == EntityStatus.DOWN
         path = Path([
             get_link_mocked(status=EntityStatus.UP),
             get_link_mocked(status=EntityStatus.UP)
         ])
-        self.assertEqual(
-            self.evc_deploy.get_path_status(path),
-            EntityStatus.UP
-        )
+        assert self.evc_deploy.get_path_status(path) == EntityStatus.UP
 
     @patch("napps.kytos.mef_eline.models.evc.EVC._prepare_uni_flows")
     def test_get_failover_flows(self, prepare_uni_flows_mock):
         """Test get_failover_flows method."""
         evc = self.create_evc_inter_switch()
         evc.failover_path = Path([])
-        self.assertEqual(evc.get_failover_flows(), {})
+        assert len(evc.get_failover_flows()) == 0
 
         path = MagicMock()
         evc.failover_path = path
@@ -1382,11 +1369,11 @@ class TestEVC(TestCase):
                                     json=expected_payload,
                                     timeout=30
                                 )
-        self.assertEqual(result['result'], "ok")
+        assert result['result'] == "ok"
 
         response.status_code = 400
         result = EVCDeploy.run_bulk_sdntraces([evc.uni_a])
-        self.assertEqual(result, {"result": []})
+        assert result == {"result": []}
 
     @patch("requests.put")
     def test_run_bulk_sdntraces_special_vlan(self, put_mock):
@@ -1545,7 +1532,7 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
                                             }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertTrue(result[evc.id])
+        assert result[evc.id] is True
 
         # case2: fail incomplete trace from uni_a
         run_bulk_sdntraces_mock.return_value = {
@@ -1555,7 +1542,7 @@ class TestEVC(TestCase):
                                                         ]
         }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
         # case3: fail incomplete trace from uni_z
         run_bulk_sdntraces_mock.return_value = {
@@ -1565,7 +1552,7 @@ class TestEVC(TestCase):
                                                         ]
         }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
         # case4: fail wrong vlan id in trace from uni_a
         trace_a[1]["vlan"] = 5
@@ -1574,7 +1561,7 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
         }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
         # case5: fail wrong vlan id in trace from uni_z
         trace_a[1]["vlan"] = 99
@@ -1582,38 +1569,38 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
         }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
         # case6: success when no output in traces
         trace_a[1]["vlan"] = 5
         trace_z[1]["vlan"] = 6
         result = EVCDeploy.check_list_traces([evc])
-        self.assertTrue(result[evc.id])
+        assert result[evc.id] is True
 
         # case7: fail when output is None in trace_a or trace_b
         trace_a[-1]["out"] = None
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
         trace_a[-1].pop("out", None)
         trace_z[-1]["out"] = None
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
         # case8: success when the output is correct on both uni
         trace_a[-1]["out"] = {"port": 3, "vlan": 83}
         trace_z[-1]["out"] = {"port": 2, "vlan": 82}
         result = EVCDeploy.check_list_traces([evc])
-        self.assertTrue(result[evc.id])
+        assert result[evc.id] is True
 
         # case9: fail if any output is incorrect
         trace_a[-1]["out"] = {"port": 3, "vlan": 99}
         trace_z[-1]["out"] = {"port": 2, "vlan": 82}
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
         trace_a[-1]["out"] = {"port": 3, "vlan": 83}
         trace_z[-1]["out"] = {"port": 2, "vlan": 99}
         result = EVCDeploy.check_list_traces([evc])
-        self.assertFalse(result[evc.id])
+        assert result[evc.id] is False
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
@@ -1678,7 +1665,7 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
                                             }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertTrue(result[evc.id])
+        assert result[evc.id] is True
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
@@ -1743,7 +1730,7 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
                                             }
         result = EVCDeploy.check_list_traces([evc])
-        self.assertTrue(result[evc.id])
+        assert result[evc.id] is True
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
@@ -1843,60 +1830,57 @@ class TestEVC(TestCase):
         link2 = get_link_mocked(endpoint_a_port=3, endpoint_b_port=4)
         link3 = get_link_mocked(endpoint_a_port=5, endpoint_b_port=6)
         self.evc_deploy.failover_path = Path([link1, link2])
-        self.assertTrue(
-            self.evc_deploy.is_failover_path_affected_by_link(link1)
-        )
-        self.assertFalse(
-            self.evc_deploy.is_failover_path_affected_by_link(link3)
-        )
+        assert self.evc_deploy.is_failover_path_affected_by_link(link1) is True
+        assert self.evc_deploy.is_failover_path_affected_by_link(link3) \
+               is False
 
     def test_is_eligible_for_failover_path(self):
         """Test is_eligible_for_failover_path method"""
-        self.assertFalse(self.evc_deploy.is_eligible_for_failover_path())
+        assert self.evc_deploy.is_eligible_for_failover_path() is False
         self.evc_deploy.dynamic_backup_path = True
         self.evc_deploy.primary_path = Path([])
         self.evc_deploy.backup_path = Path([])
-        self.assertTrue(self.evc_deploy.is_eligible_for_failover_path())
+        assert self.evc_deploy.is_eligible_for_failover_path() is True
 
     def test_get_value_from_uni_tag(self):
         """Test _get_value_from_uni_tag"""
         uni = get_uni_mocked(tag_value=None)
         value = EVC._get_value_from_uni_tag(uni)
-        self.assertEqual(value, None)
+        assert value is None
 
         uni = get_uni_mocked(tag_value="any")
         value = EVC._get_value_from_uni_tag(uni)
-        self.assertEqual(value, "4096/4096")
+        assert value == "4096/4096"
 
         uni = get_uni_mocked(tag_value="untagged")
         value = EVC._get_value_from_uni_tag(uni)
-        self.assertEqual(value, 0)
+        assert value == 0
 
         uni = get_uni_mocked(tag_value=100)
         value = EVC._get_value_from_uni_tag(uni)
-        self.assertEqual(value, 100)
+        assert value == 100
 
     def test_get_priority(self):
         """Test get_priority_from_vlan"""
         evpl_value = EVC.get_priority(100)
-        self.assertEqual(evpl_value, EVPL_SB_PRIORITY)
+        assert evpl_value == EVPL_SB_PRIORITY
 
         untagged_value = EVC.get_priority(0)
-        self.assertEqual(untagged_value, UNTAGGED_SB_PRIORITY)
+        assert untagged_value == UNTAGGED_SB_PRIORITY
 
         any_value = EVC.get_priority("4096/4096")
-        self.assertEqual(any_value, ANY_SB_PRIORITY)
+        assert any_value == ANY_SB_PRIORITY
 
         epl_value = EVC.get_priority(None)
-        self.assertEqual(epl_value, EPL_SB_PRIORITY)
+        assert epl_value == EPL_SB_PRIORITY
 
     def test_set_flow_table_group_id(self):
         """Test set_flow_table_group_id"""
         self.evc_deploy.table_group = {"epl": 3, "evpl": 4}
         flow_mod = {}
         self.evc_deploy.set_flow_table_group_id(flow_mod, 100)
-        self.assertEqual(flow_mod["table_group"], "evpl")
-        self.assertEqual(flow_mod["table_id"], 4)
+        assert flow_mod["table_group"] == "evpl"
+        assert flow_mod["table_id"] == 4
         self.evc_deploy.set_flow_table_group_id(flow_mod, None)
-        self.assertEqual(flow_mod["table_group"], "epl")
-        self.assertEqual(flow_mod["table_id"], 3)
+        assert flow_mod["table_group"] == "epl"
+        assert flow_mod["table_id"] == 3
