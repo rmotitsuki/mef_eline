@@ -11,6 +11,7 @@ from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
 
 
 # pylint: disable=too-many-public-methods,too-many-lines,too-many-locals
+# pylint: disable=too-many-arguments
 class TestMain:
     """Test the Main class."""
 
@@ -374,18 +375,19 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
-    async def test_create_a_circuit_case_1(self, *args):
+    async def test_create_a_circuit_case_1(
+        self,
+        validate_mock,
+        evc_as_dict_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        event_loop
+    ):
         """Test create a new circuit."""
         # pylint: disable=too-many-locals
-        (
-            validate_mock,
-            evc_as_dict_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         evc_deploy_mock.return_value = True
@@ -457,8 +459,9 @@ class TestMain:
         # verify add circuit in sched
         sched_add_mock.assert_called_once()
 
-    async def test_create_a_circuit_case_2(self):
+    async def test_create_a_circuit_case_2(self, event_loop):
         """Test create a new circuit trying to send request without a json."""
+        self.napp.controller.loop = event_loop
         url = f"{self.base_endpoint}/v2/evc/"
 
         response = await self.api_client.post(url)
@@ -466,9 +469,10 @@ class TestMain:
         assert 400 == response.status_code
         assert "Missing required request body" in current_data["description"]
 
-    async def test_create_a_circuit_case_3(self):
+    async def test_create_a_circuit_case_3(self, event_loop):
         """Test create a new circuit trying to send request with an
         invalid json."""
+        self.napp.controller.loop = event_loop
         url = f"{self.base_endpoint}/v2/evc/"
 
         response = await self.api_client.post(
@@ -484,10 +488,12 @@ class TestMain:
     async def test_create_a_circuit_case_4(
         self,
         mongo_controller_upsert_mock,
-        uni_from_dict_mock
+        uni_from_dict_mock,
+        event_loop
     ):
         """Test create a new circuit trying to send request with an
         invalid value."""
+        self.napp.controller.loop = event_loop
         # pylint: disable=too-many-locals
         uni_from_dict_mock.side_effect = ValueError("Could not instantiate")
         mongo_controller_upsert_mock.return_value = True
@@ -516,8 +522,9 @@ class TestMain:
         response = await self.api_client.post(url, json=payload)
         assert 400 == response.status_code, response.data
 
-    async def test_create_a_circuit_invalid_queue_id(self):
+    async def test_create_a_circuit_invalid_queue_id(self, event_loop):
         """Test create a new circuit with invalid queue_id."""
+        self.napp.controller.loop = event_loop
         url = f"{self.base_endpoint}/v2/evc/"
 
         payload = {
@@ -545,18 +552,19 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
-    async def test_create_circuit_already_enabled(self, *args):
+    async def test_create_circuit_already_enabled(
+        self,
+        evc_as_dict_mock,
+        validate_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        event_loop
+    ):
         """Test create an already created circuit."""
         # pylint: disable=too-many-locals
-        (
-            evc_as_dict_mock,
-            validate_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
@@ -599,8 +607,9 @@ class TestMain:
         assert 409 == response.status_code
 
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
-    async def test_create_circuit_case_5(self, uni_from_dict_mock):
+    async def test_create_circuit_case_5(self, uni_from_dict_mock, event_loop):
         """Test when neither primary path nor dynamic_backup_path is set."""
+        self.napp.controller.loop = event_loop
         url = f"{self.base_endpoint}/v2/evc/"
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
@@ -823,17 +832,18 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
-    async def test_create_schedule(self, *args):
+    async def test_create_schedule(
+        self,
+        validate_mock,
+        evc_as_dict_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        scheduler_add_job_mock,
+        event_loop
+    ):
         """Test create a circuit schedule."""
-        (
-            validate_mock,
-            evc_as_dict_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            scheduler_add_job_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         uni_from_dict_mock.side_effect = self._uni_from_dict_side_effect
@@ -875,8 +885,9 @@ class TestMain:
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 201
 
-    async def test_create_schedule_invalid_request(self):
+    async def test_create_schedule_invalid_request(self, event_loop):
         """Test create schedule API with invalid request."""
+        self.napp.controller.loop = event_loop
         evc1 = MagicMock()
         self.napp.circuits = {'bb:bb:bb': evc1}
         url = f'{self.base_endpoint}/v2/evc/schedule/'
@@ -951,17 +962,18 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
     @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
-    async def test_update_schedule(self, *args):
+    async def test_update_schedule(
+        self,
+        validate_mock,
+        evc_as_dict_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        scheduler_remove_job_mock,
+        event_loop
+    ):
         """Test create a circuit schedule."""
-        (
-            validate_mock,
-            evc_as_dict_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            scheduler_remove_job_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         mongo_payload_1 = {
             "circuits": {
                 "aa:aa:aa": {
@@ -1011,8 +1023,11 @@ class TestMain:
         assert response_json["id"] is not None
 
     @patch('napps.kytos.mef_eline.main.Main._find_evc_by_schedule_id')
-    async def test_update_no_schedule(self, find_evc_by_schedule_id_mock):
+    async def test_update_no_schedule(
+        self, find_evc_by_schedule_id_mock, event_loop
+    ):
         """Test update a circuit schedule."""
+        self.napp.controller.loop = event_loop
         url = f"{self.base_endpoint}/v2/evc/schedule/1"
         payload = {"frequency": "*/1 * * * *", "action": "create"}
 
@@ -1025,16 +1040,16 @@ class TestMain:
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
-    async def test_update_schedule_archived(self, *args):
+    async def test_update_schedule_archived(
+        self,
+        validate_mock,
+        evc_as_dict_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        event_loop
+    ):
         """Test create a circuit schedule."""
-        # pylint: disable=too-many-locals
-        (
-            validate_mock,
-            evc_as_dict_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         mongo_payload_1 = {
             "circuits": {
                 "aa:aa:aa": {
@@ -1207,21 +1222,21 @@ class TestMain:
     @patch('napps.kytos.mef_eline.models.evc.EVCDeploy.deploy')
     @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
     @patch('napps.kytos.mef_eline.main.EVC.as_dict')
-    async def test_update_circuit(self, *args):
+    async def test_update_circuit(
+        self,
+        evc_as_dict_mock,
+        uni_from_dict_mock,
+        evc_deploy,
+        _is_valid_mock,
+        interface_by_id_mock,
+        _mock_validate,
+        _mongo_controller_upsert_mock,
+        _sched_add_mock,
+        requests_mock,
+        event_loop,
+    ):
         """Test update a circuit circuit."""
-        # pylint: disable=too-many-locals,duplicate-code
-        (
-            evc_as_dict_mock,
-            uni_from_dict_mock,
-            evc_deploy,
-            _,
-            interface_by_id_mock,
-            _,
-            _,
-            _,
-            requests_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         interface_by_id_mock.return_value = get_uni_mocked().interface
         unis = [
             get_uni_mocked(switch_dpid="00:00:00:00:00:00:00:01"),
@@ -1357,18 +1372,18 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
-    async def test_update_circuit_invalid_json(self, *args):
+    async def test_update_circuit_invalid_json(
+        self,
+        evc_as_dict_mock,
+        validate_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        event_loop
+    ):
         """Test update a circuit circuit."""
-        # pylint: disable=too-many-locals
-        (
-            evc_as_dict_mock,
-            validate_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
@@ -1424,20 +1439,20 @@ class TestMain:
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
     @patch("napps.kytos.mef_eline.models.path.Path.is_valid")
-    async def test_update_circuit_invalid_path(self, *args):
+    async def test_update_circuit_invalid_path(
+        self,
+        is_valid_mock,
+        evc_as_dict_mock,
+        validate_mock,
+        mongo_controller_upsert_mock,
+        link_from_dict_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        event_loop
+    ):
         """Test update a circuit circuit."""
-        # pylint: disable=too-many-locals
-        (
-            is_valid_mock,
-            evc_as_dict_mock,
-            validate_mock,
-            mongo_controller_upsert_mock,
-            link_from_dict_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         is_valid_mock.side_effect = InvalidPath("error")
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
@@ -1517,17 +1532,17 @@ class TestMain:
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    async def test_update_evc_no_json_mime(self, *args):
+    async def test_update_evc_no_json_mime(
+        self,
+        mongo_controller_upsert_mock,
+        validate_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        event_loop
+    ):
         """Test update a circuit with wrong mimetype."""
-        # pylint: disable=too-many-locals
-        (
-            mongo_controller_upsert_mock,
-            validate_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
@@ -1586,19 +1601,19 @@ class TestMain:
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
     @patch("napps.kytos.mef_eline.main.EVC.as_dict")
-    async def test_delete_archived_evc(self, *args):
+    async def test_delete_archived_evc(
+        self,
+        evc_as_dict_mock,
+        validate_mock,
+        mongo_controller_upsert_mock,
+        uni_from_dict_mock,
+        sched_add_mock,
+        evc_deploy_mock,
+        remove_current_flows_mock,
+        event_loop
+    ):
         """Try to delete an archived EVC"""
-        # pylint: disable=too-many-locals
-        (
-            evc_as_dict_mock,
-            validate_mock,
-            mongo_controller_upsert_mock,
-            uni_from_dict_mock,
-            sched_add_mock,
-            evc_deploy_mock,
-            remove_current_flows_mock
-        ) = args
-
+        self.napp.controller.loop = event_loop
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
@@ -1872,8 +1887,9 @@ class TestMain:
         self.napp.handle_evc_deployed(event)
         evc.setup_failover_path.assert_called()
 
-    async def test_add_metadata(self):
+    async def test_add_metadata(self, event_loop):
         """Test method to add metadata"""
+        self.napp.controller.loop = event_loop
         evc_mock = create_autospec(EVC)
         evc_mock.metadata = {}
         evc_mock.id = 1234
@@ -1888,8 +1904,9 @@ class TestMain:
         assert response.status_code == 201
         evc_mock.extend_metadata.assert_called_with(payload)
 
-    async def test_add_metadata_malformed_json(self):
+    async def test_add_metadata_malformed_json(self, event_loop):
         """Test method to add metadata with a malformed json"""
+        self.napp.controller.loop = event_loop
         payload = '{"metadata1": 1, "metadata2": 2,}'
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/1234/metadata",
@@ -1900,8 +1917,9 @@ class TestMain:
         assert response.status_code == 400
         assert "Failed to deserialize" in response.json()["description"]
 
-    async def test_add_metadata_no_body(self):
+    async def test_add_metadata_no_body(self, event_loop):
         """Test method to add metadata with no body"""
+        self.napp.controller.loop = event_loop
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/1234/metadata"
         )
@@ -1909,8 +1927,9 @@ class TestMain:
         assert response.json()["description"] == \
             "Missing required request body"
 
-    async def test_add_metadata_no_evc(self):
+    async def test_add_metadata_no_evc(self, event_loop):
         """Test method to add metadata with no evc"""
+        self.napp.controller.loop = event_loop
         payload = {"metadata1": 1, "metadata2": 2}
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/1234/metadata",
@@ -1920,8 +1939,9 @@ class TestMain:
         assert response.json()["description"] == \
             "circuit_id 1234 not found."
 
-    async def test_add_metadata_wrong_content_type(self):
+    async def test_add_metadata_wrong_content_type(self, event_loop):
         """Test method to add metadata with wrong content type"""
+        self.napp.controller.loop = event_loop
         payload = {"metadata1": 1, "metadata2": 2}
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/1234/metadata",
@@ -2061,8 +2081,9 @@ class TestMain:
         self.napp.handle_flow_delete(event)
         evc.set_flow_removed_at.assert_called_once()
 
-    async def test_add_bulk_metadata(self):
+    async def test_add_bulk_metadata(self, event_loop):
         """Test add_bulk_metadata method"""
+        self.napp.controller.loop = event_loop
         evc_mock = create_autospec(EVC)
         evc_mock.id = 1234
         self.napp.circuits = {"1234": evc_mock}
@@ -2085,8 +2106,9 @@ class TestMain:
         assert calls == 1
         evc_mock.extend_metadata.assert_called_with(payload)
 
-    async def test_add_bulk_metadata_no_id(self):
+    async def test_add_bulk_metadata_no_id(self, event_loop):
         """Test add_bulk_metadata with unknown evc id"""
+        self.napp.controller.loop = event_loop
         evc_mock = create_autospec(EVC)
         evc_mock.id = 1234
         self.napp.circuits = {"1234": evc_mock}
@@ -2099,8 +2121,9 @@ class TestMain:
         )
         assert response.status_code == 404
 
-    async def test_add_bulk_metadata_no_circuits(self):
+    async def test_add_bulk_metadata_no_circuits(self, event_loop):
         """Test add_bulk_metadata without circuit_ids"""
+        self.napp.controller.loop = event_loop
         evc_mock = create_autospec(EVC)
         evc_mock.id = 1234
         self.napp.circuits = {"1234": evc_mock}
@@ -2113,8 +2136,9 @@ class TestMain:
         )
         assert response.status_code == 400
 
-    async def test_delete_bulk_metadata(self):
+    async def test_delete_bulk_metadata(self, event_loop):
         """Test delete_metadata method"""
+        self.napp.controller.loop = event_loop
         evc_mock = create_autospec(EVC)
         evc_mock.id = 1234
         self.napp.circuits = {"1234": evc_mock}
