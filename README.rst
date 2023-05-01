@@ -56,6 +56,7 @@ Subscribed
 - ``kytos/topology.link_down``
 - ``kytos/flow_manager.flow.error``
 - ``kytos/flow_manager.flow.removed``
+- ``kytos/of_multi_table.enable_table``
 
 Published
 ---------
@@ -64,6 +65,17 @@ kytos/mef_eline.created
 ~~~~~~~~~~~~~~~~~~~~~~~
 
 Event reporting that a L2 circuit was created.
+
+kytos/mef_eline.enable_table
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A response from the ``kytos/of_multi_table.enable_table`` event to confirm table settings.
+
+.. code-block:: python3
+
+  {
+    'table_group': <object>
+  }
 
 .. TAGs
 

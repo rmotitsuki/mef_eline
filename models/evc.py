@@ -1030,14 +1030,11 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
-    def set_flow_table_grou_id(self, flow_mod: dict, vlan) -> dict:
+    def set_flow_table_group_id(self, flow_mod: dict, vlan) -> dict:
         """Set table_group and table_id"""
-        table_group = "EPL" if vlan is None else "EVPL"
+        table_group = "epl" if vlan is None else "evpl"
         flow_mod["table_group"] = table_group
-        try:
-            flow_mod["table_id"] = self.table_group[table_group]
-        except KeyError:
-            flow_mod["table_id"] = self.table_group["base"]
+        flow_mod["table_id"] = self.table_group[table_group]
         return flow_mod
 
     @staticmethod
@@ -1069,7 +1066,7 @@ class EVCDeploy(EVCBase):
             "owner": "mef_eline",
         }
 
-        self.set_flow_table_grou_id(flow_mod, vlan)
+        self.set_flow_table_group_id(flow_mod, vlan)
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
         else:

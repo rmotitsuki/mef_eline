@@ -58,7 +58,7 @@ class Main(KytosNApp):
         # Every create/update/delete must be synced to mongodb.
         self.circuits = {}
 
-        self.table_group = {"base": 0}
+        self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
 

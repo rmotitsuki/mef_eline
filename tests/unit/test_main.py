@@ -28,7 +28,7 @@ async def test_on_table_enabled():
     napp = Main(controller)
 
     # Succesfully setting table groups
-    content = {"mef_eline": {"base": 123}}
+    content = {"mef_eline": {"epl": 0, "evpl": 0}}
     event = KytosEvent(name="kytos/of_multi_table.enable_table",
                        content=content)
     await napp.on_table_enabled(event)
@@ -559,7 +559,7 @@ class TestMain(TestCase):
         # verify validation called
         validate_mock.assert_called_once()
         validate_mock.assert_called_with(
-            table_group={'base': 0},
+            table_group={'evpl': 0, 'epl': 0},
             frequency="* * * * *",
             name="my evc1",
             uni_a=uni1,
