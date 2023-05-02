@@ -982,7 +982,7 @@ class Main(KytosNApp):
                           f'mef_eline. Allowed table groups are '
                           f'{settings.TABLE_GROUP_ALLOWED}')
                 return
-            self.table_group[group] = table_group[group]
+        self.table_group.update(table_group)
         content = {"group_table": self.table_group}
         name = "kytos/mef_eline.enable_table"
         await aemit_event(self.controller, name, content)
