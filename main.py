@@ -14,7 +14,8 @@ from werkzeug.exceptions import (BadRequest, Conflict, Forbidden,
                                  UnsupportedMediaType)
 
 from kytos.core import KytosNApp, log, rest
-from kytos.core.helpers import listen_to, load_spec, validate_openapi
+from kytos.core.helpers import (alisten_to, listen_to, load_spec,
+                                validate_openapi)
 from kytos.core.interface import TAG, UNI
 from kytos.core.link import Link
 from napps.kytos.mef_eline import controllers, settings
@@ -22,7 +23,8 @@ from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import emit_event, map_evc_event_content
+from napps.kytos.mef_eline.utils import (aemit_event, emit_event,
+                                         map_evc_event_content)
 
 
 # pylint: disable=too-many-public-methods
@@ -56,6 +58,7 @@ class Main(KytosNApp):
         # Every create/update/delete must be synced to mongodb.
         self.circuits = {}
 
+        self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
 
@@ -877,6 +880,7 @@ class Main(KytosNApp):
 
     def _evc_from_dict(self, evc_dict):
         data = self._evc_dict_with_instances(evc_dict)
+        data["table_group"] = self.table_group
         return EVC(self.controller, **data)
 
     def _uni_from_dict(self, uni_dict):
@@ -964,3 +968,21 @@ class Main(KytosNApp):
                 evc = self._evc_from_dict(circuit)
                 self.circuits[c_id] = evc
         return self.circuits
+
+    # pylint: disable=attribute-defined-outside-init
+    @alisten_to("kytos/of_multi_table.enable_table")
+    async def on_table_enabled(self, event):
+        """Handle a recently table enabled."""
+        table_group = event.content.get("mef_eline", None)
+        if not table_group:
+            return
+        for group in table_group:
+            if group not in settings.TABLE_GROUP_ALLOWED:
+                log.error(f'The table group "{group}" is not allowed for '
+                          f'mef_eline. Allowed table groups are '
+                          f'{settings.TABLE_GROUP_ALLOWED}')
+                return
+        self.table_group.update(table_group)
+        content = {"group_table": self.table_group}
+        name = "kytos/mef_eline.enable_table"
+        await aemit_event(self.controller, name, content)

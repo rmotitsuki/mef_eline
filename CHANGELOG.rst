@@ -14,6 +14,8 @@ Added
 - Allow the creation of ``any`` and ``untagged`` EVC.
 - Added api request ``POST /v2/evc/metadata`` to add metadata to EVCs
 - Added api request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
+- Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
+- Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 
 Changed
 =======
@@ -24,6 +26,7 @@ Changed
 - Augmented ``GET /v2/evc/`` to accept parameters ``metadata.key=item``
 - Upgraded ``openapi-core`` to ``0.16.6`` from ``0.14.5``.
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
+- ``mef_eline`` now supports table group settings from ``of_multi_table``
 
 Removed
 =======
