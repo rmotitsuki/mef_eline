@@ -28,6 +28,10 @@ Changed
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 
+General Information
+===================
+- ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
+
 Removed
 =======
 
