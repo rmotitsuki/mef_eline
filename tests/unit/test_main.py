@@ -39,6 +39,7 @@ async def test_on_table_enabled():
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
+# pylint: disable=too-many-arguments,too-many-locals
 class TestMain:
     """Test the Main class."""
 
