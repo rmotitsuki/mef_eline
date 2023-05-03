@@ -157,6 +157,7 @@ class EVCBase(GenericEntity):
 
         # Special cases: No tag, any, untagged
         self.special_cases = {None, "4096/4096", 0}
+        self.table_group = kwargs.get("table_group")
 
     def sync(self):
         """Sync this EVC in the MongoDB."""
@@ -1029,6 +1030,13 @@ class EVCDeploy(EVCBase):
         evc_id = cookie - (settings.COOKIE_PREFIX << 56)
         return f"{evc_id:x}".zfill(14)
 
+    def set_flow_table_group_id(self, flow_mod: dict, vlan) -> dict:
+        """Set table_group and table_id"""
+        table_group = "epl" if vlan is None else "evpl"
+        flow_mod["table_group"] = table_group
+        flow_mod["table_id"] = self.table_group[table_group]
+        return flow_mod
+
     @staticmethod
     def get_priority(vlan):
         """Return priority value depending on vlan value"""
@@ -1055,7 +1063,10 @@ class EVCDeploy(EVCBase):
             "match": {"in_port": in_interface.port_number},
             "cookie": self.get_cookie(),
             "actions": default_actions,
+            "owner": "mef_eline",
         }
+
+        self.set_flow_table_group_id(flow_mod, vlan)
         if self.sb_priority:
             flow_mod["priority"] = self.sb_priority
         else:

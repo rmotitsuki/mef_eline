@@ -1,17 +1,44 @@
 """Module to test the main napp file."""
-from unittest.mock import MagicMock, PropertyMock, call, create_autospec, patch
+from unittest.mock import (AsyncMock, MagicMock, PropertyMock, call,
+                           create_autospec, patch)
+
 import pytest
+from kytos.lib.helpers import get_controller_mock, get_test_client
 
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
-from kytos.lib.helpers import get_controller_mock, get_test_client
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
 
 
-# pylint: disable=too-many-public-methods,too-many-lines,too-many-locals
-# pylint: disable=too-many-arguments
+async def test_on_table_enabled():
+    """Test on_table_enabled"""
+    # pylint: disable=import-outside-toplevel
+    from napps.kytos.mef_eline.main import Main
+    controller = get_controller_mock()
+    controller.buffers.app.aput = AsyncMock()
+    Main.get_eline_controller = MagicMock()
+    napp = Main(controller)
+
+    # Succesfully setting table groups
+    content = {"mef_eline": {"epl": 2}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert napp.table_group["epl"] == 2
+    assert napp.table_group["evpl"] == 0
+    assert controller.buffers.app.aput.call_count == 1
+
+    # Failure at setting table groups
+    content = {"mef_eline": {"unknown": 123}}
+    event = KytosEvent(name="kytos/of_multi_table.enable_table",
+                       content=content)
+    await napp.on_table_enabled(event)
+    assert controller.buffers.app.aput.call_count == 1
+
+
+# pylint: disable=too-many-public-methods, too-many-lines
 class TestMain:
     """Test the Main class."""
 
@@ -443,6 +470,7 @@ class TestMain:
         # verify validation called
         validate_mock.assert_called_once()
         validate_mock.assert_called_with(
+            table_group={'evpl': 0, 'epl': 0},
             frequency="* * * * *",
             name="my evc1",
             uni_a=uni1,
@@ -1339,7 +1367,7 @@ class TestMain:
         evc_deploy.reset_mock()
         response = await self.api_client.patch(
             f"{self.base_endpoint}/v2/evc/{circuit_id}",
-            data='{"priority":5,}',
+            content=b'{"priority":5,}',
             headers={"Content-Type": "application/json"}
         )
         evc_deploy.assert_not_called()
@@ -1907,10 +1935,10 @@ class TestMain:
     async def test_add_metadata_malformed_json(self, event_loop):
         """Test method to add metadata with a malformed json"""
         self.napp.controller.loop = event_loop
-        payload = '{"metadata1": 1, "metadata2": 2,}'
+        payload = b'{"metadata1": 1, "metadata2": 2,}'
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/1234/metadata",
-            data=payload,
+            content=payload,
             headers={"Content-Type": "application/json"}
         )
 
