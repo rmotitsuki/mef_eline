@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import requests
 from glom import glom
-from requests.exceptions import ConnectTimeout
+from requests.exceptions import Timeout
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
@@ -1177,8 +1177,9 @@ class EVCDeploy(EVCBase):
             data.append(data_uni)
         try:
             response = requests.put(endpoint, json=data, timeout=30)
-        except ConnectTimeout as exception:
+        except Timeout as exception:
             log.error(f"Request has timed out: {exception}")
+            return {"result": []}
         if response.status_code >= 400:
             log.error(f"Failed to run sdntrace-cp: {response.text}")
             return {"result": []}
@@ -1253,8 +1254,9 @@ class EVCDeploy(EVCBase):
 
         traces = EVCDeploy.run_bulk_sdntraces(uni_list)
         traces = traces["result"]
-
         circuits_checked = {}
+        if not traces:
+            return circuits_checked
 
         try:
             for i, circuit in enumerate(list_circuits):
