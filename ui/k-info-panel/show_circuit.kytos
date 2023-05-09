@@ -144,19 +144,6 @@
               <tbody>
               <tr><th>{{constraint_labels[p_constraint_index]}}</th></tr>
               <tr><td>
-                <div id="mef-constraints-desired-links">
-                  <table class="table">
-                    <tr><th>{{constraint_labels['desired_links']}}</th>
-                    </tr>
-                    <tr>
-                    <td>
-                      <k-select :options="get_link_options()"
-                      :value.sync=p_constraint.desired_links>
-                      </k-select>
-                    </td>
-                    </tr>
-                  </table>
-                </div>
                 <div id="mef-constraints-undesired-links">
                   <table class="table">
                     <tr><th>{{constraint_labels['undesired_links']}}</th></tr>
@@ -646,7 +633,6 @@ module.exports = {
       this.constraint_labels = {
         'primary_constraints': 'Primary Constraints',
         'secondary_constraints': 'Secondary Constraints',
-        'desired_links': 'Desired links',
         'undesired_links': 'Undesired links',
         'spf_attribute': 'SPF attribute',
         'spf_max_path_cost': 'SPF max path cost',
@@ -670,7 +656,6 @@ module.exports = {
       let _constraint = {};
       if(data) {
         _constraint = {
-          'desired_links': data['desired_links'],
           'undesired_links': data['undesired_links'],
           'spf_attribute': data['spf_attribute'],
           'spf_max_path_cost': data['spf_max_path_cost'],
@@ -784,12 +769,6 @@ module.exports = {
       ['primary_constraints', 'secondary_constraints'].forEach(_type => {
         payload[_type] = {};
         // Dropdown forms
-        payload[_type].desired_links = [];
-        if(this.constraints[_type].desired_links && this.constraints[_type].desired_links.length > 0) {
-          payload[_type].desired_links = [].concat(
-            this.constraints[_type].desired_links.filter(item => typeof(item) == "string")
-          );
-        }
         payload[_type].undesired_links = [];
         if(this.constraints[_type].undesired_links && this.constraints[_type].undesired_links.length > 0) {
           payload[_type].undesired_links = [].concat(
@@ -874,7 +853,6 @@ module.exports = {
     }
     ['primary_constraints', 'secondary_constraints'].forEach( s => {
         _this.form_constraints[s] = {
-          'desired_links': '',
           'undesired_links': '',
           'spf_attribute': '',
           'spf_max_path_cost': '',

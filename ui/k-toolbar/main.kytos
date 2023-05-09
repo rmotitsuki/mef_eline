@@ -81,10 +81,6 @@
             <k-accordion-item :title="constraint_titles[constraint]"
              v-if="false">
 
-                <k-select :title="constraint_titles.desired_links"
-                :options="get_link_options()"
-                :value.sync="form_constraints[constraint].desired_links"></k-select>
-
                 <k-select :title="constraint_titles.undesired_links" :options="get_link_options()"
                 :value.sync ="form_constraints[constraint].undesired_links"></k-select>
                 
@@ -294,7 +290,6 @@ module.exports = {
       this.constraint_titles = {
         'primary_constraints': 'Primary Constraints',
         'secondary_constraints': 'Secondary Constraints',
-        'desired_links': 'Desired links',
         'undesired_links': 'Undesired links',
         'spf_attribute': 'SPF attribute',
         'spf_max_path_cost': 'SPF max path cost',
@@ -310,7 +305,6 @@ module.exports = {
 
       let _constraint = {};
       _constraint = {
-        'desired_links': '',
         'undesired_links': '',
         'spf_attribute': '',
         'spf_max_path_cost': '',
@@ -431,9 +425,6 @@ module.exports = {
           });
 
           // Dropdown forms
-          if(this.form_constraints[_type].desired_links) {
-            request[_type].desired_links = this.form_constraints[_type].desired_links.filter(item => typeof(item) == "string");
-          }
           if(this.form_constraints[_type].undesired_links) {
             request[_type].undesired_links = this.form_constraints[_type].undesired_links.filter(item => typeof(item) == "string");
           }
