@@ -508,14 +508,6 @@ components:
     PathConstraints:
       type: object
       properties:
-        desired_links:
-          type: array
-          description: List of link IDs that should be in the path, included as a logical AND.
-          items:
-            type: string
-          example:
-            - '2bd01b0d-c875-4263-ad38-fec0b2999582'
-            - 'c41f6249-3ea6-4aba-a083-08049face1e2'
         undesired_links:
           type: array
           description: List of link IDs that should not be in the path, excluded as a logical OR.
