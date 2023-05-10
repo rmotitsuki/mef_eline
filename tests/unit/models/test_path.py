@@ -426,7 +426,7 @@ class TestDynamicPathManager(TestCase):
             [link.id for link in expected_paths_1]
         )
         expected_call = call(
-            "http://localhost:8181/api/kytos/pathfinder/v2/",
+            "http://localhost:8181/api/kytos/pathfinder/v3/",
             json={
                 **{
                     "source": circuit.uni_a.interface.id,
@@ -626,7 +626,7 @@ class TestDynamicPathManager(TestCase):
 
         max_paths = 10
         expected_call = call(
-            "http://localhost:8181/api/kytos/pathfinder/v2/",
+            "http://localhost:8181/api/kytos/pathfinder/v3/",
             json={
                 **{
                     "source": evc.uni_a.interface.id,

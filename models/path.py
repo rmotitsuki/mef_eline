@@ -128,7 +128,7 @@ class DynamicPathManager:
             log.error(
                 "Failed to get paths at %s. Returned %s",
                 endpoint,
-                api_reply.status_code,
+                api_reply.text,
             )
             return None
         reply_data = api_reply.json()
