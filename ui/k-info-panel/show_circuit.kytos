@@ -142,9 +142,9 @@
           <div class="mef-circuit-table mef-circuit-table-constraints">
             <table class="table">
               <tbody>
-              <tr><th>{{constraint_labels[p_constraint_index]}}</th></tr>
+              <th>{{constraint_labels[p_constraint_index]}}</th>
               <tr><td>
-                <div id="mef-constraints-undesired-links">
+                <div>
                   <table class="table">
                     <tr><th>{{constraint_labels['undesired_links']}}</th></tr>
                     <tr>
@@ -825,10 +825,10 @@ module.exports = {
         _this.$kytos.$emit("setNotification" , notification);
         _this.loadEVC(_this.content.id);
       });
-      request.fail(function( jqXHR, textStatus ) {
+      request.fail(function(data) {
         let notification = {
           title: 'Update EVC failed',
-          description: 'Error updating EVC ' + id +'. ' + textStatus
+          description: 'Error updating EVC ' + id +'. ' + data.responseJSON.description
         }
         _this.$kytos.$emit("setNotification" , notification);
       });
@@ -985,17 +985,8 @@ module.exports = {
     clear:both; 
     width:540px;
   }
-  .mef-circuit-table-constraints #mef-constraints-desired-links {
-    float: left;
-    width: 255px;
-  }
-  .mef-circuit-table-constraints #mef-constraints-undesired-links {
-    float: left;
-    margin-left: 10px;
-    width: 255px;
-  }
   .mef-circuit-table-constraints #mef-constraints-spf {
-    width: 300px;
+    width: 400px;
   }
   .mef-circuit-table-constraints #mef-constraints-spf th {
     width: 130px;
