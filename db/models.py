@@ -74,7 +74,6 @@ class PathConstraints(BaseModel):
     mandatory_metrics: Optional[LinkConstraints]
     flexible_metrics: Optional[LinkConstraints]
     minimum_flexible_hits: Optional[int]
-    desired_links: Optional[List[str]]
     undesired_links: Optional[List[str]]
 
 
