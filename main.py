@@ -725,9 +725,8 @@ class Main(KytosNApp):
             else:
                 check_failover.append(evc)
 
-        offset = 0
         while switch_flows:
-            offset = (offset + settings.BATCH_SIZE) or None
+            offset = settings.BATCH_SIZE or None
             switches = list(switch_flows.keys())
             for dpid in switches:
                 emit_event(
