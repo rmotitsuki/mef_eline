@@ -427,6 +427,8 @@ components:
             $ref: '#/components/schemas/CircuitSchedule'
         sb_priority:
           type: integer
+          nullable: true
+          x-nullable: true
           format: int32
           description: "Southbound priority value"
           minimum: 0
@@ -439,6 +441,8 @@ components:
           maximum: 7
         queue_id:
           type: integer
+          nullable: true
+          x-nullable: true
           format: int32
           description: "QoS Egress Queue ID"
           minimum: 0
@@ -654,6 +658,7 @@ components:
         sb_priority:
           type: integer
           format: int32
+          nullable: true
           description: "Southbound priority value"
           minimum: 0
         service_level:
@@ -666,6 +671,7 @@ components:
         queue_id:
           type: integer
           format: int32
+          nullable: true
           description: "QoS Egress Queue ID"
           minimum: 0
           maximum: 7
