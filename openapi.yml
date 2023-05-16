@@ -428,7 +428,6 @@ components:
         sb_priority:
           type: integer
           nullable: true
-          x-nullable: true
           format: int32
           description: "Southbound priority value"
           minimum: 0
@@ -442,7 +441,6 @@ components:
         queue_id:
           type: integer
           nullable: true
-          x-nullable: true
           format: int32
           description: "QoS Egress Queue ID"
           minimum: 0
