@@ -28,6 +28,7 @@ Changed
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
+- Changed ui constraints default values to pass the spec validation
 
 General Information
 ===================
