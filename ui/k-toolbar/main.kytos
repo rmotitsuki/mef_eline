@@ -76,7 +76,15 @@
            <k-dropdown icon="arrow-right" title="QoS Egress Queue" :options="get_queue_ids"
             :value.sync="queue_id"></k-dropdown>
         </k-accordion-item>
-
+        <k-accordion-item title="Telemetry">
+          <div style="">
+            <k-checkbox icon="poll" v-on:change.native="change_telemetry" class="round"></k-checkbox>
+            <span class="mef-field-label">
+              <span v-if="has_telemetry">enabled</span>
+              <span v-else>disabled</span>
+            </span>
+          </div>
+        </k-accordion-item>
         <span v-for="constraint in ['primary_constraints', 'secondary_constraints']">
             <k-accordion-item :title="constraint_titles[constraint]"
              v-if="false">
@@ -235,6 +243,7 @@ module.exports = {
             ownership: false
           }
         },
+        has_telemetry: false,
     }
   },
   computed: {
@@ -439,6 +448,10 @@ module.exports = {
           if(this.form_constraints[_type].minimum_flexible_hits) {
             request[_type].minimum_flexible_hits = parseInt(this.form_constraints[_type].minimum_flexible_hits);
           }
+          request['metadata'] = {};
+          if(this.has_telemetry !== undefined) {
+            request['metadata']['telemetry'] = this.has_telemetry;
+          }
         });
         
         let circuit_request = $.ajax({
@@ -511,6 +524,9 @@ module.exports = {
             this.endpoint_z = splitted_dpid[2];
         }
     },
+    change_telemetry: function() {
+      this.has_telemetry = !this.has_telemetry;
+    }
   },
   mounted() { // when the Vue app is booted up, this is run automatically.
     this.fetch_dpids();

@@ -53,6 +53,15 @@
                 </template>
               </td></tr>
             </template>
+            <tr><th>INT Telemetry</th>
+              <td>
+                  <div class="k-button-wrapper compact" @click="change_telemetry">
+                    <button class="k-button compact">
+                      <i class="material-icons check_true" v-if="has_telemetry">done</i>
+                      <i class="material-icons check_false" v-else>close</i>
+                    </button>
+                  </div>
+            </td></tr>
           </table>
         </div>
         <div class="mef-circuit-table">
@@ -77,7 +86,6 @@
             </template>
           </table>
         </div>
-
         <div class="mef-circuit-table" id="mef-unis">
          <table class="table">
             <tbody>
@@ -303,6 +311,8 @@ module.exports = {
         constraint_descriptions: {}, // constraint mouse over description
         link_options: [], // constraint link dropdown options
         form_constraints: {}, // constraint data vue object synchronization
+
+        has_telemetry: false,
     }
   },
   methods: {
@@ -537,6 +547,8 @@ module.exports = {
         'primary_constraints': this.buildPathConstraintsView(data['primary_constraints']),
         'secondary_constraints': this.buildPathConstraintsView(data['secondary_constraints']),
       };
+      
+      this.has_telemetry = data['metadata']['telemetry'] || false;
     },
     buildPathView: function(path_data) {
       /**
@@ -754,7 +766,7 @@ module.exports = {
           interface_id: this.endpoints_data["DPID"][1]["value"],
         },
       };
-      
+
       // Tag is optional
       if(this.endpoints_data["VLAN"][0]["value"]) {
         payload["uni_a"]["tag"] = {
@@ -811,6 +823,12 @@ module.exports = {
             }
           }
         });
+
+        payload['metadata'] = {};
+        if(this.has_telemetry) {
+          payload['metadata']['telemetry'] = this.has_telemetry;
+        }
+
         payload[_type] = _constraint_payload;
       });
       $payload = payload;
@@ -837,6 +855,9 @@ module.exports = {
         _this.$kytos.$emit("setNotification" , notification);
       });
     },
+    change_telemetry: function() {
+      this.has_telemetry = !this.has_telemetry;
+    }
   },
   beforeMount() {
       // Load DPID attributes and metadata
@@ -1078,5 +1099,15 @@ module.exports = {
   }
   .autocomplete-result-list li {
     white-space: nowrap;
+  }
+  .mef-telemetry {
+    margin-left: 20px;
+    margin-bottom: 20px;
+    width: 25em;
+  }
+  .mef-telemetry .mef-field-label {
+    padding: 0;
+    color: #737373;
+    height: 1.1em;
   }
 </style>
