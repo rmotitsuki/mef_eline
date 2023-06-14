@@ -5,6 +5,7 @@ from unittest.mock import (AsyncMock, MagicMock, PropertyMock, call,
 import pytest
 from kytos.lib.helpers import get_controller_mock, get_test_client
 
+from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
 from napps.kytos.mef_eline.exceptions import InvalidPath
@@ -550,6 +551,40 @@ class TestMain:
         payload["name"] = 1
         response = await self.api_client.post(url, json=payload)
         assert 400 == response.status_code, response.data
+
+    @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
+    async def test_create_a_circuit_case_5(
+        self,
+        validate_mock,
+        uni_from_dict_mock,
+        event_loop
+    ):
+        """Test create a new intra circuit with a disabled switch"""
+        self.napp.controller.loop = event_loop
+        validate_mock.return_value = True
+        uni1 = create_autospec(UNI)
+        uni1.interface = create_autospec(Interface)
+        uni1.interface.switch = MagicMock()
+        uni1.interface.switch.return_value = "00:00:00:00:00:00:00:01"
+        uni1.interface.switch.status = EntityStatus.DISABLED
+        uni_from_dict_mock.side_effect = [uni1, uni1]
+        url = f"{self.base_endpoint}/v2/evc/"
+        payload = {
+            "name": "my evc1",
+            "dynamic_backup_path": True,
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:01:1",
+                "tag": {"tag_type": 1, "value": 80},
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:01:2",
+                "tag": {"tag_type": 1, "value": 1},
+            },
+        }
+
+        response = await self.api_client.post(url, json=payload)
+        assert 409 == response.status_code, response.data
 
     async def test_create_a_circuit_invalid_queue_id(self, event_loop):
         """Test create a new circuit with invalid queue_id."""

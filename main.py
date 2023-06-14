@@ -10,6 +10,7 @@ from threading import Lock
 from pydantic import ValidationError
 
 from kytos.core import KytosNApp, log, rest
+from kytos.core.common import EntityStatus
 from kytos.core.helpers import (alisten_to, listen_to, load_spec,
                                 validate_openapi)
 from kytos.core.interface import TAG, UNI
@@ -231,6 +232,14 @@ class Main(KytosNApp):
         except ValueError as exception:
             log.debug("create_circuit result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
+
+        if evc.is_intra_switch():
+            if evc.uni_a.interface.switch.status == EntityStatus.DISABLED:
+                switch = evc.uni_a.interface.switch.dpid
+                raise HTTPException(
+                    409,
+                    detail=f"Path is not valid: {switch} is disabled"
+                )
 
         if evc.primary_path:
             try:
