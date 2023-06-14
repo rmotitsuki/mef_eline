@@ -234,12 +234,13 @@ class Main(KytosNApp):
             raise HTTPException(400, detail=str(exception)) from exception
 
         if evc.is_intra_switch():
-            if evc.uni_a.interface.switch.status == EntityStatus.DISABLED:
-                switch = evc.uni_a.interface.switch.dpid
+            try:
+                self.check_disabled_component(evc.uni_a, evc.uni_z)
+            except HTTPException as exception:
                 raise HTTPException(
                     409,
-                    detail=f"Path is not valid: {switch} is disabled"
-                )
+                    detail=f"Path is not valid: {exception}"
+                ) from exception
 
         if evc.primary_path:
             try:
@@ -990,6 +991,28 @@ class Main(KytosNApp):
                 evc = self._evc_from_dict(circuit)
                 self.circuits[c_id] = evc
         return self.circuits
+
+    @staticmethod
+    def check_disabled_component(uni_a: object, uni_z: object):
+        """Check if a switch or an interface is disabled"""
+        if uni_a.interface.switch.status == EntityStatus.DISABLED:
+            dpid = uni_a.interface.switch.dpid
+            raise HTTPException(
+                409,
+                detail=f"Switch {dpid} is disabled"
+            )
+        if uni_a.interface.status == EntityStatus.DISABLED:
+            id_ = uni_a.interface.id
+            raise HTTPException(
+                409,
+                detail=f"Interface {id_} is disabled"
+            )
+        if uni_z.interface.status == EntityStatus.DISABLED:
+            id_ = uni_z.interface.id
+            raise HTTPException(
+                409,
+                detail=f"Interface {id_} is disabled"
+            )
 
     # pylint: disable=attribute-defined-outside-init
     @alisten_to("kytos/of_multi_table.enable_table")

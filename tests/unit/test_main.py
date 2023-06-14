@@ -8,6 +8,7 @@ from kytos.lib.helpers import get_controller_mock, get_test_client
 from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
+from kytos.core.rest_api import HTTPException
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
@@ -2222,3 +2223,29 @@ class TestMain:
         calls = self.napp.mongo_controller.update_evcs.call_count
         assert calls == 1
         assert evc_mock.remove_metadata.call_count == 1
+
+    async def test_check_disabled_component(self, event_loop):
+        """Test check disabled component"""
+        self.napp.controller.loop = event_loop
+        uni_a = get_uni_mocked(switch_id="00:01")
+        uni_a.interface.switch.status = EntityStatus.DISABLED
+
+        uni_z = get_uni_mocked(switch_id="00:01")
+        uni_z.interface.switch.status = EntityStatus.DISABLED
+
+        # Switch disabled
+        with pytest.raises(HTTPException):
+            self.napp.check_disabled_component(uni_a, uni_z)
+
+        # Uni_a interface disabled
+        uni_a.interface = MagicMock()
+        uni_a.interface.status = EntityStatus.DISABLED
+        with pytest.raises(HTTPException):
+            self.napp.check_disabled_component(uni_a, uni_z)
+
+        # Uni_z interface disabled
+        uni_a.interface.status = EntityStatus.UP
+        uni_z.interface = MagicMock()
+        uni_z.interface.status = EntityStatus.DISABLED
+        with pytest.raises(HTTPException):
+            self.napp.check_disabled_component(uni_a, uni_z)

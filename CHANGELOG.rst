@@ -29,6 +29,7 @@ Changed
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
 - Changed ui constraints default values to pass the spec validation
+- Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 
 General Information
 ===================
