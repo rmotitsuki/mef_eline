@@ -15,7 +15,8 @@ from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
-from napps.kytos.mef_eline.utils import (compare_endpoint_trace,
+from napps.kytos.mef_eline.utils import (check_disabled_component,
+                                         compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
                                          map_dl_vlan, map_evc_event_content,
                                          notify_link_available_tags)
@@ -182,6 +183,7 @@ class EVCBase(GenericEntity):
         enable, redeploy = (None, None)
         uni_a = kwargs.get("uni_a") or self.uni_a
         uni_z = kwargs.get("uni_z") or self.uni_z
+        check_disabled_component(uni_a, uni_z)
         self._validate_has_primary_or_dynamic(
             primary_path=kwargs.get("primary_path"),
             dynamic_backup_path=kwargs.get("dynamic_backup_path"),

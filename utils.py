@@ -1,5 +1,8 @@
 """Utility functions."""
+from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
+from kytos.core.interface import UNI
+from napps.kytos.mef_eline.exceptions import DisabledSwitch
 
 
 def map_evc_event_content(evc, **kwargs):
@@ -96,3 +99,18 @@ def get_vlan_tags_and_masks(start: int, end: int) -> list[tuple[int, int]]:
         tags_and_masks.append((start, 4096-divisor))
         start += divisor
     return tags_and_masks
+
+
+def check_disabled_component(uni_a: UNI, uni_z: UNI):
+    """Check if a switch or an interface is disabled"""
+    if uni_a.interface.switch != uni_z.interface.switch:
+        return
+    if uni_a.interface.switch.status == EntityStatus.DISABLED:
+        dpid = uni_a.interface.switch.dpid
+        raise DisabledSwitch(f"Switch {dpid} is disabled")
+    if uni_a.interface.status == EntityStatus.DISABLED:
+        id_ = uni_a.interface.id
+        raise DisabledSwitch(f"Interface {id_} is disabled")
+    if uni_z.interface.status == EntityStatus.DISABLED:
+        id_ = uni_z.interface.id
+        raise DisabledSwitch(f"Interface {id_} is disabled")

@@ -4,11 +4,9 @@ from unittest.mock import (AsyncMock, MagicMock, PropertyMock, call,
 
 import pytest
 from kytos.lib.helpers import get_controller_mock, get_test_client
-
 from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface
-from kytos.core.rest_api import HTTPException
 from napps.kytos.mef_eline.exceptions import InvalidPath
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
@@ -1573,6 +1571,71 @@ class TestMain:
         assert 400 == response.status_code
         assert current_data["description"] == expected_data
 
+    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
+    @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
+    @patch('napps.kytos.mef_eline.models.evc.EVCDeploy.deploy')
+    @patch('napps.kytos.mef_eline.main.Main._uni_from_dict')
+    async def test_update_disabled_intra_switch(
+        self,
+        uni_from_dict_mock,
+        evc_deploy,
+        _mock_validate,
+        _mongo_controller_upsert_mock,
+        event_loop,
+    ):
+        """Test update a circuit that result in an intra-switch EVC
+        with disabled switches or interfaces"""
+        evc_deploy.return_value = True
+        _mock_validate.return_value = True
+        _mongo_controller_upsert_mock.return_value = True
+        self.napp.controller.loop = event_loop
+        # Interfaces from get_uni_mocked() are disabled
+        unis = [
+            get_uni_mocked(
+                switch_dpid="00:00:00:00:00:00:00:01",
+                switch_id="00:00:00:00:00:00:00:01"
+            ),
+            get_uni_mocked(
+                switch_dpid="00:00:00:00:00:00:00:02",
+                switch_id="00:00:00:00:00:00:00:02"
+            ),
+        ]
+        uni_from_dict_mock.side_effect = 2 * unis
+
+        evc_payload = {
+            "name": "Intra-EVC",
+            "dynamic_backup_path": True,
+            "uni_a": {
+                "tag": {"value": 101, "tag_type": 1},
+                "interface_id": "00:00:00:00:00:00:00:02:2"
+            },
+            "uni_z": {
+                "tag": {"value": 101, "tag_type": 1},
+                "interface_id": "00:00:00:00:00:00:00:01:1"
+            }
+        }
+
+        # With this update the EVC will be intra-switch
+        update_payload = {
+            "uni_z": {
+                "tag": {"value": 101, "tag_type": 1},
+                "interface_id": "00:00:00:00:00:00:00:02:1"
+            }
+        }
+        response = await self.api_client.post(
+            f"{self.base_endpoint}/v2/evc/",
+            json=evc_payload,
+        )
+        assert 201 == response.status_code
+        current_data = response.json()
+        circuit_id = current_data["circuit_id"]
+
+        response = await self.api_client.patch(
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
+            json=update_payload,
+        )
+        assert 409 == response.status_code
+
     def test_link_from_dict_non_existent_intf(self):
         """Test _link_from_dict non existent intf."""
         self.napp.controller.get_interface_by_id = MagicMock(return_value=None)
@@ -2223,29 +2286,3 @@ class TestMain:
         calls = self.napp.mongo_controller.update_evcs.call_count
         assert calls == 1
         assert evc_mock.remove_metadata.call_count == 1
-
-    async def test_check_disabled_component(self, event_loop):
-        """Test check disabled component"""
-        self.napp.controller.loop = event_loop
-        uni_a = get_uni_mocked(switch_id="00:01")
-        uni_a.interface.switch.status = EntityStatus.DISABLED
-
-        uni_z = get_uni_mocked(switch_id="00:01")
-        uni_z.interface.switch.status = EntityStatus.DISABLED
-
-        # Switch disabled
-        with pytest.raises(HTTPException):
-            self.napp.check_disabled_component(uni_a, uni_z)
-
-        # Uni_a interface disabled
-        uni_a.interface = MagicMock()
-        uni_a.interface.status = EntityStatus.DISABLED
-        with pytest.raises(HTTPException):
-            self.napp.check_disabled_component(uni_a, uni_z)
-
-        # Uni_z interface disabled
-        uni_a.interface.status = EntityStatus.UP
-        uni_z.interface = MagicMock()
-        uni_z.interface.status = EntityStatus.DISABLED
-        with pytest.raises(HTTPException):
-            self.napp.check_disabled_component(uni_a, uni_z)
