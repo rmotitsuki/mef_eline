@@ -29,6 +29,7 @@ Changed
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
 - Changed ui constraints default values to pass the spec validation
+- Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 
 General Information
 ===================
@@ -42,7 +43,8 @@ Fixed
 - fixed ``minimum_flexible_hits`` EVC attribute to be persistent
 - fixed attribute list for path constraints to include ``reliability``
 - fixed unnecessary redeploy of an intra-switch EVC on link up events
-- fixed ``check_list_traces`` to work with the new version of SDN traces 
+- fixed ``check_list_traces`` to work with the new version of SDN traces
+- fixed updating EVC to be an intra-switch with invalid switch or interface
 
 General Information
 ===================

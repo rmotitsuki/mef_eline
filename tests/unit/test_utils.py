@@ -2,12 +2,14 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from napps.kytos.mef_eline.utils import (
-    compare_endpoint_trace,
-    compare_uni_out_trace,
-    get_vlan_tags_and_masks,
-    map_dl_vlan,
-)
+import pytest
+
+from kytos.core.common import EntityStatus
+from napps.kytos.mef_eline.exceptions import DisabledSwitch
+from napps.kytos.mef_eline.utils import (check_disabled_component,
+                                         compare_endpoint_trace,
+                                         compare_uni_out_trace,
+                                         get_vlan_tags_and_masks, map_dl_vlan)
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
@@ -88,3 +90,33 @@ class TestUtils(TestCase):
         for vlan_range, expected in zip(vlan_ranges, expecteds):
             with self.subTest(range=vlan_range, expected=expected):
                 assert get_vlan_tags_and_masks(*vlan_range) == expected
+
+    def test_check_disabled_component(self):
+        """Test check disabled component"""
+        uni_a = MagicMock()
+        switch = MagicMock()
+        switch.status = EntityStatus.DISABLED
+        uni_a.interface.switch = switch
+
+        uni_z = MagicMock()
+        uni_z.interface.switch = switch
+
+        # Switch disabled
+        with pytest.raises(DisabledSwitch):
+            check_disabled_component(uni_a, uni_z)
+
+        # Uni_a interface disabled
+        switch.status = EntityStatus.UP
+        uni_a.interface.status = EntityStatus.DISABLED
+        with pytest.raises(DisabledSwitch):
+            check_disabled_component(uni_a, uni_z)
+
+        # Uni_z interface disabled
+        uni_a.interface.status = EntityStatus.UP
+        uni_z.interface.status = EntityStatus.DISABLED
+        with pytest.raises(DisabledSwitch):
+            check_disabled_component(uni_a, uni_z)
+
+        # There is no disabled component
+        uni_z.interface.status = EntityStatus.UP
+        check_disabled_component(uni_a, uni_z)

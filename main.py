@@ -17,12 +17,12 @@ from kytos.core.link import Link
 from kytos.core.rest_api import (HTTPException, JSONResponse, Request,
                                  get_json_or_400)
 from napps.kytos.mef_eline import controllers, settings
-from napps.kytos.mef_eline.exceptions import InvalidPath
+from napps.kytos.mef_eline.exceptions import DisabledSwitch, InvalidPath
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
-from napps.kytos.mef_eline.utils import (aemit_event, emit_event,
-                                         map_evc_event_content)
+from napps.kytos.mef_eline.utils import (aemit_event, check_disabled_component,
+                                         emit_event, map_evc_event_content)
 
 
 # pylint: disable=too-many-public-methods
@@ -232,6 +232,15 @@ class Main(KytosNApp):
             log.debug("create_circuit result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
 
+        try:
+            check_disabled_component(evc.uni_a, evc.uni_z)
+        except DisabledSwitch as exception:
+            log.debug("create_circuit result %s %s", exception, 409)
+            raise HTTPException(
+                    409,
+                    detail=f"Path is not valid: {exception}"
+                ) from exception
+
         if evc.primary_path:
             try:
                 evc.primary_path.is_valid(
@@ -339,6 +348,12 @@ class Main(KytosNApp):
             log.error(exception)
             log.debug("update result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
+        except DisabledSwitch as exception:
+            log.debug("update result %s %s", exception, 409)
+            raise HTTPException(
+                    409,
+                    detail=f"Path is not valid: {exception}"
+                ) from exception
 
         if evc.is_active():
             if enable is False:  # disable if active
