@@ -421,7 +421,7 @@ module.exports = {
         item.clear();
       });
       this.$refs.is_flexible.forEach((item) => {
-        item.clear();
+        item.reset();
       });
     },
     post_success(data) {
@@ -474,17 +474,25 @@ module.exports = {
 
         ['primary_constraints', 'secondary_constraints'].forEach(_type => {
           request[_type] = {};
-          request[_type].flexible_metrics = {};
-          request[_type].mandatory_metrics = {};
 
-          // mandatory and flexible metrics
+          // mandatory and flexible metrics. Filter empty values.
+          let _flexible_metrics = {};
+          let _mandatory_metrics = {};
           ['bandwidth', 'utilization', 'priority', 'delay', 'reliability', 'ownership'].forEach(_m => {
-            if (this.form_constraints[_type].is_flexible[_m]) {
-              request[_type].flexible_metrics[_m] = this.form_constraints[_type].metrics[_m];
-            } else {
-              request[_type].mandatory_metrics[_m] = this.form_constraints[_type].metrics[_m];
+            if(this.form_constraints[_type].metrics[_m] !== '') {
+              if (this.form_constraints[_type].is_flexible[_m]) {
+                _flexible_metrics[_m] = this.form_constraints[_type].metrics[_m];
+              } else {
+                _mandatory_metrics[_m] = this.form_constraints[_type].metrics[_m];
+              }
             }
           });
+          if(_flexible_metrics !== {}) {
+            request[_type].flexible_metrics = _flexible_metrics;
+          }
+          if(_mandatory_metrics !== {}) {
+            request[_type].mandatory_metrics = _mandatory_metrics;
+          }
 
           // Dropdown forms
           if(this.form_constraints[_type].undesired_links) {
