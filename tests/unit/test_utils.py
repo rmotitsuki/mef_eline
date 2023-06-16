@@ -91,29 +91,32 @@ class TestUtils(TestCase):
             with self.subTest(range=vlan_range, expected=expected):
                 assert get_vlan_tags_and_masks(*vlan_range) == expected
 
-    async def test_check_disabled_component(self):
+    def test_check_disabled_component(self):
         """Test check disabled component"""
         uni_a = MagicMock()
-        uni_a.interface.switch = "00:01"
-        uni_a.interface.switch.status = EntityStatus.DISABLED
+        switch = MagicMock()
+        switch.status = EntityStatus.DISABLED
+        uni_a.interface.switch = switch
 
         uni_z = MagicMock()
-        uni_z.interface.switch = "00:01"
-        uni_z.interface.switch.status = EntityStatus.DISABLED
+        uni_z.interface.switch = switch
 
         # Switch disabled
         with pytest.raises(DisabledSwitch):
             check_disabled_component(uni_a, uni_z)
 
         # Uni_a interface disabled
-        uni_a.interface = MagicMock()
+        switch.status = EntityStatus.UP
         uni_a.interface.status = EntityStatus.DISABLED
         with pytest.raises(DisabledSwitch):
             check_disabled_component(uni_a, uni_z)
 
         # Uni_z interface disabled
         uni_a.interface.status = EntityStatus.UP
-        uni_z.interface = MagicMock()
         uni_z.interface.status = EntityStatus.DISABLED
         with pytest.raises(DisabledSwitch):
             check_disabled_component(uni_a, uni_z)
+
+        # There is no disabled component
+        uni_z.interface.status = EntityStatus.UP
+        check_disabled_component(uni_a, uni_z)

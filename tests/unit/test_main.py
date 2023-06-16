@@ -1635,6 +1635,8 @@ class TestMain:
             json=update_payload,
         )
         assert 409 == response.status_code
+        description = "00:00:00:00:00:00:00:01:1 is disabled"
+        assert description in response.json()["description"]
 
     def test_link_from_dict_non_existent_intf(self):
         """Test _link_from_dict non existent intf."""
