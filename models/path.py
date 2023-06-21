@@ -54,7 +54,7 @@ class Path(list, GenericEntity):
                       - previous
             if len(current) != 1:
                 raise InvalidPath(
-                    f"Previus switch {previous} is not connected to "
+                    f"Previous switch {previous} is not connected to "
                     f"current link with switches {current}."
                 )
             if current & visited:
