@@ -48,14 +48,19 @@ class Path(list, GenericEntity):
         """Check if this is a valid path."""
         if not self:
             return True
-        previous = {switch_a}
+        previous = visited = {switch_a}
         for link in self:
             current = {link.endpoint_a.switch, link.endpoint_b.switch} \
                       - previous
-            if len(current) == 2:
+            if len(current) != 1:
                 raise InvalidPath(
                     f"Previus switch {previous} is not connected to "
                     f"current link with switches {current}."
+                )
+            if current & visited:
+                raise InvalidPath(
+                    f"Loop detected in path, switch {current} was visited"
+                    f" more than once."
                 )
             if is_scheduled is False and (
                 link.endpoint_a.link is None
@@ -65,6 +70,7 @@ class Path(list, GenericEntity):
             ):
                 raise InvalidPath(f"Link {link} is not available.")
             previous = current
+            visited |= current
         if previous & {switch_z}:
             return True
         raise InvalidPath("Last link does not contain uni_z switch")
