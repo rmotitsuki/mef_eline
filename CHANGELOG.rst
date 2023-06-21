@@ -30,6 +30,7 @@ Changed
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
 - Changed ui constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
+- Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
 
 General Information
 ===================
