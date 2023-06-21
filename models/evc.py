@@ -1,7 +1,9 @@
 """Classes used in the main application."""  # pylint: disable=too-many-lines
 from collections import OrderedDict
 from datetime import datetime
+from operator import eq, ne
 from threading import Lock
+from typing import Union
 from uuid import uuid4
 
 import requests
@@ -12,7 +14,8 @@ from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.helpers import get_time, now
-from kytos.core.interface import UNI
+from kytos.core.interface import UNI, Interface
+from kytos.core.link import Link
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (check_disabled_component,
@@ -881,16 +884,21 @@ class EVCDeploy(EVCBase):
     def _prepare_nni_flows(self, path=None):
         """Prepare NNI flows."""
         nni_flows = OrderedDict()
+        previous = self.uni_a.interface.switch.dpid
         for incoming, outcoming in self.links_zipped(path):
             in_vlan = incoming.get_metadata("s_vlan").value
             out_vlan = outcoming.get_metadata("s_vlan").value
+            in_endpoint = self.get_endpoint_by_id(incoming, previous, ne)
+            out_endpoint = self.get_endpoint_by_id(
+                outcoming, in_endpoint.switch.id, eq
+            )
 
             flows = []
             # Flow for one direction
             flows.append(
                 self._prepare_nni_flow(
-                    incoming.endpoint_b,
-                    outcoming.endpoint_a,
+                    in_endpoint,
+                    out_endpoint,
                     in_vlan,
                     out_vlan,
                     queue_id=self.queue_id,
@@ -900,14 +908,15 @@ class EVCDeploy(EVCBase):
             # Flow for the other direction
             flows.append(
                 self._prepare_nni_flow(
-                    outcoming.endpoint_a,
-                    incoming.endpoint_b,
+                    out_endpoint,
+                    in_endpoint,
                     out_vlan,
                     in_vlan,
                     queue_id=self.queue_id,
                 )
             )
-            nni_flows[incoming.endpoint_b.switch.id] = flows
+            previous = in_endpoint.switch.id
+            nni_flows[in_endpoint.switch.id] = flows
         return nni_flows
 
     def _install_nni_flows(self, path=None):
@@ -940,6 +949,14 @@ class EVCDeploy(EVCBase):
         in_vlan_z = self._get_value_from_uni_tag(self.uni_z)
         out_vlan_z = path[-1].get_metadata("s_vlan").value
 
+        # Get endpoints from path
+        endpoint_a = self.get_endpoint_by_id(
+            path[0], self.uni_a.interface.switch.id, eq
+        )
+        endpoint_z = self.get_endpoint_by_id(
+            path[-1], self.uni_z.interface.switch.id, eq
+        )
+
         # Flows for the first UNI
         flows_a = []
 
@@ -947,7 +964,7 @@ class EVCDeploy(EVCBase):
         if not skip_in:
             push_flow = self._prepare_push_flow(
                 self.uni_a.interface,
-                path[0].endpoint_a,
+                endpoint_a,
                 in_vlan_a,
                 out_vlan_a,
                 in_vlan_z,
@@ -958,7 +975,7 @@ class EVCDeploy(EVCBase):
         # Flow for the other direction, popping the service tag
         if not skip_out:
             pop_flow = self._prepare_pop_flow(
-                path[0].endpoint_a,
+                endpoint_a,
                 self.uni_a.interface,
                 out_vlan_a,
                 queue_id=self.queue_id,
@@ -974,7 +991,7 @@ class EVCDeploy(EVCBase):
         if not skip_in:
             push_flow = self._prepare_push_flow(
                 self.uni_z.interface,
-                path[-1].endpoint_b,
+                endpoint_z,
                 in_vlan_z,
                 out_vlan_z,
                 in_vlan_a,
@@ -985,7 +1002,7 @@ class EVCDeploy(EVCBase):
         # Flow for the other direction, popping the service tag
         if not skip_out:
             pop_flow = self._prepare_pop_flow(
-                path[-1].endpoint_b,
+                endpoint_z,
                 self.uni_z.interface,
                 out_vlan_z,
                 queue_id=self.queue_id,
@@ -1274,6 +1291,18 @@ class EVCDeploy(EVCBase):
             )
 
         return circuits_checked
+
+    @staticmethod
+    def get_endpoint_by_id(
+        link: Link,
+        id_: str,
+        operator: Union[eq, ne]
+    ) -> Interface:
+        """Return endpoint from link
+        either equal(eq) or not equal(ne) to id"""
+        if operator(link.endpoint_a.switch.id, id_):
+            return link.endpoint_a
+        return link.endpoint_b
 
 
 class LinkProtection(EVCDeploy):

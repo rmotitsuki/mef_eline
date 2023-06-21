@@ -48,11 +48,13 @@ class Path(list, GenericEntity):
         """Check if this is a valid path."""
         if not self:
             return True
-        previous = switch_a
+        previous = {switch_a}
         for link in self:
-            if link.endpoint_a.switch != previous:
+            current = {link.endpoint_a.switch, link.endpoint_b.switch}
+            if len(previous & current) != 1:
                 raise InvalidPath(
-                    f"{link.endpoint_a} switch is different" f" from previous."
+                    f"Previus {previous} and current {current}"
+                    f"are not continuous"
                 )
             if is_scheduled is False and (
                 link.endpoint_a.link is None
@@ -61,10 +63,10 @@ class Path(list, GenericEntity):
                 or link.endpoint_b.link != link
             ):
                 raise InvalidPath(f"Link {link} is not available.")
-            previous = link.endpoint_b.switch
-        if previous == switch_z:
+            previous = current
+        if previous & {switch_z}:
             return True
-        raise InvalidPath("Last endpoint is different from uni_z")
+        raise InvalidPath("Last link does not contain uni_z switch")
 
     @property
     def status(self):

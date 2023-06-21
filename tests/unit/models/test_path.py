@@ -219,14 +219,20 @@ class TestPath(TestCase):
 
         links2 = [
             get_link_mocked(switch_a=switch1, switch_b=switch2),
-            get_link_mocked(switch_a=switch3, switch_b=switch2),
             get_link_mocked(switch_a=switch3, switch_b=switch4),
+            get_link_mocked(switch_a=switch2, switch_b=switch4),
+        ]
+        links3 = [
+            get_link_mocked(switch_a=switch4, switch_b=switch5),
+            get_link_mocked(switch_a=switch1, switch_b=switch5),
+            get_link_mocked(switch_a=switch1, switch_b=switch3),
         ]
 
         for links, switch_a, switch_z, expected in (
             (links1, switch1, switch6, True),
+            (links3, switch5, switch3, True),
             (links2, switch1, switch4, False),
-            (links1, switch2, switch6, False),
+            (links1, switch3, switch6, False),
         ):
             with self.subTest(
                 links=links,
