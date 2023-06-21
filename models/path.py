@@ -50,11 +50,12 @@ class Path(list, GenericEntity):
             return True
         previous = {switch_a}
         for link in self:
-            current = {link.endpoint_a.switch, link.endpoint_b.switch}
-            if len(previous & current) != 1:
+            current = {link.endpoint_a.switch, link.endpoint_b.switch} \
+                      - previous
+            if len(current) == 2:
                 raise InvalidPath(
-                    f"Previus {previous} and current {current}"
-                    f"are not continuous"
+                    f"Previus switch {previous} is not connected to "
+                    f"current link with switches {current}."
                 )
             if is_scheduled is False and (
                 link.endpoint_a.link is None
