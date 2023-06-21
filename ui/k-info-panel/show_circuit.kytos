@@ -823,7 +823,7 @@ module.exports = {
       });
       request.done(function(data) {
         let notification = {
-          title: 'EVC ' + id + ' updated.',
+          title: 'EVC id: ' + data[id].id + ' | name: ' + data[id].name + ' updated.',
           description: ''
         }
         _this.$kytos.$emit("setNotification" , notification);

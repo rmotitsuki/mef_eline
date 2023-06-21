@@ -428,7 +428,7 @@ module.exports = {
         let notification = {
             icon: 'gear',
             title: 'Circuit Created',
-            description: 'Circuit with id ' + data.circuit_id + ' was created.'
+            description: 'Circuit with id: ' + data.circuit_id + ' | name: ' + this.circuit_name + ' was created.'
         }
     
         this.$kytos.$emit("setNotification" , notification);
