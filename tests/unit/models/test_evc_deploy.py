@@ -2,7 +2,7 @@
 import sys
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call, patch
-
+import operator
 import pytest
 from kytos.lib.helpers import get_controller_mock
 
@@ -1884,3 +1884,13 @@ class TestEVC(TestCase):
         self.evc_deploy.set_flow_table_group_id(flow_mod, None)
         assert flow_mod["table_group"] == "epl"
         assert flow_mod["table_id"] == 3
+
+    def test_get_endpoint_by_id(self):
+        """Test get_endpoint_by_id"""
+        link = MagicMock()
+        link.endpoint_a.switch.id = "01"
+        link.endpoint_b.switch.id = "02"
+        result = self.evc_deploy.get_endpoint_by_id(link, "01", operator.eq)
+        assert result == link.endpoint_a
+        result = self.evc_deploy.get_endpoint_by_id(link, "01", operator.ne)
+        assert result == link.endpoint_b
