@@ -79,7 +79,7 @@
         </k-accordion-item>
 
         <span v-for="constraint in ['primary_constraints', 'secondary_constraints']">
-            <k-accordion-item :title="constraint_titles[constraint]" :checked="false">
+            <k-accordion-item :title="constraint_titles[constraint]" ref="accordion_checked">
 
                 <k-select :title="constraint_titles.undesired_links" :options="get_link_options()"
                 :value.sync ="form_constraints[constraint].undesired_links"
@@ -218,8 +218,6 @@
 module.exports = {
   data(){
     return {
-        key_rerender: ['primary_constraints', 'secondary_constraints'],
-
         circuit_name: "",
         endpoint_a: "",
         endpoint_name_a: "Endpoint name:",
@@ -586,6 +584,10 @@ module.exports = {
     this.load_topology();
     this.init_path_constraints();
     compexists = this.$root.$options.components['k-input-auto'] != null;
+    // Close constraint accordion-item
+    this.$refs.accordion_checked.forEach((item) => {
+      item.checked = false;
+    });
   },
   created() {
     compexists = this.$root.$options.components['k-input-auto'] != null;
