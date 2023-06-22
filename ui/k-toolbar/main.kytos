@@ -3,6 +3,7 @@
     <div class="scroll">
       <k-accordion>
         <k-accordion-item title="Request E-Line Circuit">
+        <form id="mef_eline_toolbar_form" onsubmit="event.preventDefault();">
            <k-input id="name-input" :value.sync="circuit_name"
                     title="Circuit Name:" tooltip="Circuit name"
                     placeholder="Circuit Name" icon="pencil"></k-input>
@@ -78,11 +79,12 @@
         </k-accordion-item>
 
         <span v-for="constraint in ['primary_constraints', 'secondary_constraints']">
-            <k-accordion-item :title="constraint_titles[constraint]"
-             v-if="false">
+            <k-accordion-item :title="constraint_titles[constraint]" ref="accordion_checked">
 
                 <k-select :title="constraint_titles.undesired_links" :options="get_link_options()"
-                :value.sync ="form_constraints[constraint].undesired_links"></k-select>
+                :value.sync ="form_constraints[constraint].undesired_links"
+                ref="undesired_links"
+                ></k-select>
                 
                 <div class="metric">
                   <div class="metric-dropdown">
@@ -99,6 +101,7 @@
                     <label class="metric-label">{{constraint_titles['spf_max_path_cost']}}</label> 
                     <k-input 
                     title="Southbound priority:"
+                    :value.sync="form_constraints[constraint].spf_max_path_cost"
                     :action="function(val) {form_constraints[constraint].spf_max_path_cost = parseInt(val)}"></k-input>
                   </div>
                 </div>
@@ -108,6 +111,7 @@
                     <label class="metric-label">{{constraint_titles['minimum_flexible_hits']}}</label> 
                     <k-input 
                     :title="constraint_titles['minimum_flexible_hits']"
+                    :value.sync="form_constraints[constraint].minimum_flexible_hits"
                     :action="function(val) {form_constraints[constraint].minimum_flexible_hits = parseInt(val)}"></k-input>
                   </div>
                 </div>
@@ -116,10 +120,13 @@
                     <div class="metric-dropdown">
                         <k-dropdown :options="metric_options" 
                         :title="constraint_titles['bandwidth']"
-                        :value.sync="is_flexible[constraint].bandwidth"></k-dropdown>
+                        :value.sync="form_constraints[constraint].is_flexible.bandwidth"
+                        ref="is_flexible"></k-dropdown>
                     </div>
                     <div class="metric-field">
-                        <k-input icon="arrow-right" :action="function(val) {metrics[constraint].bandwidth = parseInt(val)}"></k-input>
+                        <k-input icon="arrow-right" 
+                        :value.sync="form_constraints[constraint].bandwidth"
+                        :action="function(val) {form_constraints[constraint].metrics.bandwidth = parseInt(val)}"></k-input>
                     </div>
                 </div>
 
@@ -127,10 +134,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['utilization']"
-                    :value.sync="is_flexible[constraint].utilization"></k-dropdown>
+                    :value.sync="form_constraints[constraint].is_flexible.utilization"
+                    ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
-                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].utilization = parseInt(val)}"></k-input>
+                    <k-input icon="arrow-right" 
+                    :value.sync="form_constraints[constraint].utilization"
+                    :action="function(val) {form_constraints[constraint].metrics.utilization = parseInt(val)}"></k-input>
                   </div>
                 </div>
 
@@ -138,10 +148,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['priority']"
-                    :value.sync="is_flexible[constraint].priority"></k-dropdown>
+                    :value.sync="form_constraints[constraint].is_flexible.priority"
+                    ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
-                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].priority = parseInt(val)}"></k-input>
+                    <k-input icon="arrow-right" 
+                    :value.sync="form_constraints[constraint].priority"
+                    :action="function(val) {form_constraints[constraint].metrics.priority = parseInt(val)}"></k-input>
                   </div>
                 </div>
 
@@ -149,10 +162,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['delay']"
-                    :value.sync="is_flexible[constraint].delay"></k-dropdown>
+                    :value.sync="form_constraints[constraint].is_flexible.delay"
+                    ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
-                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].delay = parseInt(val)}"></k-input>
+                    <k-input icon="arrow-right" 
+                    :value.sync="form_constraints[constraint].delay"
+                    :action="function(val) {form_constraints[constraint].metrics.delay = parseInt(val)}"></k-input>
                   </div>
                 </div>
 
@@ -160,10 +176,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options"
                     :title="constraint_titles['reliability']"
-                    :value.sync="is_flexible[constraint].reliability"></k-dropdown>
+                    :value.sync="form_constraints[constraint].is_flexible.reliability"
+                    ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
-                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].reliability = parseInt(val)}"></k-input>
+                    <k-input icon="arrow-right" 
+                    :value.sync="form_constraints[constraint].reliability"
+                    :action="function(val) {form_constraints[constraint].metrics.reliability = parseInt(val)}"></k-input>
                   </div>
                 </div>
 
@@ -171,10 +190,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['ownership']"
-                    :value.sync="is_flexible[constraint].ownership"></k-dropdown>
+                    :value.sync="form_constraints[constraint].is_flexible.ownership"
+                    ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
-                    <k-input icon="arrow-right" :action="function(val) {metrics[constraint].ownership = val}"></k-input>
+                    <k-input icon="arrow-right" 
+                    :value.sync="form_constraints[constraint].ownership"
+                    :action="function(val) {form_constraints[constraint].metrics.ownership = val}"></k-input>
                   </div>
                 </div>
             </k-accordion-item>
@@ -186,6 +208,7 @@
             <k-button tooltip="List installed EVC" title="List installed EVC"
                      icon="plug" :on_click="viewPanel">
             </k-button>
+        </form>
         </k-accordion-item>
       </k-accordion>
     </div>
@@ -212,27 +235,42 @@ module.exports = {
 
         constraint_titles: {},
         constraints: {},
-        form_constraints: {},
-        metrics: {
-          primary_constraints: {},
-          secondary_constraints: {}
-        },
-        is_flexible: {
+        form_constraints: {
           primary_constraints: {
-            bandwidth: false,
-            reliability: false,
-            delay: false,
-            utilization: false,
-            priority: false,
-            ownership: false
+            undesired_links: '',
+            spf_attribute: '',
+            spf_max_path_cost: '',
+            minimum_flexible_hits: '',
+            metrics: {
+              bandwidth: '', utilization: '', priority: '',
+              delay: '', reliability: '', ownership: '',
+            },
+            is_flexible: {
+              bandwidth: false,
+              reliability: false,
+              delay: false,
+              utilization: false,
+              priority: false,
+              ownership: false
+            },
           },
           secondary_constraints: {
-            bandwidth: false,
-            reliability: false,
-            delay: false,
-            utilization: false,
-            priority: false,
-            ownership: false
+            undesired_links: '',
+            spf_attribute: '',
+            spf_max_path_cost: '',
+            minimum_flexible_hits: '',
+            metrics: {
+              bandwidth: '', utilization: '', priority: '',
+              delay: '', reliability: '', ownership: '',
+            },
+            is_flexible: {
+              bandwidth: false,
+              reliability: false,
+              delay: false,
+              utilization: false,
+              priority: false,
+              ownership: false
+            },
           }
         },
     }
@@ -284,9 +322,6 @@ module.exports = {
       * Build path constraint data for exibition 
       * (primary and secondary constraints paths).
       */
-      this.form_constraints['primary_constraints'] = {};
-      this.form_constraints['secondary_constraints'] = {};
-
       this.constraint_titles = {
         'primary_constraints': 'Primary Constraints',
         'secondary_constraints': 'Secondary Constraints',
@@ -303,28 +338,44 @@ module.exports = {
         'ownership': 'Ownership',
       };
 
-      let _constraint = {};
-      _constraint = {
-        'undesired_links': '',
-        'spf_attribute': '',
-        'spf_max_path_cost': '',
-        'minimum_flexible_hits': '',
-      };
-
-      _constraint.mandatory_metrics = {
-        'bandwidth': '', 'utilization': '', 'priority': '',
-        'delay': '', 'reliability': '', 'ownership': '',
-      };
-    
-      _constraint.flexible_metrics = {
-        'bandwidth': '', 'utilization': '', 'priority': '',
-        'delay': '', 'reliability': '', 'ownership': '',
-      };
-
-      this.constraint = {
-        primary_constraints: _constraint,
-        secondary_constraints: _constraint
-      };
+      this.form_constraints = {
+          primary_constraints: {
+            undesired_links: '',
+            spf_attribute: '',
+            spf_max_path_cost: '',
+            minimum_flexible_hits: '',
+            metrics: {
+              bandwidth: '', utilization: '', priority: '',
+              delay: '', reliability: '', ownership: '',
+            },
+            is_flexible: {
+              bandwidth: false,
+              reliability: false,
+              delay: false,
+              utilization: false,
+              priority: false,
+              ownership: false
+            },
+          },
+          secondary_constraints: {
+            undesired_links: '',
+            spf_attribute: '',
+            spf_max_path_cost: '',
+            minimum_flexible_hits: '',
+            metrics: {
+              bandwidth: '', utilization: '', priority: '',
+              delay: '', reliability: '', ownership: '',
+            },
+            is_flexible: {
+              bandwidth: false,
+              reliability: false,
+              delay: false,
+              utilization: false,
+              priority: false,
+              ownership: false
+            },
+          }
+        };
     },
     viewPanel() {
         var _this = this;
@@ -349,24 +400,33 @@ module.exports = {
         this.$kytos.$emit("showInfoPanel", listConnections);
     },
     set_default_values() {
-        this.circuit_name = "";
-        this.endpoint_a = "";
-        this.endpoint_name_a = "Endpoint name:";
-        this.tag_type_a = "1",
-        this.tag_value_a = "";
-        this.endpoint_z = "";
-        this.endpoint_name_z = "Endpoint name:";
-        this.tag_type_z = "1",
-        this.tag_value_z = "";
-        this.service_level = "";
-        this.sb_priority = "";
-        this.queue_id = "";
+      this.circuit_name = "";
+      this.endpoint_a = "";
+      this.endpoint_name_a = "Endpoint name:";
+      this.tag_type_a = "1",
+      this.tag_value_a = "";
+      this.endpoint_z = "";
+      this.endpoint_name_z = "Endpoint name:";
+      this.tag_type_z = "1",
+      this.tag_value_z = "";
+      this.service_level = "";
+      this.sb_priority = "";
+      this.queue_id = "";
+
+      this.init_path_constraints();
+      // Clear select and dropdown components
+      this.$refs.undesired_links.forEach((item) => {
+        item.clear();
+      });
+      this.$refs.is_flexible.forEach((item) => {
+        item.reset();
+      });
     },
     post_success(data) {
         let notification = {
             icon: 'gear',
             title: 'Circuit Created',
-            description: 'Circuit with id ' + data.circuit_id + ' was created.'
+            description: 'Circuit with id: ' + data.circuit_id + ' | name: ' + this.circuit_name + ' was created.'
         }
     
         this.$kytos.$emit("setNotification" , notification);
@@ -412,17 +472,25 @@ module.exports = {
 
         ['primary_constraints', 'secondary_constraints'].forEach(_type => {
           request[_type] = {};
-          request[_type].flexible_metrics = {};
-          request[_type].mandatory_metrics = {};
 
-          // mandatory and flexible metrics
+          // mandatory and flexible metrics. Filter empty values.
+          let _flexible_metrics = {};
+          let _mandatory_metrics = {};
           ['bandwidth', 'utilization', 'priority', 'delay', 'reliability', 'ownership'].forEach(_m => {
-            if (_this.is_flexible[_type][_m]) {
-              request[_type].flexible_metrics[_m] = _this.metrics[_type][_m];
-            } else {
-              request[_type].mandatory_metrics[_m] = _this.metrics[_type][_m];
+            if(this.form_constraints[_type].metrics[_m] !== '') {
+              if (this.form_constraints[_type].is_flexible[_m]) {
+                _flexible_metrics[_m] = this.form_constraints[_type].metrics[_m];
+              } else {
+                _mandatory_metrics[_m] = this.form_constraints[_type].metrics[_m];
+              }
             }
           });
+          if(_flexible_metrics !== {}) {
+            request[_type].flexible_metrics = _flexible_metrics;
+          }
+          if(_mandatory_metrics !== {}) {
+            request[_type].mandatory_metrics = _mandatory_metrics;
+          }
 
           // Dropdown forms
           if(this.form_constraints[_type].undesired_links) {
@@ -448,7 +516,6 @@ module.exports = {
                                 dataType: "json",
                                 contentType: "application/json; charset=utf-8"
                             });
-                    
         circuit_request.done(this.post_success);
         circuit_request.fail(this.post_error);
     },
@@ -517,6 +584,10 @@ module.exports = {
     this.load_topology();
     this.init_path_constraints();
     compexists = this.$root.$options.components['k-input-auto'] != null;
+    // Close constraint accordion-item
+    this.$refs.accordion_checked.forEach((item) => {
+      item.checked = false;
+    });
   },
   created() {
     compexists = this.$root.$options.components['k-input-auto'] != null;

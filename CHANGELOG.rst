@@ -16,10 +16,10 @@ Added
 - Added api request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
+- Added ui support for primary and secondary constraints
 
 Changed
 =======
-- Hid ui primary and secondary constraints on ``k-toolbar`` in the meantime
 - Moved request circuit ``k-button`` out of k-accordion-item since it's mandatory
 - The traces being check rely on ``type``: ``last`` to be considered valid.
 - ``dl_vlan`` value is mapped to an integer in range [1, 4095] for the ``/traces`` requests to ``sdntrace_cp``
