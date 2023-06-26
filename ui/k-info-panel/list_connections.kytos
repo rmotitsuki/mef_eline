@@ -167,11 +167,11 @@ module.exports = {
               "mef_lst_sw_a": endpoint_data_a.node_name,
               "mef_lst_prt_a": '' + endpoint_data_a.port,
               "mef_lst_int_a": endpoint_data_a.interface_name,
-              "mef_lst_tag_a": '' + tag_a,
+              "mef_lst_tag_a": tag_a, // TAG Vlan to be sorted as int
               "mef_lst_sw_z": endpoint_data_z.node_name,
               "mef_lst_prt_z": '' + endpoint_data_z.port,
               "mef_lst_int_z": endpoint_data_z.interface_name,
-              "mef_lst_tag_z": '' + tag_z,
+              "mef_lst_tag_z": tag_z, // TAG Vlan to be sorted as int
               "mef_lst_enabled": evc.enabled,
               "mef_lst_active": evc.active
             };
@@ -254,9 +254,11 @@ module.exports = {
       let filtered = this.data_rows.filter((item)=>
         {
           // for every property check if search is not empty and item[prop] has search[prop]
+          // Cast to string to search VLAN numbers
           let checks = properties.map(i => 
             !this.search_cols[i] || 
-            item[i].toUpperCase().includes(this.search_cols[i].toUpperCase()));
+            item[i].toString().toUpperCase().includes(this.search_cols[i].toString().toUpperCase())
+          );
           // check if no property is false
           return !checks.includes(false);
         }
