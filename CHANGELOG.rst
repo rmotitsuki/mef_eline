@@ -6,17 +6,20 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [Unreleased]
 ************
 
+[2023.1.0] - 2023-06-27
+***********************
+
 Added
 =====
 - Added more content keys ``evc_id, name, metadata, active, enabled, uni_a, uni_z`` to events from ``mef_eline``
 - Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
 - Added ``metadata`` to EVC schema
 - Allow the creation of ``any`` and ``untagged`` EVC.
-- Added api request ``POST /v2/evc/metadata`` to add metadata to EVCs
-- Added api request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
+- Added API request ``POST /v2/evc/metadata`` to add metadata to EVCs
+- Added API request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
-- Added ui support for primary and secondary constraints
+- Added UI support for primary and secondary constraints
 
 Changed
 =======
@@ -28,29 +31,24 @@ Changed
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
-- Changed ui constraints default values to pass the spec validation
+- Changed UI constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
 
 General Information
 ===================
 - ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
-
-Removed
-=======
+- Replaced ``@validate`` with ``@validate_openapi`` from kytos core
 
 Fixed
 =====
-- fixed ``minimum_flexible_hits`` EVC attribute to be persistent
-- fixed attribute list for path constraints to include ``reliability``
-- fixed unnecessary redeploy of an intra-switch EVC on link up events
-- fixed ``check_list_traces`` to work with the new version of SDN traces
-- fixed updating EVC to be an intra-switch with invalid switch or interface
-- fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
+- Fixed ``minimum_flexible_hits`` EVC attribute to be persistent
+- Fixed attribute list for path constraints to include ``reliability``
+- Fixed unnecessary redeploy of an intra-switch EVC on link up events
+- Fixed ``check_list_traces`` to work with the new version of SDN traces
+- Fixed updating EVC to be an intra-switch with invalid switch or interface
+- Fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
 
-General Information
-===================
-- Replaced ``@validate`` with ``@validate_openapi`` from kytos core
 
 [2022.3.1] - 2023-02-14
 ***********************
