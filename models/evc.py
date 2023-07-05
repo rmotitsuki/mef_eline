@@ -217,7 +217,7 @@ class EVCBase(GenericEntity):
             else:
                 setattr(self, attribute, value)
                 if attribute in self.attributes_requiring_redeploy:
-                    redeploy = value
+                    redeploy = True
         self.sync()
         return enable, redeploy
 
@@ -1343,10 +1343,10 @@ class LinkProtection(EVCDeploy):
         return False
 
     def handle_link_up(self, link):
-        """Handle circuit when link down.
+        """Handle circuit when link up.
 
         Args:
-            link(Link): Link affected by link.down event.
+            link(Link): Link affected by link.up event.
 
         """
         if self.is_intra_switch():
