@@ -3,7 +3,7 @@
 # pylint: disable=no-self-argument,no-name-in-module
 
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Union, Any
+from typing import Any, Dict, List, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, validator
 
@@ -79,6 +79,7 @@ class PathConstraints(BaseModel):
     def __init__(__pydantic_self__, **data: Any) -> None:
         super().__init__(**data)
         __pydantic_self__.__fields_set__.add('spf_attribute')
+
 
 class EVCBaseDoc(DocumentBaseModel):
     """Base model for EVC documents"""
