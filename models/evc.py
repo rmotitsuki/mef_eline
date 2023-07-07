@@ -373,6 +373,7 @@ class EVCBase(GenericEntity):
         evc_dict["secondary_constraints"] = self.secondary_constraints
         evc_dict["flow_removed_at"] = self.flow_removed_at
         evc_dict["updated_at"] = self.updated_at
+        evc_dict["execution_rounds"] = self.execution_rounds
 
         return evc_dict
 
