@@ -94,11 +94,22 @@ class ELineController:
             {
                 "$set": model.dict(
                     exclude={"inserted_at"},
-                    exclude_unset=True),
+                    exclude_none=True),
                 "$setOnInsert": {"inserted_at": utc_now},
             },
             return_document=ReturnDocument.AFTER,
             upsert=True,
+        )
+        return updated
+
+    def update_evc(self, evc: Dict) -> Optional[Dict]:
+        """Update or insert an EVC"""
+        updated = self.db.evcs.find_one_and_update(
+            {"_id": evc["id"]},
+            {
+                "$set": evc,
+            },
+            return_document=ReturnDocument.AFTER,
         )
         return updated
 

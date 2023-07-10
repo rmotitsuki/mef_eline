@@ -163,9 +163,12 @@ class EVCBase(GenericEntity):
         self.special_cases = {None, "4096/4096", 0}
         self.table_group = kwargs.get("table_group")
 
-    def sync(self):
+    def sync(self, keys: set = None):
         """Sync this EVC in the MongoDB."""
         self.updated_at = now()
+        if keys:
+            self._mongo_controller.update_evc(self.as_dict(keys))
+            return
         self._mongo_controller.upsert_evc(self.as_dict())
 
     def update(self, **kwargs):
@@ -218,7 +221,7 @@ class EVCBase(GenericEntity):
                 setattr(self, attribute, value)
                 if attribute in self.attributes_requiring_redeploy:
                     redeploy = True
-        self.sync()
+        self.sync(set(kwargs.keys()))
         return enable, redeploy
 
     def set_flow_removed_at(self):
@@ -322,8 +325,10 @@ class EVCBase(GenericEntity):
             return True
         return False
 
-    def as_dict(self):
-        """Return a dictionary representing an EVC object."""
+    def as_dict(self, keys: set = None):
+        """Return a dictionary representing an EVC object.
+            keys: Only fields on this variable will be
+                  returned in the dictionary"""
         evc_dict = {
             "id": self.id,
             "name": self.name,
@@ -373,8 +378,16 @@ class EVCBase(GenericEntity):
         evc_dict["secondary_constraints"] = self.secondary_constraints
         evc_dict["flow_removed_at"] = self.flow_removed_at
         evc_dict["updated_at"] = self.updated_at
-        evc_dict["execution_rounds"] = self.execution_rounds
 
+        if keys:
+            selected = {}
+            for key in keys:
+                if key == "enable":
+                    selected["enabled"] = evc_dict["enabled"]
+                    continue
+                selected[key] = evc_dict[key]
+            selected["id"] = evc_dict["id"]
+            return selected
         return evc_dict
 
     @property
