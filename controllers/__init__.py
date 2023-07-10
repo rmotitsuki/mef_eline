@@ -103,7 +103,16 @@ class ELineController:
         return updated
 
     def update_evc(self, evc: Dict) -> Optional[Dict]:
-        """Update or insert an EVC"""
+        """Update an EVC.
+        This is needed to correctly set None values to fields"""
+
+        # Check for errors in fields only.
+        EVCBaseDoc(
+            **{
+                **evc,
+                **{"_id": evc["id"]}
+            }
+        )
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},
             {

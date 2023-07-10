@@ -389,6 +389,32 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             actual = actual_dict.get(name)
             self.assertEqual(value, actual)
 
+        # Selected fields
+        expected_dict = {
+            "enabled": True,
+            "uni_z": attributes["uni_z"].as_dict(),
+            "circuit_scheduler": [
+                {
+                    "id": 234243247,
+                    "action": "create",
+                    "frequency": "1 * * * *",
+                },
+                {
+                    "id": 234243239,
+                    "action": "create",
+                    "interval": {"hours": 2},
+                },
+            ],
+            "sb_priority": 2,
+        }
+        selected_fields = {
+            "enabled", "uni_z", "circuit_scheduler", "sb_priority"
+        }
+        actual_dict = evc.as_dict(selected_fields)
+        for name, value in expected_dict.items():
+            actual = actual_dict.get(name)
+            assert value == actual
+
     @staticmethod
     def test_get_id_from_cookie():
         """Test get_id_from_cookie."""
