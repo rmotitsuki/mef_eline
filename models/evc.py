@@ -1410,6 +1410,45 @@ class LinkProtection(EVCDeploy):
 
         return success
 
+    @staticmethod
+    def get_interface_from_switch(uni: UNI, switches: dict) -> Interface:
+        """Get interface from switch by uni"""
+        switch = switches[uni.interface.switch.dpid]
+        interface = switch.interfaces[uni.interface.port_number]
+        return interface
+
+    def handle_topology_update(self, switches: dict):
+        """Handle changes in the topology"""
+        interface_a = self.get_interface_from_switch(self.uni_a, switches)
+        interface_z = self.get_interface_from_switch(self.uni_z, switches)
+        active = self.is_uni_interface_active(interface_a, interface_z)
+
+        if self.is_active() != active:
+            if active:
+                self.activate()
+            else:
+                self.deactivate()
+            self.sync()
+
+    def should_be_active(self, switches: dict):
+        """Determine whether this EVC should be active"""
+        interface_a = self.get_interface_from_switch(self.uni_a, switches)
+        interface_z = self.get_interface_from_switch(self.uni_z, switches)
+        return self.is_uni_interface_active(interface_a, interface_z)
+
+    @staticmethod
+    def is_uni_interface_active(
+        interface_a: Interface,
+        interface_z: Interface
+    ):
+        """Determine whether a UNI should be active"""
+        if ((interface_z.status != EntityStatus.UP
+             or interface_z.status_reason != set())
+            or (interface_a.status != EntityStatus.UP
+                or interface_a.status_reason != set())):
+            return False
+        return True
+
 
 class EVC(LinkProtection):
     """Class that represents a E-Line Virtual Connection."""

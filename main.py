@@ -85,7 +85,7 @@ class Main(KytosNApp):
         log.debug("Finished consistency routine")
 
     @staticmethod
-    def should_be_checked(circuit):
+    def should_be_checked(circuit, switches):
         "Verify if the circuit meets the necessary conditions to be checked"
         # pylint: disable=too-many-boolean-expressions
         if (
@@ -94,6 +94,7 @@ class Main(KytosNApp):
                 and not circuit.lock.locked()
                 and not circuit.has_recent_removed_flow()
                 and not circuit.is_recent_updated()
+                and circuit.should_be_active(switches)
                 # if a inter-switch EVC does not have current_path, it does not
                 # make sense to run sdntrace on it
                 and (circuit.is_intra_switch() or circuit.current_path)
@@ -107,7 +108,7 @@ class Main(KytosNApp):
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
         for circuit in self.get_evcs_by_svc_level():
             stored_circuits.pop(circuit.id, None)
-            if self.should_be_checked(circuit):
+            if self.should_be_checked(circuit, self.controller.switches):
                 circuits_to_check.append(circuit)
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
         for circuit in circuits_to_check:
@@ -709,6 +710,20 @@ class Main(KytosNApp):
             if evc.is_enabled() and not evc.archived:
                 with evc.lock:
                     evc.handle_link_up(event.content["link"])
+
+    @listen_to("kytos/topology.updated")
+    def on_topology_update(self, event):
+        """Capture topology update event"""
+        self.handle_topology_update(event)
+
+    def handle_topology_update(self, event):
+        """Handle topology update"""
+        for evc in self.get_evcs_by_svc_level():
+            if evc.is_enabled() and not evc.archived:
+                with evc.lock:
+                    evc.handle_topology_update(
+                        event.content["topology"].switches
+                    )
 
     @listen_to("kytos/topology.link_down")
     def on_link_down(self, event):
