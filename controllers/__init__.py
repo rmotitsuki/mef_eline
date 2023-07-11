@@ -13,7 +13,7 @@ from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
 from kytos.core import log
 from kytos.core.db import Mongo
 from kytos.core.retry import before_sleep, for_all_methods, retries
-from napps.kytos.mef_eline.db.models import EVCBaseDoc
+from napps.kytos.mef_eline.db.models import EVCBaseDoc, EVCUpdateDoc
 
 
 @for_all_methods(
@@ -107,7 +107,7 @@ class ELineController:
         This is needed to correctly set None values to fields"""
 
         # Check for errors in fields only.
-        EVCBaseDoc(
+        EVCUpdateDoc(
             **{
                 **evc,
                 **{"_id": evc["id"]}

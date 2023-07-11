@@ -77,6 +77,33 @@ class PathConstraints(BaseModel):
     undesired_links: Optional[List[str]]
 
 
+class EVCUpdateDoc(DocumentBaseModel):
+    """Base model when updating an EVC document"""
+    uni_a: Optional[UNIDoc]
+    uni_z: Optional[UNIDoc]
+    name: Optional[str]
+    request_time: Optional[datetime]
+    start_date: Optional[datetime]
+    end_date: Optional[datetime]
+    queue_id: Optional[int]
+    flow_removed_at: Optional[datetime]
+    execution_rounds: Optional[int]
+    bandwidth: Optional[int]
+    primary_path: Optional[List]
+    backup_path: Optional[List]
+    primary_links: Optional[List]
+    backup_links: Optional[List]
+    dynamic_backup_path: Optional[bool]
+    primary_constraints: Optional[PathConstraints]
+    secondary_constraints: Optional[PathConstraints]
+    owner: Optional[str]
+    sb_priority: Optional[int]
+    service_level: Optional[int]
+    circuit_scheduler: Optional[List[CircuitScheduleDoc]]
+    metadata: Optional[dict]
+    enabled: Optional[bool]
+
+
 class EVCBaseDoc(DocumentBaseModel):
     """Base model for EVC documents"""
 
