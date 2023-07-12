@@ -420,3 +420,19 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
 
         evc.uni_a.interface.switch = evc.uni_z.interface.switch
         assert evc.is_intra_switch()
+
+    @patch('napps.kytos.mef_eline.models.evc.settings')
+    def test_default_queue_id(self, mock_queue_id):
+        """Test default queue_id"""
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_1",
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+            "dynamic_backup_path": True,
+        }
+
+        mock_queue_id.QUEUE_ID = 2
+        evc = EVC(**attributes)
+        assert evc.queue_id == 2

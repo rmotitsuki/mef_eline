@@ -17,6 +17,7 @@ Added
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added ui support for primary and secondary constraints
+- Added ``QUEUE_ID`` to ``settings.py`` to be the default value for EVCs ``"queue_id"``
 
 Changed
 =======

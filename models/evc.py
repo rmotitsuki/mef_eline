@@ -107,7 +107,7 @@ class EVCBase(GenericEntity):
         # optional attributes
         self.start_date = get_time(kwargs.get("start_date")) or now()
         self.end_date = get_time(kwargs.get("end_date")) or None
-        self.queue_id = kwargs.get("queue_id", None)
+        self.queue_id = kwargs.get("queue_id", settings.QUEUE_ID)
 
         self.bandwidth = kwargs.get("bandwidth", 0)
         self.primary_links = Path(kwargs.get("primary_links", []))
