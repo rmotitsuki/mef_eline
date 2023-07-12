@@ -316,6 +316,7 @@ module.exports = {
         _spf = this.constraints[type].spf_attribute;
       }
       let _result = [
+        {value: null, description: "default", selected: (_spf == undefined || _spf == '' || _spf == null)},
         {value: "hop", description: "hop", selected: (_spf == 'hop')},
         {value: "delay", description: "delay", selected: (_spf == 'delay')},
         {value: "priority", description: "priority", selected: (_spf == 'priority')},
@@ -777,7 +778,7 @@ module.exports = {
             this.constraints[_type].undesired_links.filter(item => typeof(item) == "string")
           );
         }
-        if(this.constraints[_type].spf_attribute !== undefined && this.constraints[_type].spf_attribute !== "") {
+        if(this.constraints[_type].spf_attribute) {
           _constraint_payload.spf_attribute = this.constraints[_type].spf_attribute;
         }
 
