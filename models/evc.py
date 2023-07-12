@@ -1419,35 +1419,53 @@ class LinkProtection(EVCDeploy):
 
     def handle_topology_update(self, switches: dict):
         """Handle changes in the topology"""
-        interface_a = self.get_interface_from_switch(self.uni_a, switches)
-        interface_z = self.get_interface_from_switch(self.uni_z, switches)
-        active = self.is_uni_interface_active(interface_a, interface_z)
+        try:
+            interface_a = self.get_interface_from_switch(self.uni_a, switches)
+        except KeyError:
+            id_ = self.uni_a.interface.id
+            log.warning(f"The interface {id_} was not found")
+            return
 
+        try:
+            interface_z = self.get_interface_from_switch(self.uni_z, switches)
+        except KeyError:
+            id_ = self.uni_z.interface.id
+            log.warning(f"The interface {id_} was not found")
+            return
+
+        active, interface = self.is_uni_interface_active(
+            interface_a, interface_z
+        )
         if self.is_active() != active:
             if active:
                 self.activate()
+                log.info(f"Activating EVC {self.id}")
             else:
                 self.deactivate()
+                log.info(f"Interface {interface.id} is "
+                         f"inactive. Deactivating EVC {self.id}")
             self.sync()
 
-    def should_be_active(self, switches: dict):
+    def are_unis_active(self, switches: dict) -> bool:
         """Determine whether this EVC should be active"""
         interface_a = self.get_interface_from_switch(self.uni_a, switches)
         interface_z = self.get_interface_from_switch(self.uni_z, switches)
-        return self.is_uni_interface_active(interface_a, interface_z)
+        active, _ = self.is_uni_interface_active(interface_a, interface_z)
+        return active
 
     @staticmethod
     def is_uni_interface_active(
         interface_a: Interface,
         interface_z: Interface
-    ):
+    ) -> tuple[bool, Interface]:
         """Determine whether a UNI should be active"""
-        if ((interface_z.status != EntityStatus.UP
-             or interface_z.status_reason != set())
-            or (interface_a.status != EntityStatus.UP
-                or interface_a.status_reason != set())):
-            return False
-        return True
+        if (interface_a.status != EntityStatus.UP
+                or interface_a.status_reason != set()):
+            return False, interface_a
+        if (interface_z.status != EntityStatus.UP
+                or interface_z.status_reason != set()):
+            return False, interface_z
+        return True, None
 
 
 class EVC(LinkProtection):

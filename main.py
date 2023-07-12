@@ -94,7 +94,7 @@ class Main(KytosNApp):
                 and not circuit.lock.locked()
                 and not circuit.has_recent_removed_flow()
                 and not circuit.is_recent_updated()
-                and circuit.should_be_active(switches)
+                and circuit.are_unis_active(switches)
                 # if a inter-switch EVC does not have current_path, it does not
                 # make sense to run sdntrace on it
                 and (circuit.is_intra_switch() or circuit.current_path)
@@ -718,12 +718,13 @@ class Main(KytosNApp):
 
     def handle_topology_update(self, event):
         """Handle topology update"""
-        for evc in self.get_evcs_by_svc_level():
-            if evc.is_enabled() and not evc.archived:
-                with evc.lock:
-                    evc.handle_topology_update(
-                        event.content["topology"].switches
-                    )
+        with self._lock:
+            for evc in self.get_evcs_by_svc_level():
+                if evc.is_enabled() and not evc.archived:
+                    with evc.lock:
+                        evc.handle_topology_update(
+                            event.content["topology"].switches
+                        )
 
     @listen_to("kytos/topology.link_down")
     def on_link_down(self, event):
