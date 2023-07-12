@@ -1278,6 +1278,7 @@ class TestMain:
 
     @patch('requests.post')
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
+    @patch('napps.kytos.mef_eline.controllers.ELineController.update_evc')
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('kytos.core.Controller.get_interface_by_id')
@@ -1294,6 +1295,7 @@ class TestMain:
         interface_by_id_mock,
         _mock_validate,
         _mongo_controller_upsert_mock,
+        _mongo_controller_update_mock,
         _sched_add_mock,
         requests_mock,
         event_loop,

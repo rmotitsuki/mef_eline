@@ -48,6 +48,7 @@ Fixed
 - fixed ``check_list_traces`` to work with the new version of SDN traces
 - fixed updating EVC to be an intra-switch with invalid switch or interface
 - fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
+- fixed non-redeployment of circuit when patching with ``{"queue_id":null}``
 
 General Information
 ===================

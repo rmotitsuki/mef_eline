@@ -1,14 +1,15 @@
 """Tests for DB models."""
-from unittest import TestCase
+import pytest
 from pydantic import ValidationError
 
-from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc
+from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc, EVCUpdateDoc
 
 
-class TestDBModels(TestCase):
+class TestDBModels():
     """Test the DB models"""
 
-    def setUp(self):
+    def setup_method(self):
+        """Setup method."""
         self.evc_dict = {
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:04:1",
@@ -33,6 +34,28 @@ class TestDBModels(TestCase):
             "circuit_scheduler": [],
             "queue_id": None
         }
+        self.evc_update = {
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:04:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100,
+                },
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:3",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100,
+                }
+            },
+            "name": "EVC 2",
+            "dynamic_backup_path": True,
+            "sb_priority": 81,
+            "enabled": False,
+            "circuit_scheduler": [],
+            "queue_id": None
+        }
 
     def test_evcbasedoc(self):
         """Test EVCBaseDoc model"""
@@ -48,12 +71,23 @@ class TestDBModels(TestCase):
         assert not evc.enabled
         assert not evc.circuit_scheduler
 
+    def test_evcupdatedoc(self):
+        """Test EVCUpdateDoc model"""
+        evc = EVCUpdateDoc(**self.evc_update)
+        assert evc.name == "EVC 2"
+        assert evc.uni_a.interface_id == "00:00:00:00:00:00:00:04:1"
+        assert evc.uni_z.interface_id == "00:00:00:00:00:00:00:02:3"
+        assert evc.dynamic_backup_path
+        assert evc.sb_priority == 81
+        assert not evc.enabled
+        assert not evc.circuit_scheduler
+
     def test_evcbasedoc_error(self):
         """Test failure EVCBaseDoc model creation"""
 
         self.evc_dict["queue_id"] = "error"
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             EVCBaseDoc(**self.evc_dict)
 
     def test_document_base_model_dict(self):
@@ -77,5 +111,5 @@ class TestDBModels(TestCase):
     def test_tagdoc_fail(self):
         """Test TAGDoc value fail case"""
         tag_fail = {"tag_type": 1, "value": "test_fail"}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             TAGDoc(**tag_fail)
