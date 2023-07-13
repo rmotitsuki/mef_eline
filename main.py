@@ -61,6 +61,7 @@ class Main(KytosNApp):
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
 
         self.load_all_evcs()
+        self._topology_updated_at = None
 
     def get_evcs_by_svc_level(self) -> list:
         """Get circuits sorted by desc service level and asc creation_time.
@@ -719,6 +720,12 @@ class Main(KytosNApp):
     def handle_topology_update(self, event):
         """Handle topology update"""
         with self._lock:
+            if (
+                self._topology_updated_at
+                and self._topology_updated_at > event.timestamp
+            ):
+                return
+            self._topology_updated_at = event.timestamp
             for evc in self.get_evcs_by_svc_level():
                 if evc.is_enabled() and not evc.archived:
                     with evc.lock:

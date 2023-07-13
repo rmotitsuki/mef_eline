@@ -1419,6 +1419,11 @@ class LinkProtection(EVCDeploy):
 
     def handle_topology_update(self, switches: dict):
         """Handle changes in the topology"""
+        # All intra-switch EVCs do not have current_path.
+        # In case of inter-switch EVC and not current_path,
+        # link_down should take care of deactivation.
+        if not self.is_intra_switch and not self.current_path:
+            return
         try:
             interface_a = self.get_interface_from_switch(self.uni_a, switches)
         except KeyError:
@@ -1439,7 +1444,9 @@ class LinkProtection(EVCDeploy):
         if self.is_active() != active:
             if active:
                 self.activate()
-                log.info(f"Activating EVC {self.id}")
+                interfaces = {interface_a.id, interface_z.id}
+                log.info(f"Activating EVC {self.id}. Interfaces "
+                         f"{interfaces} are activated.")
             else:
                 self.deactivate()
                 log.info(f"Interface {interface.id} is "
