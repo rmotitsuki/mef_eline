@@ -31,6 +31,7 @@ Changed
 - Changed ui constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
+- EVCs UNI will be checked for disabled interfaces so the EVC is disabled as well.
 
 General Information
 ===================

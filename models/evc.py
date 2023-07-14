@@ -1463,7 +1463,7 @@ class LinkProtection(EVCDeploy):
     def is_uni_interface_active(
         interface_a: Interface,
         interface_z: Interface
-    ) -> tuple[bool, Interface]:
+    ) -> tuple[bool, dict]:
         """Determine whether a UNI should be active"""
         active = True
         interfaces = {}
