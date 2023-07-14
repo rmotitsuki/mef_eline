@@ -13,7 +13,7 @@ from tenacity import retry_if_exception_type, stop_after_attempt, wait_random
 from kytos.core import log
 from kytos.core.db import Mongo
 from kytos.core.retry import before_sleep, for_all_methods, retries
-from napps.kytos.mef_eline.db.models import EVCBaseDoc
+from napps.kytos.mef_eline.db.models import EVCBaseDoc, EVCUpdateDoc
 
 
 @for_all_methods(
@@ -92,11 +92,33 @@ class ELineController:
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},
             {
-                "$set": model.dict(exclude={"inserted_at"}, exclude_none=True),
+                "$set": model.dict(
+                    exclude={"inserted_at"},
+                    exclude_none=True),
                 "$setOnInsert": {"inserted_at": utc_now},
             },
             return_document=ReturnDocument.AFTER,
             upsert=True,
+        )
+        return updated
+
+    def update_evc(self, evc: Dict) -> Optional[Dict]:
+        """Update an EVC.
+        This is needed to correctly set None values to fields"""
+
+        # Check for errors in fields only.
+        EVCUpdateDoc(
+            **{
+                **evc,
+                **{"_id": evc["id"]}
+            }
+        )
+        updated = self.db.evcs.find_one_and_update(
+            {"_id": evc["id"]},
+            {
+                "$set": evc,
+            },
+            return_document=ReturnDocument.AFTER,
         )
         return updated
 
