@@ -1,14 +1,15 @@
 """Tests for DB models."""
-from unittest import TestCase
+import pytest
 from pydantic import ValidationError
 
 from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc
 
 
-class TestDBModels(TestCase):
+class TestDBModels():
     """Test the DB models"""
 
-    def setUp(self):
+    def setup_method(self):
+        """Setup method"""
         self.evc_dict = {
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:04:1",
@@ -53,7 +54,7 @@ class TestDBModels(TestCase):
 
         self.evc_dict["queue_id"] = "error"
 
-        with self.assertRaises(ValidationError):
+        with pytest.raises(ValidationError):
             EVCBaseDoc(**self.evc_dict)
 
     def test_document_base_model_dict(self):
@@ -77,5 +78,5 @@ class TestDBModels(TestCase):
     def test_tagdoc_fail(self):
         """Test TAGDoc value fail case"""
         tag_fail = {"tag_type": 1, "value": "test_fail"}
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             TAGDoc(**tag_fail)
