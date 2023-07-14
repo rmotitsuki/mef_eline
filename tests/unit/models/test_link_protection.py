@@ -780,16 +780,26 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         interface_a.status = EntityStatus.UP
         interface_z.status = EntityStatus.UP
         actual = self.evc.is_uni_interface_active(interface_a, interface_z)
-        expected = (True, None)
+        interfaces = {
+            '00:01:1': {"status": "UP", "status_reason": set()},
+            '00:03:1': {"status": "UP", "status_reason": set()},
+        }
+        expected = (True, interfaces)
         assert actual == expected
 
         interface_a.status = EntityStatus.DOWN
         actual = self.evc.is_uni_interface_active(interface_a, interface_z)
-        expected = (False, interface_a)
+        interfaces = {
+            '00:01:1': {'status': 'DOWN', 'status_reason': set()}
+        }
+        expected = (False, interfaces)
         assert actual == expected
 
         interface_a.status = EntityStatus.UP
         interface_z.status = EntityStatus.DOWN
         actual = self.evc.is_uni_interface_active(interface_a, interface_z)
-        expected = (False, interface_z)
+        interfaces = {
+            '00:03:1': {'status': 'DOWN', 'status_reason': set()}
+        }
+        expected = (False, interfaces)
         assert actual == expected

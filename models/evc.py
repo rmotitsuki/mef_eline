@@ -1438,19 +1438,18 @@ class LinkProtection(EVCDeploy):
             log.warning(f"The interface {id_} was not found")
             return
 
-        active, interface = self.is_uni_interface_active(
+        active, interfaces = self.is_uni_interface_active(
             interface_a, interface_z
         )
         if self.is_active() != active:
             if active:
                 self.activate()
-                interfaces = {interface_a.id, interface_z.id}
-                log.info(f"Activating EVC {self.id}. Interfaces "
-                         f"{interfaces} are activated.")
+                log.info(f"Activating EVC {self.id}. Interfaces: "
+                         f"{interfaces}.")
             else:
                 self.deactivate()
-                log.info(f"Interface {interface.id} is "
-                         f"inactive. Deactivating EVC {self.id}")
+                log.info(f"Deactivating EVC {self.id}. Interfaces: "
+                         f"{interfaces}.")
             self.sync()
 
     def are_unis_active(self, switches: dict) -> bool:
@@ -1466,13 +1465,28 @@ class LinkProtection(EVCDeploy):
         interface_z: Interface
     ) -> tuple[bool, Interface]:
         """Determine whether a UNI should be active"""
+        active = True
+        interfaces = {}
+        interface_a_dict = {
+            "status": interface_a.status.value,
+            "status_reason": interface_a.status_reason
+        }
+        interface_z_dict = {
+            "status": interface_z.status.value,
+            "status_reason": interface_z.status_reason
+        }
         if (interface_a.status != EntityStatus.UP
                 or interface_a.status_reason != set()):
-            return False, interface_a
+            active = False
+            interfaces[interface_a.id] = interface_a_dict
         if (interface_z.status != EntityStatus.UP
                 or interface_z.status_reason != set()):
-            return False, interface_z
-        return True, None
+            active = False
+            interfaces[interface_z.id] = interface_z_dict
+        if active:
+            interfaces[interface_a.id] = interface_a_dict
+            interfaces[interface_z.id] = interface_z_dict
+        return active, interfaces
 
 
 class EVC(LinkProtection):
