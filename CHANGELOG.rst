@@ -17,6 +17,7 @@ Added
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added ui support for primary and secondary constraints
+- Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
 
 Changed
 =======
@@ -31,6 +32,8 @@ Changed
 - Changed ui constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
+- ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute`` will only be set in the database if they've been set in the request.
+- Changed UI spf_attribute to allow it to be ``default``, meaning an unset value
 
 General Information
 ===================
@@ -47,6 +50,7 @@ Fixed
 - fixed ``check_list_traces`` to work with the new version of SDN traces
 - fixed updating EVC to be an intra-switch with invalid switch or interface
 - fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
+- fixed non-redeployment of circuit when patching with ``{"queue_id":null}``
 
 General Information
 ===================

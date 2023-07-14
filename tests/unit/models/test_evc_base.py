@@ -262,6 +262,22 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         _, redeploy = evc.update(**update_dict)
         assert redeploy
 
+    @patch("napps.kytos.mef_eline.models.EVC.sync")
+    def test_update_queue_null(self, _sync_mock):
+        """Test if evc is set to redeploy."""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "dynamic_backup_path": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+        }
+        update_dict = {"queue_id": None}
+        evc = EVC(**attributes)
+        _, redeploy = evc.update(**update_dict)
+        self.assertTrue(redeploy)
+
     def test_circuit_representation(self):
         """Test the method __repr__."""
         attributes = {
@@ -369,6 +385,32 @@ class TestEVC():  # pylint: disable=too-many-public-methods
             "service_level": 7,
         }
         actual_dict = evc.as_dict()
+        for name, value in expected_dict.items():
+            actual = actual_dict.get(name)
+            assert value == actual
+
+        # Selected fields
+        expected_dict = {
+            "enabled": True,
+            "uni_z": attributes["uni_z"].as_dict(),
+            "circuit_scheduler": [
+                {
+                    "id": 234243247,
+                    "action": "create",
+                    "frequency": "1 * * * *",
+                },
+                {
+                    "id": 234243239,
+                    "action": "create",
+                    "interval": {"hours": 2},
+                },
+            ],
+            "sb_priority": 2,
+        }
+        selected_fields = {
+            "enabled", "uni_z", "circuit_scheduler", "sb_priority"
+        }
+        actual_dict = evc.as_dict(selected_fields)
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
             assert value == actual

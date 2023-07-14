@@ -2,14 +2,14 @@
 import pytest
 from pydantic import ValidationError
 
-from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc
+from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc, EVCUpdateDoc
 
 
 class TestDBModels():
     """Test the DB models"""
 
     def setup_method(self):
-        """Setup method"""
+        """Setup method."""
         self.evc_dict = {
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:04:1",
@@ -34,6 +34,28 @@ class TestDBModels():
             "circuit_scheduler": [],
             "queue_id": None
         }
+        self.evc_update = {
+            "uni_a": {
+                "interface_id": "00:00:00:00:00:00:00:04:1",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100,
+                },
+            },
+            "uni_z": {
+                "interface_id": "00:00:00:00:00:00:00:02:3",
+                "tag": {
+                    "tag_type": 1,
+                    "value": 100,
+                }
+            },
+            "name": "EVC 2",
+            "dynamic_backup_path": True,
+            "sb_priority": 81,
+            "enabled": False,
+            "circuit_scheduler": [],
+            "queue_id": None
+        }
 
     def test_evcbasedoc(self):
         """Test EVCBaseDoc model"""
@@ -46,6 +68,17 @@ class TestDBModels():
         assert evc.sb_priority == 81
         assert evc.service_level == 0
         assert not evc.active
+        assert not evc.enabled
+        assert not evc.circuit_scheduler
+
+    def test_evcupdatedoc(self):
+        """Test EVCUpdateDoc model"""
+        evc = EVCUpdateDoc(**self.evc_update)
+        assert evc.name == "EVC 2"
+        assert evc.uni_a.interface_id == "00:00:00:00:00:00:00:04:1"
+        assert evc.uni_z.interface_id == "00:00:00:00:00:00:00:02:3"
+        assert evc.dynamic_backup_path
+        assert evc.sb_priority == 81
         assert not evc.enabled
         assert not evc.circuit_scheduler
 
