@@ -276,7 +276,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         update_dict = {"queue_id": None}
         evc = EVC(**attributes)
         _, redeploy = evc.update(**update_dict)
-        self.assertTrue(redeploy)
+        assert redeploy
 
     def test_circuit_representation(self):
         """Test the method __repr__."""
