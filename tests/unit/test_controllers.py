@@ -1,14 +1,14 @@
 """Tests for the DB controller."""
-from unittest import TestCase
 from unittest.mock import MagicMock
 
 from controllers import ELineController
 
 
-class TestControllers(TestCase):
+class TestControllers():
     """Test DB Controllers"""
 
-    def setUp(self) -> None:
+    def setup_method(self) -> None:
+        """Setup method"""
         self.eline = ELineController(MagicMock())
         self.evc_dict = {
             "id": "1234",
