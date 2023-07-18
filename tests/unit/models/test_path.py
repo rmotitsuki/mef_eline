@@ -1,7 +1,7 @@
 """Module to test the Path class."""
 import sys
-from unittest import TestCase
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import call, patch, Mock, MagicMock
+import pytest
 from napps.kytos.mef_eline import settings
 
 from kytos.core.common import EntityStatus
@@ -19,13 +19,13 @@ from napps.kytos.mef_eline.tests.helpers import (  # NOQA pycodestyle
     MockResponse, get_link_mocked, get_mocked_requests, id_to_interface_mock)
 
 
-class TestPath(TestCase):
+class TestPath():
     """Class to test path methods."""
 
     def test_is_affected_by_link_1(self):
         """Test method is affected by link."""
         path = Path()
-        self.assertIs(path.is_affected_by_link(), False)
+        assert path.is_affected_by_link() is False
 
     def test_link_affected_by_interface_1(self):
         """Test method to get the link using an interface."""
@@ -36,7 +36,7 @@ class TestPath(TestCase):
         link2.endpoint_a = "c"
         link2.endpoint_b = "d"
         path = Path([link1, link2])
-        self.assertIsNone(path.link_affected_by_interface())
+        assert path.link_affected_by_interface() is None
 
     def test_link_affected_by_interface_2(self):
         """Test method to get the link using an interface."""
@@ -47,12 +47,12 @@ class TestPath(TestCase):
         link2.endpoint_a = "c"
         link2.endpoint_b = "d"
         path = Path([link1, link2])
-        self.assertEqual(path.link_affected_by_interface("a"), link1)
+        assert path.link_affected_by_interface("a") == link1
 
     def test_status_case_1(self):
         """Test if empty link is DISABLED."""
         current_path = Path()
-        self.assertEqual(current_path.status, EntityStatus.DISABLED)
+        assert current_path.status == EntityStatus.DISABLED
 
     @patch("requests.get", side_effect=get_mocked_requests)
     def test_status_case_2(self, requests_mocked):
@@ -64,13 +64,13 @@ class TestPath(TestCase):
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
-        self.assertEqual(current_path.status, EntityStatus.DOWN)
+        assert current_path.status == EntityStatus.DOWN
 
     def test_status_case_3(self):
         """Test if link status is DISABLED."""
         links = []
         current_path = Path(links)
-        self.assertEqual(current_path.status, EntityStatus.DISABLED)
+        assert current_path.status == EntityStatus.DISABLED
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_4(self):
@@ -94,7 +94,7 @@ class TestPath(TestCase):
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
-        self.assertEqual(current_path.status, EntityStatus.UP)
+        assert current_path.status == EntityStatus.UP
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_5(self):
@@ -118,7 +118,7 @@ class TestPath(TestCase):
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
-        self.assertEqual(current_path.status, EntityStatus.DISABLED)
+        assert current_path.status == EntityStatus.DISABLED
 
     # This method will be used by the mock to replace requests.get
     def _mocked_requests_get_status_case_6(self):
@@ -142,7 +142,7 @@ class TestPath(TestCase):
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
-        self.assertEqual(current_path.status, EntityStatus.DISABLED)
+        assert current_path.status == EntityStatus.DISABLED
 
     def test_compare_same_paths(self):
         """Test compare paths with same links."""
@@ -157,7 +157,7 @@ class TestPath(TestCase):
 
         path_1 = Path(links)
         path_2 = Path(links)
-        self.assertEqual(path_1, path_2)
+        assert path_1 == path_2
 
     def test_compare_different_paths(self):
         """Test compare paths with different links."""
@@ -180,7 +180,7 @@ class TestPath(TestCase):
 
         path_1 = Path(links_1)
         path_2 = Path(links_2)
-        self.assertNotEqual(path_1, path_2)
+        assert path_1 != path_2
 
     def test_as_dict(self):
         """Test path as dict."""
@@ -191,12 +191,12 @@ class TestPath(TestCase):
 
         current_path = Path(links)
         expected_dict = [{"id": 3}, {"id": 2}]
-        self.assertEqual(expected_dict, current_path.as_dict())
+        assert expected_dict == current_path.as_dict()
 
     def test_empty_is_valid(self) -> None:
         """Test empty path is valid."""
         path = Path([])
-        self.assertEqual(path.is_valid(MagicMock(), MagicMock(), False), True)
+        assert path.is_valid(MagicMock(), MagicMock(), False)
 
     def test_is_valid(self):
         """Test is_valid method."""
@@ -207,50 +207,71 @@ class TestPath(TestCase):
         switch5 = Switch("00:00:00:00:00:00:00:05")
         switch6 = Switch("00:00:00:00:00:00:00:06")
         # Links connected
-        links1 = [
+        links = [
             get_link_mocked(switch_a=switch5, switch_b=switch6),
             get_link_mocked(switch_a=switch4, switch_b=switch5),
             get_link_mocked(switch_a=switch3, switch_b=switch4),
             get_link_mocked(switch_a=switch2, switch_b=switch3),
             get_link_mocked(switch_a=switch1, switch_b=switch2),
         ]
-        # Links not connected
-        links2 = [
+        path = Path(links)
+        assert path.is_valid(switch6, switch1) is True
+
+    def test_is_valid_diconnected(self):
+        """Test is_valid with disconnected path"""
+        switch1 = Switch("00:00:00:00:00:00:00:01")
+        switch2 = Switch("00:00:00:00:00:00:00:02")
+        switch3 = Switch("00:00:00:00:00:00:00:03")
+        switch4 = Switch("00:00:00:00:00:00:00:04")
+        links = [
             get_link_mocked(switch_a=switch1, switch_b=switch2),
             get_link_mocked(switch_a=switch3, switch_b=switch4),
             get_link_mocked(switch_a=switch2, switch_b=switch4),
         ]
-        # Loop
-        links3 = [
+        path = Path(links)
+        with pytest.raises(InvalidPath):
+            path.is_valid(switch1, switch4)
+
+    def test_is_valid_with_loop(self):
+        """Test is_valid with a loop"""
+        switch1 = Switch("00:00:00:00:00:00:00:01")
+        switch2 = Switch("00:00:00:00:00:00:00:02")
+        switch3 = Switch("00:00:00:00:00:00:00:03")
+        switch4 = Switch("00:00:00:00:00:00:00:04")
+        switch5 = Switch("00:00:00:00:00:00:00:05")
+        links = [
             get_link_mocked(switch_a=switch1, switch_b=switch2),
             get_link_mocked(switch_a=switch2, switch_b=switch3),
             get_link_mocked(switch_a=switch3, switch_b=switch4),
             get_link_mocked(switch_a=switch2, switch_b=switch4),
             get_link_mocked(switch_a=switch2, switch_b=switch5),
         ]
-        for links, switch_a, switch_z, expected in (
-            (links1, switch6, switch1, True),
-            (links2, switch1, switch4, False),
-            (links1, switch3, switch6, False),
-            (links3, switch1, switch5, False)
-        ):
-            with self.subTest(
-                links=links,
-                switch_a=switch_a,
-                switch_z=switch_z,
-                expected=expected,
-            ):
-                path = Path(links)
-                if expected:
-                    self.assertEqual(
-                        path.is_valid(switch_a, switch_z), expected
-                    )
-                else:
-                    with self.assertRaises(InvalidPath):
-                        path.is_valid(switch_a, switch_z)
+        path = Path(links)
+        with pytest.raises(InvalidPath):
+            path.is_valid(switch1, switch5)
+
+    def test_is_valid_invalid(self):
+        """Test is_valid when path is invalid
+        UNI_Z is not connected"""
+        switch1 = Switch("00:00:00:00:00:00:00:01")
+        switch2 = Switch("00:00:00:00:00:00:00:02")
+        switch3 = Switch("00:00:00:00:00:00:00:03")
+        switch4 = Switch("00:00:00:00:00:00:00:04")
+        switch5 = Switch("00:00:00:00:00:00:00:05")
+        switch6 = Switch("00:00:00:00:00:00:00:06")
+        links = [
+            get_link_mocked(switch_a=switch5, switch_b=switch6),
+            get_link_mocked(switch_a=switch4, switch_b=switch5),
+            get_link_mocked(switch_a=switch3, switch_b=switch4),
+            get_link_mocked(switch_a=switch2, switch_b=switch3),
+            get_link_mocked(switch_a=switch1, switch_b=switch2),
+        ]
+        path = Path(links)
+        with pytest.raises(InvalidPath):
+            path.is_valid(switch3, switch6)
 
 
-class TestDynamicPathManager(TestCase):
+class TestDynamicPathManager():
     """Tests for the DynamicPathManager class"""
 
     def test_clear_path(self):
@@ -274,7 +295,7 @@ class TestDynamicPathManager(TestCase):
             '00:00:00:00:00:00:00:04:1'
         ]
         # pylint: disable=protected-access
-        self.assertEqual(DynamicPathManager._clear_path(path), expected_path)
+        assert DynamicPathManager._clear_path(path) == expected_path
 
     def test_create_path_invalid(self):
         """Test create_path method"""
@@ -287,7 +308,7 @@ class TestDynamicPathManager(TestCase):
             '00:00:00:00:00:00:00:03',
             '00:00:00:00:00:00:00:03:1',
         ]
-        self.assertIsNone(DynamicPathManager.create_path(path))
+        assert DynamicPathManager.create_path(path) is None
 
     @patch("requests.post")
     def test_get_best_path(self, mock_requests_post):
@@ -326,8 +347,8 @@ class TestDynamicPathManager(TestCase):
         mock_requests_post.return_value = mock_response
 
         res_paths = list(DynamicPathManager.get_best_path(MagicMock()))
-        self.assertEqual(
-            [link.id for link in res_paths],
+        assert (
+            [link.id for link in res_paths] ==
             [link.id for link in expected_path]
         )
 
@@ -336,14 +357,14 @@ class TestDynamicPathManager(TestCase):
             id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
             None
         ]
-        self.assertIsNone(DynamicPathManager.get_best_path(MagicMock()))
+        assert DynamicPathManager.get_best_path(MagicMock()) is None
 
         mock_response.status_code = 400
         mock_response.json.return_value = {}
         mock_requests_post.return_value = mock_response
 
         res_paths = DynamicPathManager.get_best_path(MagicMock())
-        self.assertIsNone(res_paths)
+        assert res_paths is None
 
     @patch("requests.post")
     def test_get_best_paths(self, mock_requests_post):
@@ -424,12 +445,12 @@ class TestDynamicPathManager(TestCase):
         max_paths = 2
         res_paths = list(DynamicPathManager.get_best_paths(circuit,
                          max_paths=max_paths, **kwargs))
-        self.assertEqual(
-            [link.id for link in res_paths[0]],
+        assert (
+            [link.id for link in res_paths[0]] ==
             [link.id for link in expected_paths_0]
         )
-        self.assertEqual(
-            [link.id for link in res_paths[1]],
+        assert (
+            [link.id for link in res_paths[1]] ==
             [link.id for link in expected_paths_1]
         )
         expected_call = call(
@@ -574,7 +595,7 @@ class TestDynamicPathManager(TestCase):
         # when we dont have the current_path
         mock_requests_post.return_value = mock_response
         disjoint_paths = list(DynamicPathManager.get_disjoint_paths(evc, []))
-        self.assertEqual(disjoint_paths, [])
+        assert not disjoint_paths
 
         current_path = [
             Link(
@@ -596,7 +617,7 @@ class TestDynamicPathManager(TestCase):
         mock_response.json.return_value = {"paths": paths1["paths"][0:1]}
         mock_requests_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
-        self.assertEqual(len(paths), 0)
+        assert len(paths) == 0
 
         expected_disjoint_path = [
             Link(
@@ -621,14 +642,14 @@ class TestDynamicPathManager(TestCase):
         mock_response.json.return_value = paths1
         mock_requests_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
-        self.assertEqual(len(paths), 4)
+        assert len(paths) == 4
         # for more information on the paths please refer to EP029
-        self.assertEqual(len(paths[0]), 4)  # path S-Z-W-I-D
-        self.assertEqual(len(paths[1]), 5)  # path S-Z-W-I-J-D
-        self.assertEqual(len(paths[2]), 3)  # path S-Z-W-D
-        self.assertEqual(len(paths[3]), 4)  # path S-X-W-I-D
-        self.assertEqual(
-            [link.id for link in paths[0]],
+        assert len(paths[0]) == 4  # path S-Z-W-I-D
+        assert len(paths[1]) == 5  # path S-Z-W-I-J-D
+        assert len(paths[2]) == 3  # path S-Z-W-D
+        assert len(paths[3]) == 4  # path S-X-W-I-D
+        assert (
+            [link.id for link in paths[0]] ==
             [link.id for link in expected_disjoint_path]
         )
 
@@ -742,8 +763,8 @@ class TestDynamicPathManager(TestCase):
         mock_response.json.return_value = {"paths": paths2["paths"]}
         mock_requests_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
-        self.assertEqual(len(paths), 1)
-        self.assertEqual(
-            [link.id for link in paths[0]],
+        assert len(paths) == 1
+        assert (
+            [link.id for link in paths[0]] ==
             [link.id for link in expected_disjoint_path]
         )
