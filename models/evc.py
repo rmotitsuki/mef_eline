@@ -107,7 +107,7 @@ class EVCBase(GenericEntity):
         # optional attributes
         self.start_date = get_time(kwargs.get("start_date")) or now()
         self.end_date = get_time(kwargs.get("end_date")) or None
-        self.queue_id = kwargs.get("queue_id", settings.QUEUE_ID)
+        self.queue_id = kwargs.get("queue_id", -1)
 
         self.bandwidth = kwargs.get("bandwidth", 0)
         self.primary_links = Path(kwargs.get("primary_links", []))
@@ -1088,6 +1088,7 @@ class EVCDeploy(EVCBase):
             {"action_type": "output", "port": out_interface.port_number}
         ]
         if queue_id is not None:
+            queue_id = settings.QUEUE_ID if queue_id == -1 else queue_id
             default_actions.append(
                 {"action_type": "set_queue", "queue_id": queue_id}
             )

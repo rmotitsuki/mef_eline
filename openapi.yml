@@ -443,7 +443,7 @@ components:
           nullable: true
           format: int32
           description: "QoS Egress Queue ID"
-          minimum: 0
+          minimum: -1
           maximum: 7
         enabled:
           type: boolean
@@ -671,7 +671,7 @@ components:
           format: int32
           nullable: true
           description: "QoS Egress Queue ID"
-          minimum: 0
+          minimum: -1
           maximum: 7
 
         circuit_scheduler:

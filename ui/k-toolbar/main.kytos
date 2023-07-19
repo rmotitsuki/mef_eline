@@ -285,7 +285,10 @@ module.exports = {
     },
     get_queue_ids(){
       let values = Array(8).fill().map((_, i) => i)
-      var queue_ids = [{value: "", description: "none", selected: true}]
+      var queue_ids = [
+        {value: -1, description: "default", selected: false},
+        {value: null, description: "none", selected: true}
+      ]
       values.forEach(
           x => queue_ids.push({value:x, description:String(x)})
       )
