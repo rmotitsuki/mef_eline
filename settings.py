@@ -50,4 +50,6 @@ TIME_RECENT_DELETED_FLOWS = 60
 TIME_RECENT_UPDATED = 60
 
 TABLE_GROUP_ALLOWED = {'evpl', 'epl'}
+
+# Default spf_attribute. Allowed atributes are [0,1,2,3,4,5,6,7]
 QUEUE_ID = None
