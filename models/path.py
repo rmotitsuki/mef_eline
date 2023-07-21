@@ -125,10 +125,12 @@ class DynamicPathManager:
     def get_paths(circuit, max_paths=2, **kwargs):
         """Get a valid path for the circuit from the Pathfinder."""
         endpoint = settings.PATHFINDER_URL
+        spf_attribute = kwargs.get("spf_attribute") or settings.SPF_ATTRIBUTE
         request_data = {
             "source": circuit.uni_a.interface.id,
             "destination": circuit.uni_z.interface.id,
             "spf_max_paths": max_paths,
+            "spf_attribute": spf_attribute
         }
         request_data.update(kwargs)
         api_reply = requests.post(endpoint, json=request_data)

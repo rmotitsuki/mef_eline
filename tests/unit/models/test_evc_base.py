@@ -1,12 +1,11 @@
 """Module to test the EVCBase class."""
 import sys
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 from napps.kytos.mef_eline.models import Path
-
+import pytest
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
-# pylint: enable=wrong-import-position
+# pylint: enable=wrong-import-position, disable=ungrouped-imports
 from napps.kytos.mef_eline.models import EVC  # NOQA  pycodestyle
 from napps.kytos.mef_eline.scheduler import (
     CircuitSchedule,
@@ -17,16 +16,16 @@ from napps.kytos.mef_eline.tests.helpers import (
 )  # NOQA  pycodestyle
 
 
-class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
+class TestEVC():  # pylint: disable=too-many-public-methods
     """Tests to verify EVC class."""
 
     def test_attributes_empty(self):
         """Test if the EVC raises an error with name is required."""
         attributes = {"controller": get_controller_mock()}
         error_message = "name is required."
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
-        self.assertEqual(str(handle_error.exception), error_message)
+        assert error_message in str(handle_error)
 
     def test_expected_requiring_redeploy_attributes(self) -> None:
         """Test expected attributes_requiring_redeploy."""
@@ -62,9 +61,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "name": "circuit_name",
         }
         error_message = "uni_a is required."
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
-        self.assertEqual(str(handle_error.exception), error_message)
+        assert error_message in str(handle_error)
 
     def test_with_invalid_uni_a(self):
         """Test if the EVC raises and error with invalid UNI A."""
@@ -74,9 +73,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_a": get_uni_mocked(tag_value=82),
         }
         error_message = "VLAN tag 82 is not available in uni_a"
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
-        self.assertEqual(str(handle_error.exception), error_message)
+        assert error_message in str(handle_error)
 
     def test_without_uni_z(self):
         """Test if the EVC raises and error with UNI Z is required."""
@@ -86,9 +85,9 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_a": get_uni_mocked(is_valid=True),
         }
         error_message = "uni_z is required."
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
-        self.assertEqual(str(handle_error.exception), error_message)
+        assert error_message in str(handle_error)
 
     def test_with_invalid_uni_z(self):
         """Test if the EVC raises and error with UNI Z is required."""
@@ -99,11 +98,21 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_z": get_uni_mocked(tag_value=83),
         }
         error_message = "VLAN tag 83 is not available in uni_z"
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
-        self.assertEqual(str(handle_error.exception), error_message)
+        assert error_message in str(handle_error)
 
-    def test_update_read_only(self):
+    @pytest.mark.parametrize(
+        "name,value",
+        [
+            ("archived", True),
+            ("_id", True),
+            ("active", True),
+            ("current_path", []),
+            ("creation_time", "date"),
+        ]
+    )
+    def test_update_read_only(self, name, value):
         """Test if raises an error when trying to update read only attr."""
         attributes = {
             "controller": get_controller_mock(),
@@ -112,22 +121,13 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
         }
-        update_attr = [
-            ("archived", True),
-            ("_id", True),
-            ("active", True),
-            ("current_path", []),
-            ("creation_time", "date"),
-        ]
 
-        for name, value in update_attr:
-            with self.subTest(name=name, value=value):
-                update_dict = {name: value}
-                error_message = f"{name} can't be updated."
-                with self.assertRaises(ValueError) as handle_error:
-                    evc = EVC(**attributes)
-                    evc.update(**update_dict)
-                self.assertEqual(str(handle_error.exception), error_message)
+        update_dict = {name: value}
+        error_message = f"{name} can't be updated."
+        with pytest.raises(ValueError) as handle_error:
+            evc = EVC(**attributes)
+            evc.update(**update_dict)
+        assert error_message in str(handle_error)
 
     def test_update_invalid(self):
         """Test updating with an invalid attr"""
@@ -139,11 +139,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
             "uni_z": get_uni_mocked(is_valid=True),
         }
         evc = EVC(**attributes)
-        with self.assertRaises(ValueError) as handle_error:
+        with pytest.raises(ValueError) as handle_error:
             evc.update(xyz="abc")
-        self.assertEqual(
-            str(handle_error.exception),
+        assert (
             'The attribute "xyz" is invalid.'
+            in str(handle_error)
         )
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
@@ -160,7 +160,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         update_dict = {"enable": False}
         evc = EVC(**attributes)
         evc.update(**update_dict)
-        self.assertIs(evc.is_enabled(), False)
+        assert evc.is_enabled() is False
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_update_empty_primary_path(self, _sync_mock):
@@ -177,7 +177,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
         update_dict = {"primary_path": Path([])}
         evc = EVC(**attributes)
-        self.assertEqual(evc.primary_path, initial_primary_path)
+        assert evc.primary_path == initial_primary_path
         evc.update(**update_dict)
         assert len(evc.primary_path) == 0
 
@@ -196,12 +196,12 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
         update_dict = {"primary_path": Path([])}
         evc = EVC(**attributes)
-        self.assertEqual(evc.primary_path, initial_primary_path)
-        with self.assertRaises(ValueError) as handle_error:
+        assert evc.primary_path == initial_primary_path
+        with pytest.raises(ValueError) as handle_error:
             evc.update(**update_dict)
-        self.assertEqual(
-            str(handle_error.exception),
+        assert (
             'The EVC must have a primary path or allow dynamic paths.'
+            in str(handle_error)
         )
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
@@ -219,7 +219,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
         update_dict = {"backup_path": Path([])}
         evc = EVC(**attributes)
-        self.assertEqual(evc.backup_path, initial_backup_path)
+        assert evc.backup_path == initial_backup_path
         evc.update(**update_dict)
         assert len(evc.backup_path) == 0
 
@@ -240,11 +240,11 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
         update_dict = {"backup_path": Path([])}
         evc = EVC(**attributes)
-        self.assertEqual(evc.primary_path, primary_path)
-        self.assertEqual(evc.backup_path, initial_backup_path)
+        assert evc.primary_path == primary_path
+        assert evc.backup_path == initial_backup_path
         evc.update(**update_dict)
-        self.assertEqual(evc.primary_path, primary_path)
-        self.assertEqual(len(evc.backup_path), 0)
+        assert evc.primary_path == primary_path
+        assert len(evc.backup_path) == 0
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_update_queue(self, _sync_mock):
@@ -260,7 +260,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         update_dict = {"queue_id": 3}
         evc = EVC(**attributes)
         _, redeploy = evc.update(**update_dict)
-        self.assertTrue(redeploy)
+        assert redeploy
 
     @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_update_queue_null(self, _sync_mock):
@@ -276,7 +276,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         update_dict = {"queue_id": None}
         evc = EVC(**attributes)
         _, redeploy = evc.update(**update_dict)
-        self.assertTrue(redeploy)
+        assert redeploy
 
     def test_circuit_representation(self):
         """Test the method __repr__."""
@@ -288,7 +288,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         }
         evc = EVC(**attributes)
         expected_value = f"EVC({evc.id}, {evc.name})"
-        self.assertEqual(str(evc), expected_value)
+        assert str(evc) == expected_value
 
     def test_comparison_method(self):
         """Test the method __eq__."""
@@ -310,10 +310,10 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         evc3 = EVC(**attributes)
         evc4 = EVC(**attributes)
 
-        self.assertEqual(evc1 == evc2, True)
-        self.assertEqual(evc1 == evc3, False)
-        self.assertEqual(evc2 == evc3, False)
-        self.assertEqual(evc3 == evc4, True)
+        assert evc1 == evc2
+        assert evc1 != evc3
+        assert evc2 != evc3
+        assert evc3 == evc4
 
     def test_as_dict(self):
         """Test the method as_dict."""
@@ -387,7 +387,7 @@ class TestEVC(TestCase):  # pylint: disable=too-many-public-methods
         actual_dict = evc.as_dict()
         for name, value in expected_dict.items():
             actual = actual_dict.get(name)
-            self.assertEqual(value, actual)
+            assert value == actual
 
         # Selected fields
         expected_dict = {

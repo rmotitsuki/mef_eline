@@ -1,6 +1,5 @@
 """Module to test the schedule.py file."""
 import datetime
-from unittest import TestCase
 from unittest.mock import patch
 
 from apscheduler.triggers.cron import CronTrigger
@@ -11,12 +10,12 @@ from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.tests.helpers import get_controller_mock
 
 
-class TestCircuitSchedule(TestCase):
+class TestCircuitSchedule():
     """Tests to verify circuit_schedule class."""
 
     def test_id(self):
         """Test method id with different values."""
-        self.assertNotEqual(CircuitSchedule().id, CircuitSchedule().id)
+        assert CircuitSchedule().id != CircuitSchedule().id
 
     def test_with_date(self):
         """Test create circuit schedule with date."""
@@ -26,22 +25,22 @@ class TestCircuitSchedule(TestCase):
             "date": datetime.datetime.now().strftime(time_fmt),
         }
         circuit_schedule = CircuitSchedule(**options)
-        self.assertEqual("create", circuit_schedule.action)
-        self.assertEqual(options["date"], circuit_schedule.date)
+        assert "create" == circuit_schedule.action
+        assert options["date"] == circuit_schedule.date
 
     def test_with_interval(self):
         """Test create circuit schedule with interval."""
         options = {"action": "create", "interval": {"hours": 2}}
         circuit_schedule = CircuitSchedule(**options)
-        self.assertEqual("create", circuit_schedule.action)
-        self.assertEqual(options["interval"], circuit_schedule.interval)
+        assert "create" == circuit_schedule.action
+        assert options["interval"] == circuit_schedule.interval
 
     def test_with_frequency(self):
         """Test create circuit schedule with frequency."""
         options = {"action": "create", "frequency": "1 * * * *"}
         circuit_schedule = CircuitSchedule(**options)
-        self.assertEqual("create", circuit_schedule.action)
-        self.assertEqual(options["frequency"], circuit_schedule.frequency)
+        assert "create" == circuit_schedule.action
+        assert options["frequency"] == circuit_schedule.frequency
 
     def test_from_dict(self):
         """Test create circuit schedule from dict."""
@@ -51,13 +50,9 @@ class TestCircuitSchedule(TestCase):
             "frequency": "1 * * * *",
         }
         circuit_schedule = CircuitSchedule.from_dict(circuit_schedule_dict)
-        self.assertEqual(circuit_schedule.id, circuit_schedule_dict["id"])
-        self.assertEqual(
-            circuit_schedule.action, circuit_schedule_dict["action"]
-        )
-        self.assertEqual(
-            circuit_schedule.frequency, circuit_schedule_dict["frequency"]
-        )
+        assert circuit_schedule.id == circuit_schedule_dict["id"]
+        assert circuit_schedule.action == circuit_schedule_dict["action"]
+        assert circuit_schedule.frequency == circuit_schedule_dict["frequency"]
 
     def test_as_dict(self):
         """Test method as_dict from circuit_schedule."""
@@ -67,17 +62,17 @@ class TestCircuitSchedule(TestCase):
             "frequency": "1 * * * *",
         }
         circuit_schedule_dict = CircuitSchedule(**options).as_dict()
-        self.assertEqual(options, circuit_schedule_dict)
+        assert options == circuit_schedule_dict
 
 
-class TestScheduler(TestCase):
+class TestScheduler():
     """Class to test the structure Schedule."""
 
-    def setUp(self):
+    def setup_method(self):
         """Procedure executed before each test."""
         self.scheduler = Scheduler()
 
-    def tearDown(self):
+    def teardown_method(self):
         """Proedure executed after each test."""
         self.scheduler.shutdown()
 

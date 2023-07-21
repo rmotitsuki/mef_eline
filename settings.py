@@ -53,3 +53,5 @@ TABLE_GROUP_ALLOWED = {'evpl', 'epl'}
 
 # Default spf_attribute. Allowed atributes are [0,1,2,3,4,5,6,7]
 QUEUE_ID = None
+# Default spf_attribute. Allowed values: "hop", "priority", and "delay"
+SPF_ATTRIBUTE = "hop"

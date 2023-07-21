@@ -18,6 +18,7 @@ Added
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added ui support for primary and secondary constraints
 - Added ``QUEUE_ID`` to ``settings.py`` to be the default value for EVCs ``"queue_id"``
+- Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
 
 Changed
 =======
@@ -32,6 +33,8 @@ Changed
 - Changed ui constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
+- ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute`` will only be set in the database if they've been set in the request.
+- Changed UI spf_attribute to allow it to be ``default``, meaning an unset value
 
 General Information
 ===================
