@@ -18,6 +18,7 @@ Added
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added ui support for primary and secondary constraints
 - Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
+- Added a button for redeploying EVC
 
 Changed
 =======
