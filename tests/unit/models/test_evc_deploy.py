@@ -1810,7 +1810,7 @@ class TestEVC():
                 "dpid": 1,
                 "port": 9,
                 "time": "t3",
-                "type": "incomplete",
+                "type": "last",
                 "vlan": 5
             },
         ]
@@ -1819,8 +1819,8 @@ class TestEVC():
                                                 "result": [trace_a, trace_z]
                                             }
         result = EVCDeploy.check_list_traces([evc])
-        # type incomplete
-        assert result[evc.id] is False
+
+        assert result[evc.id] is True
 
         trace_z = [
             {
@@ -1834,10 +1834,9 @@ class TestEVC():
                 "dpid": 2,
                 "port": 11,
                 "time": "t2",
-                "type": "intermediary",
+                "type": "loop",
                 "vlan": 6
             },
-            {"dpid": 1, "port": 9, "time": "t3", "type": "loop", "vlan": 5},
         ]
 
         run_bulk_sdntraces_mock.return_value = {
