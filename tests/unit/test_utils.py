@@ -1,8 +1,7 @@
 """Module to test the utls.py file."""
-from unittest import TestCase
 from unittest.mock import MagicMock
-
 import pytest
+
 
 from kytos.core.common import EntityStatus
 from napps.kytos.mef_eline.exceptions import DisabledSwitch
@@ -13,56 +12,56 @@ from napps.kytos.mef_eline.utils import (check_disabled_component,
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
-class TestUtils(TestCase):
+class TestUtils():
     """Test utility functions."""
 
-    def test_compare_endpoint_trace(self):
+    @pytest.mark.parametrize(
+        "switch,expected",
+        [
+            (
+                MagicMock(dpid="1234"),
+                True
+            ),
+            (
+                MagicMock(dpid="2345"),
+                False
+            )
+        ]
+    )
+    def test_compare_endpoint_trace(self, switch, expected):
         """Test method compare_endpoint_trace"""
-
         trace = {"dpid": "1234", "port": 2, "vlan": 123}
-
-        switch1 = MagicMock()
-        switch1.dpid = "1234"
-        switch2 = MagicMock()
-        switch2.dpid = "2345"
 
         endpoint = MagicMock()
         endpoint.port_number = 2
         vlan = 123
-
-        for switch, expected in ((switch1, True), (switch2, False)):
-            with self.subTest(switch=switch, expected=expected):
-                endpoint.switch = switch
-                self.assertEqual(
-                    compare_endpoint_trace(endpoint, vlan, trace), expected
-                )
-                self.assertEqual(
-                    compare_endpoint_trace(endpoint, None, trace), expected
-                )
+        endpoint.switch = switch
+        assert compare_endpoint_trace(endpoint, vlan, trace) == expected
+        assert compare_endpoint_trace(endpoint, None, trace) == expected
 
     def test_compare_uni_out_trace(self):
         """Test compare_uni_out_trace method."""
         # case1: trace without 'out' info, should return True
         uni = MagicMock()
-        self.assertTrue(compare_uni_out_trace(uni, {}))
+        assert compare_uni_out_trace(uni, {})
 
         # case2: trace with valid port and VLAN, should return True
         uni.interface.port_number = 1
         uni.user_tag.value = 123
         trace = {"out": {"port": 1, "vlan": 123}}
-        self.assertTrue(compare_uni_out_trace(uni, trace))
+        assert compare_uni_out_trace(uni, trace)
 
         # case3: UNI has VLAN but trace dont have, should return False
         trace = {"out": {"port": 1}}
-        self.assertFalse(compare_uni_out_trace(uni, trace))
+        assert compare_uni_out_trace(uni, trace) is False
 
         # case4: UNI and trace dont have VLAN should return True
         uni.user_tag = None
-        self.assertTrue(compare_uni_out_trace(uni, trace))
+        assert compare_uni_out_trace(uni, trace)
 
         # case5: UNI dont have VLAN but trace has, should return False
         trace = {"out": {"port": 1, "vlan": 123}}
-        self.assertFalse(compare_uni_out_trace(uni, trace))
+        assert compare_uni_out_trace(uni, trace) is False
 
     def test_map_dl_vlan(self):
         """Test map_dl_vlan"""
@@ -71,25 +70,34 @@ class TestUtils(TestCase):
             result = map_dl_vlan(value)
             assert result == mapped
 
-    def test_get_vlan_tags_and_masks(self):
-        """Test get_vlan_tags_and_masks"""
-        vlan_ranges = [[101, 200], [101, 90], [34, 34]]
-        expecteds = [
-            [
-                (101, 4095),
-                (102, 4094),
-                (104, 4088),
-                (112, 4080),
-                (128, 4032),
-                (192, 4088),
-                (200, 4095),
-            ],
-            [],
-            [(34, 4095)],
+    @pytest.mark.parametrize(
+        "vlan_range,expected",
+        [
+            (
+                [101, 200],
+                [
+                    (101, 4095),
+                    (102, 4094),
+                    (104, 4088),
+                    (112, 4080),
+                    (128, 4032),
+                    (192, 4088),
+                    (200, 4095),
+                ]
+            ),
+            (
+                [101, 90],
+                []
+            ),
+            (
+                [34, 34],
+                [(34, 4095)]
+            )
         ]
-        for vlan_range, expected in zip(vlan_ranges, expecteds):
-            with self.subTest(range=vlan_range, expected=expected):
-                assert get_vlan_tags_and_masks(*vlan_range) == expected
+    )
+    def test_get_vlan_tags_and_masks(self, vlan_range, expected):
+        """Test get_vlan_tags_and_masks"""
+        assert get_vlan_tags_and_masks(*vlan_range) == expected
 
     def test_check_disabled_component(self):
         """Test check disabled component"""

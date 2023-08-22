@@ -18,8 +18,9 @@ Added
 - Added API request ``POST /v2/evc/metadata`` to add metadata to EVCs
 - Added API request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
-- Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
+- Added ``settings.TABLE_GROUP_ALLOWED`` set containing the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added UI support for primary and secondary constraints
+- Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
 
 Changed
 =======
@@ -34,20 +35,24 @@ Changed
 - Changed UI constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
+- ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute`` will only be set in the database if they've been set in the request.
+- Changed UI spf_attribute to allow it to be ``default``, meaning an unset value
 
 General Information
 ===================
+- ``./scripts/002_unset_spf_attribute.py`` is a script to unset both ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute``. On version 2022.3, this value was explicitly set, so you can use this script to unset this value if you want that ``spf_attribute`` follows the default ``settings.SPF_ATTRIBUTE`` value.
 - ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
 - Replaced ``@validate`` with ``@validate_openapi`` from kytos core
 
 Fixed
 =====
-- Fixed ``minimum_flexible_hits`` EVC attribute to be persistent
-- Fixed attribute list for path constraints to include ``reliability``
-- Fixed unnecessary redeploy of an intra-switch EVC on link up events
-- Fixed ``check_list_traces`` to work with the new version of SDN traces
-- Fixed updating EVC to be an intra-switch with invalid switch or interface
-- Fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
+- fixed ``minimum_flexible_hits`` EVC attribute to be persistent
+- fixed attribute list for path constraints to include ``reliability``
+- fixed unnecessary redeploy of an intra-switch EVC on link up events
+- fixed ``check_list_traces`` to work with the new version of SDN traces
+- fixed updating EVC to be an intra-switch with invalid switch or interface
+- fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
+- fixed non-redeployment of circuit when patching with ``{"queue_id":null}``
 
 
 [2022.3.1] - 2023-02-14

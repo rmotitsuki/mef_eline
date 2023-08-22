@@ -163,9 +163,12 @@ class EVCBase(GenericEntity):
         self.special_cases = {None, "4096/4096", 0}
         self.table_group = kwargs.get("table_group")
 
-    def sync(self):
+    def sync(self, keys: set = None):
         """Sync this EVC in the MongoDB."""
         self.updated_at = now()
+        if keys:
+            self._mongo_controller.update_evc(self.as_dict(keys))
+            return
         self._mongo_controller.upsert_evc(self.as_dict())
 
     def update(self, **kwargs):
@@ -217,8 +220,8 @@ class EVCBase(GenericEntity):
             else:
                 setattr(self, attribute, value)
                 if attribute in self.attributes_requiring_redeploy:
-                    redeploy = value
-        self.sync()
+                    redeploy = True
+        self.sync(set(kwargs.keys()))
         return enable, redeploy
 
     def set_flow_removed_at(self):
@@ -322,8 +325,10 @@ class EVCBase(GenericEntity):
             return True
         return False
 
-    def as_dict(self):
-        """Return a dictionary representing an EVC object."""
+    def as_dict(self, keys: set = None):
+        """Return a dictionary representing an EVC object.
+            keys: Only fields on this variable will be
+                  returned in the dictionary"""
         evc_dict = {
             "id": self.id,
             "name": self.name,
@@ -374,6 +379,15 @@ class EVCBase(GenericEntity):
         evc_dict["flow_removed_at"] = self.flow_removed_at
         evc_dict["updated_at"] = self.updated_at
 
+        if keys:
+            selected = {}
+            for key in keys:
+                if key == "enable":
+                    selected["enabled"] = evc_dict["enabled"]
+                    continue
+                selected[key] = evc_dict[key]
+            selected["id"] = evc_dict["id"]
+            return selected
         return evc_dict
 
     @property
@@ -1204,27 +1218,10 @@ class EVCDeploy(EVCBase):
             return {"result": []}
         return response.json()
 
-    @staticmethod
-    def trace_invalid(trace):
-        """Auxiliar function to check traces"""
-        if not trace or trace[-1]['type'] != 'last':
-            return True
-        return False
-
     # pylint: disable=too-many-return-statements
     @staticmethod
     def check_trace(circuit, trace_a, trace_z):
         """Auxiliar function to check an individual trace"""
-        if EVCDeploy.trace_invalid(trace_a):
-            log.warning(
-                f"Invalid trace from trace_a: {trace_a}"
-            )
-            return False
-        if EVCDeploy.trace_invalid(trace_z):
-            log.warning(
-                f"Invalid trace from trace_z: {trace_z}"
-            )
-            return False
         if (
             len(trace_a) != len(circuit.current_path) + 1
             or not compare_uni_out_trace(circuit.uni_z, trace_a[-1])
@@ -1343,10 +1340,10 @@ class LinkProtection(EVCDeploy):
         return False
 
     def handle_link_up(self, link):
-        """Handle circuit when link down.
+        """Handle circuit when link up.
 
         Args:
-            link(Link): Link affected by link.down event.
+            link(Link): Link affected by link.up event.
 
         """
         if self.is_intra_switch():

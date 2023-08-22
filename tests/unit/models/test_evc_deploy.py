@@ -1,6 +1,5 @@
 """Method to thest EVCDeploy class."""
 import sys
-from unittest import TestCase
 from unittest.mock import MagicMock, Mock, call, patch
 import operator
 import pytest
@@ -26,10 +25,11 @@ from napps.kytos.mef_eline.tests.helpers import (get_link_mocked,  # NOQA
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
-class TestEVC(TestCase):
+class TestEVC():
     """Tests to verify EVC class."""
 
-    def setUp(self):
+    def setup_method(self):
+        """Setup method"""
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_for_tests",
@@ -228,7 +228,28 @@ class TestEVC(TestCase):
         assert expected_flow_mod == flow_mod
 
     # pylint: disable=too-many-branches
-    def test_prepare_push_flow(self):
+    @pytest.mark.parametrize(
+        "in_vlan_a,in_vlan_z",
+        [
+            (100, 50),
+            (100, "4096/4096"),
+            (100, 0),
+            (100, None),
+            ("4096/4096", 50),
+            ("4096/4096", "4096/4096"),
+            ("4096/4096", 0),
+            ("4096/4096", None),
+            (0, 50),
+            (0, "4096/4096"),
+            (0, 0),
+            (0, None),
+            (None, 50),
+            (None, "4096/4096"),
+            (None, 0),
+            (None, None),
+        ]
+    )
+    def test_prepare_push_flow(self, in_vlan_a, in_vlan_z):
         """Test prepare push flow method."""
         attributes = {
             "table_group": {"evpl": 3, "epl": 4},
@@ -242,55 +263,50 @@ class TestEVC(TestCase):
         interface_z = evc.uni_z.interface
         out_vlan_a = 20
 
-        for in_vlan_a in [100, "4096/4096", 0, None]:
-            for in_vlan_z in [50, "4096/4096", 0, None]:
-                with self.subTest(in_vlan_a=in_vlan_a, in_vlan_z=in_vlan_z):
-                    # pylint: disable=protected-access
-                    flow_mod = evc._prepare_push_flow(interface_a, interface_z,
-                                                      in_vlan_a, out_vlan_a,
-                                                      in_vlan_z)
-                    expected_flow_mod = {
-                        'match': {'in_port': interface_a.port_number},
-                        'cookie': evc.get_cookie(),
-                        'owner': 'mef_eline',
-                        'table_id': 3,
-                        'table_group': 'evpl',
-                        'actions': [
-                            {'action_type': 'push_vlan', 'tag_type': 's'},
-                            {'action_type': 'set_vlan', 'vlan_id': out_vlan_a},
-                            {
-                                'action_type': 'output',
-                                'port': interface_z.port_number
-                            }
-                        ],
-                        "priority": EVPL_SB_PRIORITY,
-                    }
-                    expected_flow_mod["priority"] = evc.get_priority(in_vlan_a)
-                    if in_vlan_a is not None:
-                        expected_flow_mod['match']['dl_vlan'] = in_vlan_a
-
-                    if in_vlan_z not in evc.special_cases:
-                        new_action = {"action_type": "set_vlan",
-                                      "vlan_id": in_vlan_z}
-                        expected_flow_mod["actions"].insert(0, new_action)
-
-                    if in_vlan_a not in evc.special_cases:
-                        if in_vlan_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    elif in_vlan_a == "4096/4096":
-                        if in_vlan_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    elif not in_vlan_a:
-                        if in_vlan_a is None:
-                            expected_flow_mod["table_group"] = "epl"
-                            expected_flow_mod["table_id"] = 4
-                        if in_vlan_z not in evc.special_cases:
-                            new_action = {"action_type": "push_vlan",
-                                          "tag_type": "c"}
-                            expected_flow_mod["actions"].insert(0, new_action)
-                    assert expected_flow_mod == flow_mod
+        # pylint: disable=protected-access
+        flow_mod = evc._prepare_push_flow(interface_a, interface_z,
+                                          in_vlan_a, out_vlan_a,
+                                          in_vlan_z)
+        expected_flow_mod = {
+            'match': {'in_port': interface_a.port_number},
+            'cookie': evc.get_cookie(),
+            'owner': 'mef_eline',
+            'table_id': 3,
+            'table_group': 'evpl',
+            'actions': [
+                {'action_type': 'push_vlan', 'tag_type': 's'},
+                {'action_type': 'set_vlan', 'vlan_id': out_vlan_a},
+                {
+                    'action_type': 'output',
+                    'port': interface_z.port_number
+                }
+            ],
+            "priority": EVPL_SB_PRIORITY,
+        }
+        expected_flow_mod["priority"] = evc.get_priority(in_vlan_a)
+        if in_vlan_a is not None:
+            expected_flow_mod['match']['dl_vlan'] = in_vlan_a
+        if in_vlan_z not in evc.special_cases:
+            new_action = {"action_type": "set_vlan",
+                          "vlan_id": in_vlan_z}
+            expected_flow_mod["actions"].insert(0, new_action)
+        if in_vlan_a not in evc.special_cases:
+            if in_vlan_z == 0:
+                new_action = {"action_type": "pop_vlan"}
+                expected_flow_mod["actions"].insert(0, new_action)
+        elif in_vlan_a == "4096/4096":
+            if in_vlan_z == 0:
+                new_action = {"action_type": "pop_vlan"}
+                expected_flow_mod["actions"].insert(0, new_action)
+        elif not in_vlan_a:
+            if in_vlan_a is None:
+                expected_flow_mod["table_group"] = "epl"
+                expected_flow_mod["table_id"] = 4
+            if in_vlan_z not in evc.special_cases:
+                new_action = {"action_type": "push_vlan",
+                              "tag_type": "c"}
+                expected_flow_mod["actions"].insert(0, new_action)
+        assert expected_flow_mod == flow_mod
 
     @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
@@ -1140,94 +1156,110 @@ class TestEVC(TestCase):
         return EVC(**attributes)
 
     # pylint: disable=too-many-branches
+    @pytest.mark.parametrize(
+        "uni_a,uni_z",
+        [
+            (100, 50),
+            (100, "4096/4096"),
+            (100, 0),
+            (100, None),
+            ("4096/4096", 50),
+            ("4096/4096", "4096/4096"),
+            ("4096/4096", 0),
+            ("4096/4096", None),
+            (0, 50),
+            (0, "4096/4096"),
+            (0, 0),
+            (0, None),
+            (None, 50),
+            (None, "4096/4096"),
+            (None, 0),
+            (None, None),
+        ]
+    )
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_deploy_direct_uni_flows(self, send_flow_mods_mock):
+    def test_deploy_direct_uni_flows(self, send_flow_mods_mock, uni_a, uni_z):
         """Test _install_direct_uni_flows"""
         evc = TestEVC.create_evc_intra_switch()
         expected_dpid = evc.uni_a.interface.switch.id
 
-        for uni_a in [100, "4096/4096", 0, None]:
-            for uni_z in [100, "4096/4096", 0, None]:
-                with self.subTest(uni_a=uni_a, uni_z=uni_z):
-                    expected_flows = [
-                        {
-                            "match": {"in_port": 1},
-                            "cookie": evc.get_cookie(),
-                            "owner": "mef_eline",
-                            "table_id": 0,
-                            "table_group": "epl",
-                            "actions": [
-                                {"action_type": "output", "port": 3},
-                            ],
-                            "priority": EPL_SB_PRIORITY
-                        },
-                        {
-                            "match": {"in_port": 3},
-                            "cookie": evc.get_cookie(),
-                            "owner": "mef_eline",
-                            "table_id": 0,
-                            "table_group": "epl",
-                            "actions": [
-                                {"action_type": "output", "port": 1},
-                            ],
-                            "priority": EPL_SB_PRIORITY
-                        }
-                    ]
-                    evc.uni_a = get_uni_mocked(tag_value=uni_a, is_valid=True)
-                    evc.uni_a.interface.port_number = 1
-                    evc.uni_z = get_uni_mocked(tag_value=uni_z, is_valid=True)
-                    evc.uni_z.interface.port_number = 3
-                    expected_dpid = evc.uni_a.interface.switch.id
-                    evc._install_direct_uni_flows()
-                    if uni_a is not None:
-                        expected_flows[0]["match"]["dl_vlan"] = uni_a
-                        expected_flows[0]["table_group"] = "evpl"
-                    if uni_z is not None:
-                        expected_flows[1]["match"]["dl_vlan"] = uni_z
-                        expected_flows[1]["table_group"] = "evpl"
-                    expected_flows[0]["priority"] = EVC.get_priority(uni_a)
-                    expected_flows[1]["priority"] = EVC.get_priority(uni_z)
-
-                    if uni_z not in evc.special_cases:
-                        expected_flows[0]["actions"].insert(
-                            0, {"action_type": "set_vlan", "vlan_id": uni_z}
-                        )
-
-                    if uni_a not in evc.special_cases:
-                        expected_flows[1]["actions"].insert(
-                                0, {"action_type": "set_vlan",
-                                    "vlan_id": uni_a}
-                            )
-                        if not uni_z:
-                            expected_flows[1]["actions"].insert(
-                                0, {"action_type": "push_vlan",
-                                    "tag_type": "c"}
-                            )
-                        if uni_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flows[0]["actions"].insert(0, new_action)
-                    elif uni_a == "4096/4096":
-                        if uni_z == 0:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flows[0]["actions"].insert(0, new_action)
-                    elif uni_a == 0:
-                        if uni_z not in evc.special_cases:
-                            expected_flows[0]["actions"].insert(
-                                0, {"action_type": "push_vlan",
-                                    "tag_type": "c"}
-                            )
-                        if uni_z:
-                            new_action = {"action_type": "pop_vlan"}
-                            expected_flows[1]["actions"].insert(0, new_action)
-                    elif uni_a is None:
-                        if uni_z not in evc.special_cases:
-                            expected_flows[0]["actions"].insert(
-                                0, {"action_type": "push_vlan",
-                                    "tag_type": "c"}
-                            )
-                    send_flow_mods_mock.assert_called_with(
-                        expected_dpid, expected_flows
-                    )
+        expected_flows = [
+            {
+                "match": {"in_port": 1},
+                "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_id": 0,
+                "table_group": "epl",
+                "actions": [
+                    {"action_type": "output", "port": 3},
+                ],
+                "priority": EPL_SB_PRIORITY
+            },
+            {
+                "match": {"in_port": 3},
+                "cookie": evc.get_cookie(),
+                "owner": "mef_eline",
+                "table_id": 0,
+                "table_group": "epl",
+                "actions": [
+                    {"action_type": "output", "port": 1},
+                ],
+                "priority": EPL_SB_PRIORITY
+            }
+        ]
+        evc.uni_a = get_uni_mocked(tag_value=uni_a, is_valid=True)
+        evc.uni_a.interface.port_number = 1
+        evc.uni_z = get_uni_mocked(tag_value=uni_z, is_valid=True)
+        evc.uni_z.interface.port_number = 3
+        expected_dpid = evc.uni_a.interface.switch.id
+        evc._install_direct_uni_flows()
+        if uni_a is not None:
+            expected_flows[0]["match"]["dl_vlan"] = uni_a
+            expected_flows[0]["table_group"] = "evpl"
+        if uni_z is not None:
+            expected_flows[1]["match"]["dl_vlan"] = uni_z
+            expected_flows[1]["table_group"] = "evpl"
+        expected_flows[0]["priority"] = EVC.get_priority(uni_a)
+        expected_flows[1]["priority"] = EVC.get_priority(uni_z)
+        if uni_z not in evc.special_cases:
+            expected_flows[0]["actions"].insert(
+                0, {"action_type": "set_vlan", "vlan_id": uni_z}
+            )
+        if uni_a not in evc.special_cases:
+            expected_flows[1]["actions"].insert(
+                    0, {"action_type": "set_vlan",
+                        "vlan_id": uni_a}
+                )
+            if not uni_z:
+                expected_flows[1]["actions"].insert(
+                    0, {"action_type": "push_vlan",
+                        "tag_type": "c"}
+                )
+            if uni_z == 0:
+                new_action = {"action_type": "pop_vlan"}
+                expected_flows[0]["actions"].insert(0, new_action)
+        elif uni_a == "4096/4096":
+            if uni_z == 0:
+                new_action = {"action_type": "pop_vlan"}
+                expected_flows[0]["actions"].insert(0, new_action)
+        elif uni_a == 0:
+            if uni_z not in evc.special_cases:
+                expected_flows[0]["actions"].insert(
+                    0, {"action_type": "push_vlan",
+                        "tag_type": "c"}
+                )
+            if uni_z:
+                new_action = {"action_type": "pop_vlan"}
+                expected_flows[1]["actions"].insert(0, new_action)
+        elif uni_a is None:
+            if uni_z not in evc.special_cases:
+                expected_flows[0]["actions"].insert(
+                    0, {"action_type": "push_vlan",
+                        "tag_type": "c"}
+                )
+        send_flow_mods_mock.assert_called_with(
+            expected_dpid, expected_flows
+        )
 
     def test_is_affected_by_link(self):
         """Test is_affected_by_link method"""
@@ -1778,7 +1810,7 @@ class TestEVC(TestCase):
                 "dpid": 1,
                 "port": 9,
                 "time": "t3",
-                "type": "incomplete",
+                "type": "last",
                 "vlan": 5
             },
         ]
@@ -1787,8 +1819,8 @@ class TestEVC(TestCase):
                                                 "result": [trace_a, trace_z]
                                             }
         result = EVCDeploy.check_list_traces([evc])
-        # type incomplete
-        assert result[evc.id] is False
+
+        assert result[evc.id] is True
 
         trace_z = [
             {
@@ -1802,10 +1834,9 @@ class TestEVC(TestCase):
                 "dpid": 2,
                 "port": 11,
                 "time": "t2",
-                "type": "intermediary",
+                "type": "loop",
                 "vlan": 6
             },
-            {"dpid": 1, "port": 9, "time": "t3", "type": "loop", "vlan": 5},
         ]
 
         run_bulk_sdntraces_mock.return_value = {
