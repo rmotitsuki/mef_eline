@@ -62,9 +62,12 @@
                 <th>{{cindex}}</th>
                 <td>
                   <k-input v-if="column.editable" :id="column.name" :value.sync="column.value"></k-input>
-                  <span v-else>
+                  <span v-else-if="column.editable === false">
                     {{column.value}}
                   </span>
+                  <k-dropdown v-else-if="column.name === 'queue_id'" :options="queue_options(column)"
+                   :value.sync="column.value">
+                  </k-dropdown>
                 </td>
               </tr>
             </template>
@@ -306,6 +309,18 @@ module.exports = {
     }
   },
   methods: {
+    queue_options: function(queue) {
+      let _result = [
+        {value: -1, description:"default", selected: (queue.value == -1)},
+        {value: null, description:"none", selected: (queue.value == null)}
+      ]
+      for (let i = 0; i < 8; i++) {
+        _result.push(
+          {value: i, description: i.toString(), selected: (queue.value == i)}
+        )
+      }
+      return _result
+    },
     get_spf_attribute_options: function(type) {
       /**
        * Method to build option items for spf attribute.
@@ -512,10 +527,10 @@ module.exports = {
                     'Archived': {'value': data['archived']?true:false, 'editable':false},
                     'Dynamic backup path': {'value': data['dynamic_backup_path']?true:false, 'editable':true}
                    };
-      this.others = {'Owner': {'value': data['owner']},
+      this.others = {'Owner': {'value': data['owner'], 'editable':false},
                      'Southbound priority': {'value': data['sb_priority'], 'editable':true, 'name':'sb_priority'},
                      'Bandwidth': {'value': data['bandwidth'], 'editable':true, 'name':'bandwidth'},
-                     'Queue': {'value': data['queue_id'], 'editable':true, 'name':'queue_id'},
+                     'Queue': {'value': data['queue_id'], 'name':'queue_id'},
                      'Service level': {'value': data['service_level'], 'editable':true, 'name':'service_level'}
                     };
       this.dates = {'Request time': data['request_time'],

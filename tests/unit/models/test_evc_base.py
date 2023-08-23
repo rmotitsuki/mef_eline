@@ -462,3 +462,17 @@ class TestEVC():  # pylint: disable=too-many-public-methods
 
         evc.uni_a.interface.switch = evc.uni_z.interface.switch
         assert evc.is_intra_switch()
+
+    def test_default_queue_id(self):
+        """Test default queue_id"""
+
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_1",
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True),
+            "dynamic_backup_path": True,
+        }
+
+        evc = EVC(**attributes)
+        assert evc.queue_id == -1

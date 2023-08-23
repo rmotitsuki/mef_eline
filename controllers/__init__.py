@@ -88,13 +88,12 @@ class ELineController:
                 **evc,
                 **{"_id": evc["id"]}
             }
-        )
+        ).dict(exclude={"inserted_at"}, exclude_none=True)
+        model.setdefault("queue_id", None)
         updated = self.db.evcs.find_one_and_update(
             {"_id": evc["id"]},
             {
-                "$set": model.dict(
-                    exclude={"inserted_at"},
-                    exclude_none=True),
+                "$set": model,
                 "$setOnInsert": {"inserted_at": utc_now},
             },
             return_document=ReturnDocument.AFTER,
