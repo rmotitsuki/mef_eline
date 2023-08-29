@@ -22,6 +22,7 @@ Added
 - Added ui support for primary and secondary constraints
 - Added ``QUEUE_ID`` to ``settings.py`` to be the default value for EVCs ``"queue_id"``
 - Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
+- Added a button for redeploying EVC
 
 Changed
 =======
