@@ -148,7 +148,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         assert expected_deployed
 
     # pylint: disable=too-many-arguments
-    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("requests.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
@@ -162,7 +161,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         deploy_mocked,
         _,
         requests_mock,
-        notify_mock
     ):
         """Test deploy with all links up."""
         deploy_mocked.return_value = True
@@ -188,7 +186,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         install_uni_flows_mocked.assert_called_with(evc.primary_path)
         install_nni_flows_mocked.assert_called_with(evc.primary_path)
         assert deployed
-        notify_mock.assert_called()
 
     @patch("requests.get", side_effect=get_mocked_requests)
     async def test_deploy_to_case_3(self, requests_mocked):

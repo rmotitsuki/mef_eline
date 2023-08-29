@@ -701,7 +701,6 @@ class TestEVC():
         assert remove_current_flows.call_count == 2
         assert deployed is False
 
-    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.get_failover_path_candidates")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
@@ -715,7 +714,6 @@ class TestEVC():
             install_uni_flows_mock,
             install_nni_flows_mock,
             get_failover_path_candidates_mock,
-            notify_mock,
         ) = args
 
         # case1: early return intra switch
@@ -741,7 +739,6 @@ class TestEVC():
         assert evc2.setup_failover_path() is True
         remove_path_flows_mock.assert_called_with(["link1", "link2"])
         path_mock.choose_vlans.assert_called()
-        notify_mock.assert_called()
         install_nni_flows_mock.assert_called_with(path_mock)
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
@@ -920,13 +917,12 @@ class TestEVC():
         assert self.evc_deploy.is_enabled() is False
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.evc.log.error")
     def test_remove_current_flows(self, *args):
         """Test remove current flows."""
         # pylint: disable=too-many-locals
-        (log_error_mock, send_flow_mods_mocked, notify_mock, _) = args
+        (log_error_mock, send_flow_mods_mocked, _) = args
         uni_a = get_uni_mocked(
             interface_port=2,
             tag_value=82,
@@ -973,7 +969,6 @@ class TestEVC():
 
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
-        notify_mock.assert_called()
 
         assert send_flow_mods_mocked.call_count == 5
         assert evc.is_active() is False
@@ -992,14 +987,12 @@ class TestEVC():
         log_error_mock.assert_called()
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.evc.log.error")
     def test_remove_failover_flows_exclude_uni_switches(self, *args):
         """Test remove failover flows excluding UNI switches."""
         # pylint: disable=too-many-locals
-        (log_error_mock, send_flow_mods_mocked,
-         notify_mock, mock_upsert) = args
+        (log_error_mock, send_flow_mods_mocked, mock_upsert) = args
         uni_a = get_uni_mocked(
             interface_port=2,
             tag_value=82,
@@ -1044,7 +1037,6 @@ class TestEVC():
 
         evc = EVC(**attributes)
         evc.remove_failover_flows(exclude_uni_switches=True, sync=True)
-        notify_mock.assert_called()
 
         assert send_flow_mods_mocked.call_count == 1
         flows = [
@@ -1060,13 +1052,11 @@ class TestEVC():
         log_error_mock.assert_called()
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    @patch("napps.kytos.mef_eline.models.evc.notify_link_available_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     def test_remove_failover_flows_include_all(self, *args):
         """Test remove failover flows including UNI switches."""
         # pylint: disable=too-many-locals
-        (send_flow_mods_mocked,
-         notify_mock, mock_upsert) = args
+        (send_flow_mods_mocked, mock_upsert) = args
         uni_a = get_uni_mocked(
             interface_port=2,
             tag_value=82,
@@ -1111,7 +1101,6 @@ class TestEVC():
 
         evc = EVC(**attributes)
         evc.remove_failover_flows(exclude_uni_switches=False, sync=True)
-        notify_mock.assert_called()
 
         assert send_flow_mods_mocked.call_count == 3
         flows = [

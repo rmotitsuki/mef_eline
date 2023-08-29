@@ -29,14 +29,6 @@ async def aemit_event(controller, name, content):
     await controller.buffers.app.aput(event)
 
 
-def notify_link_available_tags(controller, link, src_func=None):
-    """Notify link available tags."""
-    emit_event(controller, "link_available_tags", content={
-        "link": link,
-        "src_func": src_func
-    })
-
-
 def compare_endpoint_trace(endpoint, vlan, trace):
     """Compare and endpoint with a trace step."""
     if vlan and "vlan" in trace:

@@ -283,6 +283,11 @@ class Main(KytosNApp):
         except ValidationError as exception:
             raise HTTPException(400, detail=str(exception)) from exception
 
+        try:
+            self._use_uni_tags(evc)
+        except ValueError as exception:
+            raise HTTPException(400, detail=str(exception)) from exception
+
         # store circuit in dictionary
         self.circuits[evc.id] = evc
 
@@ -301,6 +306,16 @@ class Main(KytosNApp):
         emit_event(self.controller, name="created",
                    content=map_evc_event_content(evc))
         return JSONResponse(result, status_code=status)
+
+    def _use_uni_tags(self, evc):
+        uni_a = evc.uni_a
+        evc._use_uni_vlan(uni_a)
+        try:
+            uni_z = evc.uni_z
+            evc._use_uni_vlan(uni_z)
+        except ValueError as err:
+            evc._disuse_uni_vlan(uni_a)
+            raise err
 
     @listen_to('kytos/flow_manager.flow.removed')
     def on_flow_delete(self, event):
@@ -404,6 +419,7 @@ class Main(KytosNApp):
             evc.disable()
             self.sched.remove(evc)
             evc.archive()
+            evc.remove_uni_tags()
             evc.sync()
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}

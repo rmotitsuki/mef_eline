@@ -32,16 +32,19 @@ class Path(list, GenericEntity):
                 return link
         return None
 
-    def choose_vlans(self):
+    def choose_vlans(self, controller):
         """Choose the VLANs to be used for the circuit."""
         for link in self:
-            tag = link.get_next_available_tag()
+            tag = link.get_next_available_tag(controller)
             link.add_metadata("s_vlan", tag)
 
-    def make_vlans_available(self):
+    def make_vlans_available(self, controller):
         """Make the VLANs used in a path available when undeployed."""
         for link in self:
-            link.make_tag_available(link.get_metadata("s_vlan"))
+            tag = link.get_metadata("s_vlan")
+            link.make_tag_available(
+                controller, tag.value, str(tag.tag_type.value)
+            )
             link.remove_metadata("s_vlan")
 
     def is_valid(self, switch_a, switch_z, is_scheduled=False):
