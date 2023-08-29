@@ -6,6 +6,10 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [Unreleased]
 ************
 
+Added
+=====
+- Added a UI button for redeploying an EVC
+
 [2023.1.0] - 2023-06-27
 ***********************
 
@@ -22,7 +26,6 @@ Added
 - Added ui support for primary and secondary constraints
 - Added ``QUEUE_ID`` to ``settings.py`` to be the default value for EVCs ``"queue_id"``
 - Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
-- Added a button for redeploying EVC
 
 Changed
 =======
