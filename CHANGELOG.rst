@@ -8,15 +8,23 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
+- Added a UI button for redeploying an EVC
+
+[2023.1.0] - 2023-06-27
+***********************
+
+Added
+=====
 - Added more content keys ``evc_id, name, metadata, active, enabled, uni_a, uni_z`` to events from ``mef_eline``
 - Added ``uni_a`` and ``uni_z`` to ``attributes_requiring_redeploy``
 - Added ``metadata`` to EVC schema
 - Allow the creation of ``any`` and ``untagged`` EVC.
-- Added api request ``POST /v2/evc/metadata`` to add metadata to EVCs
-- Added api request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
+- Added API request ``POST /v2/evc/metadata`` to add metadata to EVCs
+- Added API request ``DELETE /v2/evc/metadata/<key>`` to delete metadata from EVCs
 - Subscribed to new event ``kytos/of_multi_table.enable_table`` as well as publishing ``kytos/mef_eline.enable_table`` required to set a different ``table_id`` to flows.
 - Added ``settings.TABLE_GROUP_ALLOWED`` set containning the allowed table groups, for now ``'evpl', 'epl'`` are supported.
 - Added ui support for primary and secondary constraints
+- Added ``QUEUE_ID`` to ``settings.py`` to be the default value for EVCs ``"queue_id"``
 - Exposed default ``SPF_ATTRIBUTE`` on settings.py, the default value is still `"hop"`. This value will be parametrized whenever ``primary_constraints.spf_attribute`` or ``secondary_constraints.spf_attribute`` isn't set
 
 Changed
@@ -29,7 +37,7 @@ Changed
 - Changed ``openapi.yml`` to be used as validation spec for request related methods ``updated()``, ``create_schedule()`` and ``update_schedule()``.
 - ``mef_eline`` now supports table group settings from ``of_multi_table``
 - Changed increasing amount of flows being sent, now it is fixed. Amount can be changed on ``settings.BATCH_SIZE``
-- Changed ui constraints default values to pass the spec validation
+- Changed UI constraints default values to pass the spec validation
 - Changed intra-switch EVC with a disabled switch or interface is not longer allowed to be created
 - Adapted ``mef_eline`` to ordered endpoints in a link. Endpoints for flow creation are compared with switch ids to overcome ordered endpoint.
 - ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute`` will only be set in the database if they've been set in the request.
@@ -37,10 +45,9 @@ Changed
 
 General Information
 ===================
+- ``./scripts/002_unset_spf_attribute.py`` is a script to unset both ``primary_constraints.spf_attribute`` and ``secondary_constraints.spf_attribute``. On version 2022.3, this value was explicitly set, so you can use this script to unset this value if you want that ``spf_attribute`` follows the default ``settings.SPF_ATTRIBUTE`` value.
 - ``@rest`` endpoints are now run by ``starlette/uvicorn`` instead of ``flask/werkzeug``.
-
-Removed
-=======
+- Replaced ``@validate`` with ``@validate_openapi`` from kytos core
 
 Fixed
 =====
@@ -52,9 +59,6 @@ Fixed
 - fixed EVC UI list to sort VLAN A and VLAN Z fields to acts as number
 - fixed non-redeployment of circuit when patching with ``{"queue_id":null}``
 
-General Information
-===================
-- Replaced ``@validate`` with ``@validate_openapi`` from kytos core
 
 [2022.3.1] - 2023-02-14
 ***********************

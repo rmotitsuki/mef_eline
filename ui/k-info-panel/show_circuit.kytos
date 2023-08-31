@@ -62,9 +62,12 @@
                 <th>{{cindex}}</th>
                 <td>
                   <k-input v-if="column.editable" :id="column.name" :value.sync="column.value"></k-input>
-                  <span v-else>
+                  <span v-else-if="column.editable === false">
                     {{column.value}}
                   </span>
+                  <k-dropdown v-else-if="column.name === 'queue_id'" :options="queue_options(column)"
+                   :value.sync="column.value">
+                  </k-dropdown>
                 </td>
               </tr>
             </template>
@@ -240,9 +243,11 @@
         </template>
       </div>
 
-      <div class="mef-back-button">
-        <k-button tooltip="List installed EVCs" title="< Back to list" :on_click="showInfoPanel">
-        </k-button>
+      <div class="mef-bottom-buttons">
+          <k-button tooltip="List installed EVCs" title="< Back to list" :on_click="showInfoPanel">
+          </k-button>
+          <k-button tooltip="Redeploy EVC" title="Redeploy EVC" :on_click="redeployEvc">
+          </k-button>
       </div>
       <template v-if="showDelModal">
         <div class="modal-mask">
@@ -306,6 +311,18 @@ module.exports = {
     }
   },
   methods: {
+    queue_options: function(queue) {
+      let _result = [
+        {value: -1, description:"default", selected: (queue.value == -1)},
+        {value: null, description:"none", selected: (queue.value == null)}
+      ]
+      for (let i = 0; i < 8; i++) {
+        _result.push(
+          {value: i, description: i.toString(), selected: (queue.value == i)}
+        )
+      }
+      return _result
+    },
     get_spf_attribute_options: function(type) {
       /**
        * Method to build option items for spf attribute.
@@ -512,10 +529,10 @@ module.exports = {
                     'Archived': {'value': data['archived']?true:false, 'editable':false},
                     'Dynamic backup path': {'value': data['dynamic_backup_path']?true:false, 'editable':true}
                    };
-      this.others = {'Owner': {'value': data['owner']},
+      this.others = {'Owner': {'value': data['owner'], 'editable':false},
                      'Southbound priority': {'value': data['sb_priority'], 'editable':true, 'name':'sb_priority'},
                      'Bandwidth': {'value': data['bandwidth'], 'editable':true, 'name':'bandwidth'},
-                     'Queue': {'value': data['queue_id'], 'editable':true, 'name':'queue_id'},
+                     'Queue': {'value': data['queue_id'], 'name':'queue_id'},
                      'Service level': {'value': data['service_level'], 'editable':true, 'name':'service_level'}
                     };
       this.dates = {'Request time': data['request_time'],
@@ -732,6 +749,32 @@ module.exports = {
       };
 
       return result;
+    },
+    redeployEvc: function() {
+      var _this = this;
+
+      let id = this.basics["ID"]["value"];
+      let name = this.basics["Name"]["value"];
+      var request = $.ajax({
+        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id + "/redeploy",
+        type:"PATCH",
+        contentType: "application/json; charset=utf-8"
+      });
+
+      request.done(function(data) {
+        let notification = {
+            title: 'EVC id: ' + id + ' | name: ' + name + ' redeployed.',
+            description: ""
+        }
+        _this.$kytos.$emit("setNotification" , notification);
+      });
+      request.fail(function(data) {
+        let notification = {
+          title: 'Redeploy EVC failed',
+          description: 'Error redeploying EVC ' + id +'. ' + data.responseJSON.description
+        }
+        _this.$kytos.$emit("setNotification" , notification);
+      });
     },
     saveEvc: function() {
       /**
@@ -999,8 +1042,10 @@ module.exports = {
   .mef-circuit-table-constraints select {
     margin: 0;
   }
-  .mef-back-button {
+  .mef-bottom-buttons {
+    display: flex;
     clear: both;
+    justify-content: space-between;
   }
   #mef-flags {
     clear:both;
