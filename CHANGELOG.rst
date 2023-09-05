@@ -10,6 +10,14 @@ Added
 =====
 - Added a UI button for redeploying an EVC
 
+Changed
+=======
+- UNIs now will use and free tags from ``Interface.available_tags``.
+
+Deprecated
+==========
+- Deleted emition of ``kytos/.*.link_available_tags`` event. ``kytos/core.interface_tags`` event through Interface takes its place.
+
 [2023.1.0] - 2023-06-27
 ***********************
 

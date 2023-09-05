@@ -3,6 +3,7 @@ import requests
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
+from kytos.core.interface import TAG
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
@@ -35,7 +36,8 @@ class Path(list, GenericEntity):
     def choose_vlans(self, controller):
         """Choose the VLANs to be used for the circuit."""
         for link in self:
-            tag = link.get_next_available_tag(controller)
+            tag_value = link.get_next_available_tag(controller)
+            tag = TAG(1, tag_value)
             link.add_metadata("s_vlan", tag)
 
     def make_vlans_available(self, controller):
@@ -43,7 +45,7 @@ class Path(list, GenericEntity):
         for link in self:
             tag = link.get_metadata("s_vlan")
             link.make_tag_available(
-                controller, tag.value, str(tag.tag_type.value)
+                controller, tag.value, tag.tag_type.value
             )
             link.remove_metadata("s_vlan")
 

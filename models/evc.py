@@ -416,19 +416,25 @@ class EVCBase(GenericEntity):
 
     def _use_uni_vlan(self, uni: UNI):
         """Use tags from UNI"""
+        if uni.user_tag is None:
+            return
         tag = uni.user_tag.value
+        tag_type = uni.user_tag.tag_type.value
         if isinstance(tag, int):
-            if not uni.interface.use_tags([tag, tag]):
+            if not uni.interface.use_tags([tag, tag], tag_type):
                 intf = uni.interface.id
                 raise ValueError(f"Tag {tag} is not available in {intf}")
-            uni.interface.notify_link_available_tags(self._controller)
+            uni.interface.notify_interface_tags(self._controller)
 
     def _disuse_uni_vlan(self, uni: UNI):
         """Make available tag from UNI"""
+        if uni.user_tag is None:
+            return
         tag = uni.user_tag.value
+        tag_type = uni.user_tag.tag_type.value
         if isinstance(tag, int):
-            uni.interface.make_tags_available([tag, tag])
-            uni.interface.notify_link_available_tags(self._controller)
+            uni.interface.make_tags_available([tag, tag], tag_type)
+            uni.interface.notify_interface_tags(self._controller)
 
     def remove_uni_tags(self):
         self._disuse_uni_vlan(self.uni_a)
