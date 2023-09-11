@@ -277,15 +277,15 @@ class Main(KytosNApp):
         except ValueError as exception:
             raise HTTPException(400, detail=str(exception)) from exception
 
+        try:
+            self._use_uni_tags(evc)
+        except ValueError as exception:
+            raise HTTPException(400, detail=str(exception)) from exception
+
         # save circuit
         try:
             evc.sync()
         except ValidationError as exception:
-            raise HTTPException(400, detail=str(exception)) from exception
-
-        try:
-            self._use_uni_tags(evc)
-        except ValueError as exception:
             raise HTTPException(400, detail=str(exception)) from exception
 
         # store circuit in dictionary
@@ -307,14 +307,18 @@ class Main(KytosNApp):
                    content=map_evc_event_content(evc))
         return JSONResponse(result, status_code=status)
 
-    def _use_uni_tags(self, evc):
+    @staticmethod
+    def _use_uni_tags(evc):
         uni_a = evc.uni_a
-        evc._use_uni_vlan(uni_a)
+        try:
+            evc._use_uni_vlan(uni_a)
+        except ValueError as err:
+            raise err
         try:
             uni_z = evc.uni_z
             evc._use_uni_vlan(uni_z)
         except ValueError as err:
-            evc._disuse_uni_vlan(uni_a)
+            evc.make_uni_vlan_available(uni_a)
             raise err
 
     @listen_to('kytos/flow_manager.flow.removed')

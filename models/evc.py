@@ -177,22 +177,27 @@ class EVCBase(GenericEntity):
         uni_a_flag = False
         if uni_a and uni_a != self.uni_a:
             uni_a_flag = True
-            self._use_uni_vlan(uni_a)
-        
-        uni_z = kwargs.get("uni_z")
+            try:
+                self._use_uni_vlan(uni_a)
+            except ValueError as err:
+                raise err
+
+        uni_z = kwargs.get("uni_z", None)
         if uni_z and uni_z != self.uni_z:
             try:
                 self._use_uni_vlan(uni_z)
-                self._disuse_uni_vlan(self.uni_z)
+                self.make_uni_vlan_available(self.uni_z)
             except ValueError as err:
-                if uni_a_flag: self._disuse_uni_vlan(uni_a)
+                if uni_a_flag:
+                    self.make_uni_vlan_available(uni_a)
                 raise err
-        else: uni_z = self.uni_z
-        
-        if uni_a_flag:
-            self._disuse_uni_vlan(self.uni_a)
-        else: uni_a = self.uni_a
+        else:
+            uni_z = self.uni_z
 
+        if uni_a_flag:
+            self.make_uni_vlan_available(self.uni_a)
+        else:
+            uni_a = self.uni_a
         return uni_a, uni_z
 
     def update(self, **kwargs):
@@ -419,26 +424,30 @@ class EVCBase(GenericEntity):
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
-        tag_type = uni.user_tag.tag_type.value
+        tag_type = uni.user_tag.tag_type
         if isinstance(tag, int):
             if not uni.interface.use_tags([tag, tag], tag_type):
                 intf = uni.interface.id
                 raise ValueError(f"Tag {tag} is not available in {intf}")
             uni.interface.notify_interface_tags(self._controller)
 
-    def _disuse_uni_vlan(self, uni: UNI):
+    def make_uni_vlan_available(self, uni: UNI):
         """Make available tag from UNI"""
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
-        tag_type = uni.user_tag.tag_type.value
+        tag_type = uni.user_tag.tag_type
         if isinstance(tag, int):
-            uni.interface.make_tags_available([tag, tag], tag_type)
-            uni.interface.notify_interface_tags(self._controller)
+            if not uni.interface.make_tags_available([tag, tag], tag_type):
+                intf = uni.interface.id
+                log.warning(f"Tag {tag} was already available in {intf}")
+            else:
+                uni.interface.notify_interface_tags(self._controller)
 
     def remove_uni_tags(self):
-        self._disuse_uni_vlan(self.uni_a)
-        self._disuse_uni_vlan(self.uni_z)
+        """Remove both UNI usage of a tag"""
+        self.make_uni_vlan_available(self.uni_a)
+        self.make_uni_vlan_available(self.uni_z)
 
 
 # pylint: disable=fixme, too-many-public-methods

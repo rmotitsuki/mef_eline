@@ -15,14 +15,14 @@ class TestControllers():
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 200,
                 }
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 200,
                 }
             },

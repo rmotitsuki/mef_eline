@@ -37,7 +37,7 @@ class Path(list, GenericEntity):
         """Choose the VLANs to be used for the circuit."""
         for link in self:
             tag_value = link.get_next_available_tag(controller)
-            tag = TAG(1, tag_value)
+            tag = TAG('vlan', tag_value)
             link.add_metadata("s_vlan", tag)
 
     def make_vlans_available(self, controller):
@@ -45,7 +45,7 @@ class Path(list, GenericEntity):
         for link in self:
             tag = link.get_metadata("s_vlan")
             link.make_tag_available(
-                controller, tag.value, tag.tag_type.value
+                controller, tag.value, tag.tag_type
             )
             link.remove_metadata("s_vlan")
 

@@ -37,7 +37,7 @@ class CircuitScheduleDoc(BaseModel):
 
 class TAGDoc(BaseModel):
     """TAG model"""
-    tag_type: int
+    tag_type: str
     value: Union[int, str]
 
     @validator('value')

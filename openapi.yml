@@ -686,8 +686,8 @@ components:
       type: object
       properties:
         tag_type:
-          type: integer
-          format: int32
+          type: string
+          enum: ['vlan']
         value:
           oneOf:
             - type: integer

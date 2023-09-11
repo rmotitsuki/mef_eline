@@ -1,6 +1,6 @@
 """Module to test the EVCBase class."""
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 from napps.kytos.mef_eline.models import Path
 import pytest
 # pylint: disable=wrong-import-position
@@ -65,18 +65,6 @@ class TestEVC():  # pylint: disable=too-many-public-methods
             EVC(**attributes)
         assert error_message in str(handle_error)
 
-    def test_with_invalid_uni_a(self):
-        """Test if the EVC raises and error with invalid UNI A."""
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_name",
-            "uni_a": get_uni_mocked(tag_value=82),
-        }
-        error_message = "VLAN tag 82 is not available in uni_a"
-        with pytest.raises(ValueError) as handle_error:
-            EVC(**attributes)
-        assert error_message in str(handle_error)
-
     def test_without_uni_z(self):
         """Test if the EVC raises and error with UNI Z is required."""
         attributes = {
@@ -85,19 +73,6 @@ class TestEVC():  # pylint: disable=too-many-public-methods
             "uni_a": get_uni_mocked(is_valid=True),
         }
         error_message = "uni_z is required."
-        with pytest.raises(ValueError) as handle_error:
-            EVC(**attributes)
-        assert error_message in str(handle_error)
-
-    def test_with_invalid_uni_z(self):
-        """Test if the EVC raises and error with UNI Z is required."""
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_name",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(tag_value=83),
-        }
-        error_message = "VLAN tag 83 is not available in uni_z"
         with pytest.raises(ValueError) as handle_error:
             EVC(**attributes)
         assert error_message in str(handle_error)
@@ -476,3 +451,167 @@ class TestEVC():  # pylint: disable=too-many-public-methods
 
         evc = EVC(**attributes)
         assert evc.queue_id == -1
+
+    def test_get_unis(self):
+        """Test _get_unis"""
+        old_uni_a = get_uni_mocked(
+            interface_port=2,
+            is_valid=True
+        )
+        old_uni_z = get_uni_mocked(
+            interface_port=3,
+            is_valid=True
+        )
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": old_uni_a,
+            "uni_z": old_uni_z
+        }
+        evc = EVC(**attributes)
+        evc._use_uni_vlan = MagicMock()
+        evc.make_uni_vlan_available = MagicMock()
+        new_uni_a = get_uni_mocked(tag_value=200, is_valid=True)
+        new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
+        unis = {"uni_a": new_uni_a}
+        evc._get_unis(**unis)
+        assert evc._use_uni_vlan.call_count == 1
+        assert evc._use_uni_vlan.call_args[0][0] == new_uni_a
+        assert evc.make_uni_vlan_available.call_count == 1
+        assert evc.make_uni_vlan_available.call_args[0][0] == old_uni_a
+
+        # Two UNIs
+        evc = EVC(**attributes)
+        evc._use_uni_vlan = MagicMock()
+        evc.make_uni_vlan_available = MagicMock()
+        unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
+        evc._get_unis(**unis)
+
+        expected = [call(new_uni_a), call(new_uni_z)]
+        evc._use_uni_vlan.assert_has_calls(expected)
+        expected = [call(old_uni_z), call(old_uni_a)]
+        evc.make_uni_vlan_available.assert_has_calls(expected)
+
+    def test_get_unis_error(self):
+        """Test _get_unis with ValueError"""
+        old_uni_a = get_uni_mocked(
+            interface_port=2,
+            is_valid=True
+        )
+        old_uni_z = get_uni_mocked(
+            interface_port=3,
+            is_valid=True
+        )
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": old_uni_a,
+            "uni_z": old_uni_z
+        }
+        evc = EVC(**attributes)
+        evc._use_uni_vlan = MagicMock()
+
+        # UNI Z ValueError
+        evc._use_uni_vlan.side_effect = [None, ValueError()]
+        evc.make_uni_vlan_available = MagicMock()
+        new_uni_a = get_uni_mocked(tag_value=200, is_valid=True)
+        new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
+        unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
+        with pytest.raises(ValueError):
+            evc._get_unis(**unis)
+        expected = [call(new_uni_a), call(new_uni_z)]
+        evc._use_uni_vlan.assert_has_calls(expected)
+        assert evc.make_uni_vlan_available.call_count == 1
+        assert evc.make_uni_vlan_available.call_args[0][0] == new_uni_a
+
+        # UNI A ValueError
+        evc = EVC(**attributes)
+        evc._use_uni_vlan = MagicMock()
+        evc._use_uni_vlan.side_effect = [ValueError(), None]
+        evc.make_uni_vlan_available = MagicMock()
+        new_uni_a = get_uni_mocked(tag_value=200, is_valid=True)
+        new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
+        unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
+        with pytest.raises(ValueError):
+            evc._get_unis(**unis)
+        assert evc._use_uni_vlan.call_count == 1
+        assert evc._use_uni_vlan.call_args[0][0] == new_uni_a
+        assert evc.make_uni_vlan_available.call_count == 0
+
+    def test_use_uni_vlan(self):
+        """Test _use_uni_vlan"""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        evc = EVC(**attributes)
+        uni = get_uni_mocked(is_valid=True)
+        uni.interface.use_tags = MagicMock()
+        uni.interface.notify_interface_tags = MagicMock()
+        evc._use_uni_vlan(uni)
+        args = uni.interface.use_tags.call_args[0]
+        assert args[0] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[1] == uni.user_tag.tag_type
+        assert uni.interface.use_tags.call_count == 1
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+        uni.interface.use_tags.return_value = False
+        with pytest.raises(ValueError):
+            evc._use_uni_vlan(uni)
+        assert uni.interface.use_tags.call_count == 2
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+        uni.user_tag = None
+        evc._use_uni_vlan(uni)
+        assert uni.interface.use_tags.call_count == 2
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+    def test_make_uni_vlan_available(self):
+        """Test make_uni_vlan_available"""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        evc = EVC(**attributes)
+        uni = get_uni_mocked(is_valid=True)
+        uni.interface.make_tags_available = MagicMock()
+        uni.interface.notify_interface_tags = MagicMock()
+
+        evc.make_uni_vlan_available(uni)
+        args = uni.interface.make_tags_available.call_args[0]
+        assert args[0] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[1] == uni.user_tag.tag_type
+        assert uni.interface.make_tags_available.call_count == 1
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+        uni.interface.make_tags_available.return_value = False
+        evc.make_uni_vlan_available(uni)
+        assert uni.interface.make_tags_available.call_count == 2
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+        uni.user_tag = None
+        evc.make_uni_vlan_available(uni)
+        assert uni.interface.make_tags_available.call_count == 2
+        assert uni.interface.notify_interface_tags.call_count == 1
+
+    def test_remove_uni_tags(self):
+        """Test remove_uni_tags"""
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": get_uni_mocked(is_valid=True),
+            "uni_z": get_uni_mocked(is_valid=True)
+        }
+        evc = EVC(**attributes)
+        evc.make_uni_vlan_available = MagicMock()
+        evc.remove_uni_tags()
+        assert evc.make_uni_vlan_available.call_count == 2
