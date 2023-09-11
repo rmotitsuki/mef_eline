@@ -452,8 +452,8 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         evc = EVC(**attributes)
         assert evc.queue_id == -1
 
-    def test_get_unis(self):
-        """Test _get_unis"""
+    def test_get_unis_use_tags(self):
+        """Test _get_unis_use_tags"""
         old_uni_a = get_uni_mocked(
             interface_port=2,
             is_valid=True
@@ -475,7 +475,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         new_uni_a = get_uni_mocked(tag_value=200, is_valid=True)
         new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
         unis = {"uni_a": new_uni_a}
-        evc._get_unis(**unis)
+        evc._get_unis_use_tags(**unis)
         assert evc._use_uni_vlan.call_count == 1
         assert evc._use_uni_vlan.call_args[0][0] == new_uni_a
         assert evc.make_uni_vlan_available.call_count == 1
@@ -486,15 +486,15 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         evc._use_uni_vlan = MagicMock()
         evc.make_uni_vlan_available = MagicMock()
         unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
-        evc._get_unis(**unis)
+        evc._get_unis_use_tags(**unis)
 
         expected = [call(new_uni_a), call(new_uni_z)]
         evc._use_uni_vlan.assert_has_calls(expected)
         expected = [call(old_uni_z), call(old_uni_a)]
         evc.make_uni_vlan_available.assert_has_calls(expected)
 
-    def test_get_unis_error(self):
-        """Test _get_unis with ValueError"""
+    def test_get_unis_use_tags_error(self):
+        """Test _get_unis_use_tags with ValueError"""
         old_uni_a = get_uni_mocked(
             interface_port=2,
             is_valid=True
@@ -520,7 +520,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
         unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
         with pytest.raises(ValueError):
-            evc._get_unis(**unis)
+            evc._get_unis_use_tags(**unis)
         expected = [call(new_uni_a), call(new_uni_z)]
         evc._use_uni_vlan.assert_has_calls(expected)
         assert evc.make_uni_vlan_available.call_count == 1
@@ -535,7 +535,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         new_uni_z = get_uni_mocked(tag_value=200, is_valid=True)
         unis = {"uni_a": new_uni_a, "uni_z": new_uni_z}
         with pytest.raises(ValueError):
-            evc._get_unis(**unis)
+            evc._get_unis_use_tags(**unis)
         assert evc._use_uni_vlan.call_count == 1
         assert evc._use_uni_vlan.call_args[0][0] == new_uni_a
         assert evc.make_uni_vlan_available.call_count == 0

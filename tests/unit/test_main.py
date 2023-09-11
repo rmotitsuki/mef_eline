@@ -1589,7 +1589,7 @@ class TestMain:
         assert 400 == response.status_code
         assert current_data["description"] == expected_data
 
-    @patch("napps.kytos.mef_eline.models.evc.EVC._get_unis")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._get_unis_use_tags")
     @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch('napps.kytos.mef_eline.models.evc.EVC._validate')

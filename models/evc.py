@@ -170,7 +170,7 @@ class EVCBase(GenericEntity):
             return
         self._mongo_controller.upsert_evc(self.as_dict())
 
-    def _get_unis(self, **kwargs) -> (UNI, UNI):
+    def _get_unis_use_tags(self, **kwargs) -> (UNI, UNI):
         """Obtain both UNIs (uni_a, uni_z).
         If a UNI is changing, verify tags"""
         uni_a = kwargs.get("uni_a", None)
@@ -216,7 +216,7 @@ class EVCBase(GenericEntity):
 
         """
         enable, redeploy = (None, None)
-        uni_a, uni_z = self._get_unis(**kwargs)
+        uni_a, uni_z = self._get_unis_use_tags(**kwargs)
         check_disabled_component(uni_a, uni_z)
         self._validate_has_primary_or_dynamic(
             primary_path=kwargs.get("primary_path"),
