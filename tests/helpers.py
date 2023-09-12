@@ -86,7 +86,7 @@ def get_uni_mocked(**kwargs):
     Args:
         interface_name(str): Interface name. Defaults to "eth1".
         interface_port(int): Interface pror. Defaults to 1.
-        tag_type(str): Type of a tag. Defaults to 1.
+        tag_type(str): Type of a tag. Defaults to 'vlan'.
         tag_value(int): Value of a tag. Defaults to 81
         is_valid(bool): Value returned by is_valid method.
                         Defaults to False.

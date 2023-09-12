@@ -44,7 +44,7 @@ class Path(list, GenericEntity):
         """Make the VLANs used in a path available when undeployed."""
         for link in self:
             tag = link.get_metadata("s_vlan")
-            link.make_tag_available(
+            link.make_tags_available(
                 controller, tag.value, tag.tag_type
             )
             link.remove_metadata("s_vlan")
