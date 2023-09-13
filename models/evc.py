@@ -1408,6 +1408,84 @@ class LinkProtection(EVCDeploy):
 
         return success
 
+    @staticmethod
+    def get_interface_from_switch(uni: UNI, switches: dict) -> Interface:
+        """Get interface from switch by uni"""
+        switch = switches[uni.interface.switch.dpid]
+        interface = switch.interfaces[uni.interface.port_number]
+        return interface
+
+    def handle_topology_update(self, switches: dict):
+        """Handle changes in the topology"""
+        # All intra-switch EVCs do not have current_path.
+        # In case of inter-switch EVC and not current_path,
+        # link_down should take care of deactivation.
+        if not self.is_intra_switch and not self.current_path:
+            return
+        try:
+            interface_a = self.get_interface_from_switch(self.uni_a, switches)
+        except KeyError:
+            id_ = self.uni_a.interface.id
+            log.warning(f"The interface {id_} was not found")
+            return
+
+        try:
+            interface_z = self.get_interface_from_switch(self.uni_z, switches)
+        except KeyError:
+            id_ = self.uni_z.interface.id
+            log.warning(f"The interface {id_} was not found")
+            return
+
+        active, interfaces = self.is_uni_interface_active(
+            interface_a, interface_z
+        )
+        if self.is_active() != active:
+            if active:
+                self.activate()
+                log.info(f"Activating EVC {self.id}. Interfaces: "
+                         f"{interfaces}.")
+            else:
+                self.deactivate()
+                log.info(f"Deactivating EVC {self.id}. Interfaces: "
+                         f"{interfaces}.")
+            self.sync()
+
+    def are_unis_active(self, switches: dict) -> bool:
+        """Determine whether this EVC should be active"""
+        interface_a = self.get_interface_from_switch(self.uni_a, switches)
+        interface_z = self.get_interface_from_switch(self.uni_z, switches)
+        active, _ = self.is_uni_interface_active(interface_a, interface_z)
+        return active
+
+    @staticmethod
+    def is_uni_interface_active(
+        interface_a: Interface,
+        interface_z: Interface
+    ) -> tuple[bool, dict]:
+        """Determine whether a UNI should be active"""
+        active = True
+        interfaces = {}
+        interface_a_dict = {
+            "status": interface_a.status.value,
+            "status_reason": interface_a.status_reason
+        }
+        interface_z_dict = {
+            "status": interface_z.status.value,
+            "status_reason": interface_z.status_reason
+        }
+        if (interface_a.status != EntityStatus.UP
+                or interface_a.status_reason != set()):
+            active = False
+            interfaces[interface_a.id] = interface_a_dict
+        if (interface_z.status != EntityStatus.UP
+                or interface_z.status_reason != set()):
+            active = False
+            interfaces[interface_z.id] = interface_z_dict
+        if active:
+            interfaces[interface_a.id] = interface_a_dict
+            interfaces[interface_z.id] = interface_z_dict
+        return active, interfaces
+
 
 class EVC(LinkProtection):
     """Class that represents a E-Line Virtual Connection."""
