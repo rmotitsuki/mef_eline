@@ -9,6 +9,7 @@ from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
     get_uni_mocked,
     get_mocked_requests,
+    id_to_interface_mock
 )  # NOQA pycodestyle
 
 
@@ -695,3 +696,107 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         self.evc.dynamic_backup_path = True
         self.evc.deploy_to_path = return_false_mock
         assert self.evc.handle_link_up(MagicMock())
+
+    async def test_get_interface_from_switch(self):
+        """Test get_interface_from_switch"""
+        interface = id_to_interface_mock('00:01:1')
+        interface.switch.interfaces = {1: interface}
+        switches = {
+            '00:01': interface.switch
+        }
+        uni = get_uni_mocked(is_valid=True, switch_dpid='00:01')
+        actual_interface = self.evc.get_interface_from_switch(uni, switches)
+        assert interface == actual_interface
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCBase.sync")
+    async def test_handle_topology_update(self, mock_sync):
+        """Test handle_topology_update"""
+        self.evc.get_interface_from_switch = MagicMock()
+        self.evc.is_uni_interface_active = MagicMock()
+        self.evc.activate = MagicMock()
+        self.evc.deactivate = MagicMock()
+        interface = id_to_interface_mock('00:01:1')
+
+        self.evc.is_uni_interface_active.return_value = (True, None)
+        self.evc._active = False
+        self.evc.handle_topology_update('mocked_switches')
+        assert self.evc.activate.call_count == 1
+        assert self.evc.deactivate.call_count == 0
+        assert mock_sync.call_count == 1
+
+        self.evc.is_uni_interface_active.return_value = (False, interface)
+        self.evc._active = True
+        self.evc.handle_topology_update('mocked_switches')
+        assert self.evc.activate.call_count == 1
+        assert self.evc.deactivate.call_count == 1
+        assert mock_sync.call_count == 2
+
+        self.evc.is_uni_interface_active.return_value = (True, None)
+        self.evc._active = True
+        self.evc.handle_topology_update('mocked_switches')
+        assert self.evc.activate.call_count == 1
+        assert self.evc.deactivate.call_count == 1
+        assert mock_sync.call_count == 2
+
+    async def test_handle_topology_update_error(self):
+        """Test handle_topology_update with error and early return"""
+        self.evc.get_interface_from_switch = MagicMock()
+        self.evc.get_interface_from_switch.side_effect = KeyError
+        self.evc.is_uni_interface_active = MagicMock()
+
+        self.evc.handle_topology_update('mocked_switches')
+        assert self.evc.is_uni_interface_active.call_count == 0
+
+    async def test_are_unis_active(self):
+        """Test are_unis_active"""
+        interface = id_to_interface_mock('00:01:1')
+
+        interface.switch.interfaces = {1: interface}
+        switches = {
+            'custom_switch_dpid': interface.switch
+        }
+
+        interface.status_reason = set()
+        interface.status = EntityStatus.UP
+        assert self.evc.are_unis_active(switches) is True
+
+        interface.status_reason = {'disabled'}
+        assert self.evc.are_unis_active(switches) is False
+
+        interface.status_reason = set()
+        interface.status = EntityStatus.DISABLED
+        assert self.evc.are_unis_active(switches) is False
+
+    async def test_is_uni_interface_active(self):
+        """Test is_uni_interface_active"""
+        interface_a = id_to_interface_mock('00:01:1')
+        interface_a.status_reason = set()
+        interface_z = id_to_interface_mock('00:03:1')
+        interface_z.status_reason = set()
+
+        interface_a.status = EntityStatus.UP
+        interface_z.status = EntityStatus.UP
+        actual = self.evc.is_uni_interface_active(interface_a, interface_z)
+        interfaces = {
+            '00:01:1': {"status": "UP", "status_reason": set()},
+            '00:03:1': {"status": "UP", "status_reason": set()},
+        }
+        expected = (True, interfaces)
+        assert actual == expected
+
+        interface_a.status = EntityStatus.DOWN
+        actual = self.evc.is_uni_interface_active(interface_a, interface_z)
+        interfaces = {
+            '00:01:1': {'status': 'DOWN', 'status_reason': set()}
+        }
+        expected = (False, interfaces)
+        assert actual == expected
+
+        interface_a.status = EntityStatus.UP
+        interface_z.status = EntityStatus.DOWN
+        actual = self.evc.is_uni_interface_active(interface_a, interface_z)
+        interfaces = {
+            '00:03:1': {'status': 'DOWN', 'status_reason': set()}
+        }
+        expected = (False, interfaces)
+        assert actual == expected
