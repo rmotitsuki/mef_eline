@@ -45,7 +45,7 @@ class Path(list, GenericEntity):
         for link in self:
             tag = link.get_metadata("s_vlan")
             link.make_tags_available(
-                controller, tag.value, tag.tag_type, link.id
+                controller, tag.value, link.id, tag.tag_type
             )
             link.remove_metadata("s_vlan")
 
