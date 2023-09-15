@@ -71,3 +71,37 @@ EVC_IDS='d33539656d8b40,095e1d6f43c745' priority python3 scripts/002_unset_spf_a
 ```
 
 - After that, `kytosd` should be restarted just so `mef_eline` EVCs can get fully reloaded in memory with the expected primary and secondary constraints, this would be the safest route.
+
+### Change ``tag_type`` from integer to string type
+
+[`vlan_type_string.py`](./vlan_type_string.py) is a script to change every ``tag_type`` instance from integer to string type. These istances are found in evcs collection from MongoDB.
+
+```
+    VLAN = 1 to 'vlan'
+    VLAN_QINQ = 2 to 'vlan_qinq'
+    MPLS = 3 to 'mpls'
+```
+
+#### Pre-requisites
+
+- There's no additional Python libraries dependencies required, other than installing the existing `topology`'s, or if you're running in development locally then installing `requirements/dev.in`
+- Make sure you don't have `kytosd` running with otherwise topology will start writing to MongoDB, and the application could overwrite the data you're trying to insert with this script.
+- Make sure MongoDB replica set is up and running.
+- Export the following MongnoDB variables accordingly in case your running outside of a container
+
+```
+export MONGO_USERNAME=
+export MONGO_PASSWORD=
+export MONGO_DBNAME=napps
+export MONGO_HOST_SEEDS="mongo1:27017,mongo2:27018,mongo3:27099"
+```
+
+#### How to use
+
+Run the script to change every ``tag_type`` to string
+
+```
+python3 vlan_type_string.py
+```
+
+</details>
