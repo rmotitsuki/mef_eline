@@ -400,7 +400,7 @@ module.exports = {
       var _this = this;
 
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id,
+        url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/" + id,
         type:"GET",
         data: JSON.stringify(),
         dataType: "json",
@@ -427,7 +427,7 @@ module.exports = {
       var _this = this;
 
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id,
+        url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/" + id,
         type:"DELETE"
       });
       request.done(function(data) {
@@ -756,7 +756,7 @@ module.exports = {
       let id = this.basics["ID"]["value"];
       let name = this.basics["Name"]["value"];
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id + "/redeploy",
+        url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/" + id + "/redeploy",
         type:"PATCH",
         contentType: "application/json; charset=utf-8"
       });
@@ -860,7 +860,7 @@ module.exports = {
       $payload = payload;
 
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id,
+        url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/" + id,
         type:"PATCH",
         data: JSON.stringify(payload),
         contentType: "application/json; charset=utf-8"

@@ -6,7 +6,7 @@ info:
 servers:
   - url: /api/kytos/mef_eline
 paths:
-  /v2/evc/:
+  /v3/evc/:
     get:
       summary: List all circuits stored.
       description: List all circuits stored.
@@ -66,7 +66,7 @@ paths:
         '415':
           description: The request body mimetype is not application/json.
 
-  /v2/evc/{circuit_id}:
+  /v3/evc/{circuit_id}:
     get:
       summary: Get details of a circuit
       description: Get the details of a single circuit
@@ -129,7 +129,7 @@ paths:
         '200':
           description: OK
 
-  /v2/evc/{circuit_id}/redeploy:
+  /v3/evc/{circuit_id}/redeploy:
     patch:
       summary: Redeploy an EVC
       description: Redeploy an EVC removing and then recreating the flows.
@@ -145,7 +145,7 @@ paths:
           description: Accepted
         '409':
           description: Circuit disabled
-  /v2/evc/{circuit_id}/metadata:
+  /v3/evc/{circuit_id}/metadata:
     get:
       summary: Get the metadata from en EVC
       operationId: get_metadata
@@ -185,7 +185,7 @@ paths:
           description: EVC not found
         '415':
           description: Wrong type
-  /v2/evc/{circuit_id}/metadata/{key}:
+  /v3/evc/{circuit_id}/metadata/{key}:
     delete:
       summary: Remove a metadata
       operationId: delete_metadata
@@ -205,7 +205,7 @@ paths:
           description: Successful
         '404':
           description: EVC not found
-  /v2/evc/schedule/:
+  /v3/evc/schedule/:
     get:
       summary: List all schedules stored for all circuits .
       description: List all schedules stored for all circuits .
@@ -247,7 +247,7 @@ paths:
         '409':
           description: Not Acceptable.
 
-  /v2/evc/schedule/{schedule_id}:
+  /v3/evc/schedule/{schedule_id}:
     patch:
       summary: Update a circuit schedule
       description: Update a circuit schedule based on payload. The schedule_id are required.
@@ -292,7 +292,7 @@ paths:
         '404':
           description:  Schedule id not found.
 
-  /v2/evc/metadata:
+  /v3/evc/metadata:
     post:
       summary: Add metadata to a bulk of EVCs
       description: Add metadata to multiple EVCs based on the body content
@@ -328,7 +328,7 @@ paths:
         '415':
           description: The request body mimetype is not application/json
 
-  /v2/evc/metadata/{key}:
+  /v3/evc/metadata/{key}:
     delete:
       summary: Delete metadata to a bulk of EVCs
       description: Delete metadata from multiple EVCs based on the given key
