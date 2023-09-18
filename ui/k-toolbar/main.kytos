@@ -221,11 +221,11 @@ module.exports = {
         circuit_name: "",
         endpoint_a: "",
         endpoint_name_a: "Endpoint name:",
-        tag_type_a: "1", // VLAN
+        tag_type_a: "vlan", // VLAN
         tag_value_a: "",
         endpoint_z: "",
         endpoint_name_z: "Endpoint name:",
-        tag_type_z: "1", // VLAN
+        tag_type_z: "vlan", // VLAN
         tag_value_z: "",
         service_level: "",
         sb_priority: "",
@@ -407,11 +407,11 @@ module.exports = {
       this.circuit_name = "";
       this.endpoint_a = "";
       this.endpoint_name_a = "Endpoint name:";
-      this.tag_type_a = "1",
+      this.tag_type_a = "vlan",
       this.tag_value_a = "";
       this.endpoint_z = "";
       this.endpoint_name_z = "Endpoint name:";
-      this.tag_type_z = "1",
+      this.tag_type_z = "vlan",
       this.tag_value_z = "";
       this.service_level = "";
       this.sb_priority = "";
@@ -457,11 +457,11 @@ module.exports = {
         }
         
         if (this.tag_type_a != "" && this.tag_value_a != "") {
-            request.uni_a['tag'] = {tag_type: parseInt(this.tag_type_a),
+            request.uni_a['tag'] = {tag_type: this.tag_type_a,
                                     value: parseInt(this.tag_value_a)}
         }
         if (this.tag_type_z != "" && this.tag_value_z != "") {
-            request.uni_z['tag'] = {tag_type: parseInt(this.tag_type_z),
+            request.uni_z['tag'] = {tag_type: this.tag_type_z,
                                     value: parseInt(this.tag_value_z)}
         }
         if (this.service_level !== undefined && this.service_level !== "") {

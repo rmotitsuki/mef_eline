@@ -301,7 +301,7 @@ module.exports = {
         links: {}, // EVC links data
         circuit_scheduler: {}, // EVC scheduler data
         showDelModal: false,
-        TAG_TYPE_VLAN: 1, // Tag type VLAN
+        TAG_TYPE_VLAN: "vlan", // Tag type VLAN
 
         constraints: {}, // constraint data
         constraint_labels: {}, // constraint labels
