@@ -47,6 +47,7 @@ def get_link_mocked(**kwargs):
         switch_b,
     )
     link = Mock(spec=Link, endpoint_a=endpoint_a, endpoint_b=endpoint_b)
+    link.make_tags_available.return_value = True, True
     link.endpoint_a.link = link
     link.endpoint_b.link = link
     link.as_dict.return_value = kwargs.get(

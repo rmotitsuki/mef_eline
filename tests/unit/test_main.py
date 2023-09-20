@@ -2333,10 +2333,16 @@ class TestMain:
         assert evc_mock._use_uni_vlan.call_args[0][0] == evc_mock.uni_z
 
         # One UNI tag is not available
+        evc_mock._use_uni_vlan.side_effect = [ValueError(), None]
+        with pytest.raises(ValueError):
+            self.napp._use_uni_tags(evc_mock)
+        assert evc_mock._use_uni_vlan.call_count == 3
+        assert evc_mock.make_uni_vlan_available.call_count == 0
+
         evc_mock._use_uni_vlan.side_effect = [None, ValueError()]
         with pytest.raises(ValueError):
             self.napp._use_uni_tags(evc_mock)
-        assert evc_mock._use_uni_vlan.call_count == 4
+        assert evc_mock._use_uni_vlan.call_count == 5
         assert evc_mock.make_uni_vlan_available.call_count == 1
 
     async def test_handle_topology_update(self):

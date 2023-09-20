@@ -552,24 +552,20 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         evc = EVC(**attributes)
         uni = get_uni_mocked(is_valid=True)
         uni.interface.use_tags = MagicMock()
-        uni.interface.notify_interface_tags = MagicMock()
         evc._use_uni_vlan(uni)
         args = uni.interface.use_tags.call_args[0]
-        assert args[0] == [uni.user_tag.value, uni.user_tag.value]
-        assert args[1] == uni.user_tag.tag_type
+        assert args[1] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[2] == uni.user_tag.tag_type
         assert uni.interface.use_tags.call_count == 1
-        assert uni.interface.notify_interface_tags.call_count == 1
 
         uni.interface.use_tags.return_value = False
         with pytest.raises(ValueError):
             evc._use_uni_vlan(uni)
         assert uni.interface.use_tags.call_count == 2
-        assert uni.interface.notify_interface_tags.call_count == 1
 
         uni.user_tag = None
         evc._use_uni_vlan(uni)
         assert uni.interface.use_tags.call_count == 2
-        assert uni.interface.notify_interface_tags.call_count == 1
 
     def test_make_uni_vlan_available(self):
         """Test make_uni_vlan_available"""
@@ -583,24 +579,20 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         evc = EVC(**attributes)
         uni = get_uni_mocked(is_valid=True)
         uni.interface.make_tags_available = MagicMock()
-        uni.interface.notify_interface_tags = MagicMock()
 
         evc.make_uni_vlan_available(uni)
         args = uni.interface.make_tags_available.call_args[0]
-        assert args[0] == [uni.user_tag.value, uni.user_tag.value]
-        assert args[1] == uni.user_tag.tag_type
+        assert args[1] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[2] == uni.user_tag.tag_type
         assert uni.interface.make_tags_available.call_count == 1
-        assert uni.interface.notify_interface_tags.call_count == 1
 
         uni.interface.make_tags_available.return_value = False
         evc.make_uni_vlan_available(uni)
         assert uni.interface.make_tags_available.call_count == 2
-        assert uni.interface.notify_interface_tags.call_count == 1
 
         uni.user_tag = None
         evc.make_uni_vlan_available(uni)
         assert uni.interface.make_tags_available.call_count == 2
-        assert uni.interface.notify_interface_tags.call_count == 1
 
     def test_remove_uni_tags(self):
         """Test remove_uni_tags"""

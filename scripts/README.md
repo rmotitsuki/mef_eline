@@ -84,8 +84,6 @@ EVC_IDS='d33539656d8b40,095e1d6f43c745' priority python3 scripts/002_unset_spf_a
 
 #### Pre-requisites
 
-- There's no additional Python libraries dependencies required, other than installing the existing `topology`'s, or if you're running in development locally then installing `requirements/dev.in`
-- Make sure you don't have `kytosd` running with otherwise topology will start writing to MongoDB, and the application could overwrite the data you're trying to insert with this script.
 - Make sure MongoDB replica set is up and running.
 - Export the following MongnoDB variables accordingly in case your running outside of a container
 

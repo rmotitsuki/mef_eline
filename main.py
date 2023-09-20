@@ -966,10 +966,13 @@ class Main(KytosNApp):
                 + f"Could not instantiate interface {interface_id}"
             )
             raise ValueError(result) from ValueError
-
+        tag_convert = {1: "vlan"}
         tag_dict = uni_dict.get("tag", None)
         if tag_dict:
-            tag = TAG.from_dict(tag_dict)
+            tag_type = tag_dict.get("tag_type")
+            tag_type = tag_convert.get(tag_type, tag_type)
+            tag_value = tag_dict.get("value")
+            tag = TAG(tag_type, tag_value)
         else:
             tag = None
         uni = UNI(interface, tag)

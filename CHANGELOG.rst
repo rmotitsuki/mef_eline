@@ -13,10 +13,15 @@ Added
 Changed
 =======
 - UNIs now will use and free tags from ``Interface.available_tags``.
+- Bumped API endpoint version to ``v3``.
 
 Deprecated
 ==========
 - Deleted emition of ``kytos/.*.link_available_tags`` event. ``kytos/core.interface_tags`` event through Interface takes its place.
+
+General Information
+===================
+- ``scripts/vlan_type_string.py`` can be used to update the collection ``evcs`` by changing ``tag_type`` from integer to string
 
 [2023.1.0] - 2023-06-27
 ***********************

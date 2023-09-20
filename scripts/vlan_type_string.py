@@ -32,6 +32,7 @@ for key, value in tag_type.items():
         ),
     )
 evcs = collection.bulk_write(up_paths)
+print(f"{evcs.modified_count} documents where PATH are modified")
 
 # Update Uni_a
 for key, value in tag_type.items():
@@ -41,6 +42,8 @@ for key, value in tag_type.items():
             {"uni_a.tag.tag_type": value}
         }
     )
+    print(f"{uni_a.modified_count} documents where UNI_A tag_type {key}"
+          f" are modified to {value}")
 
 # Update Uni_z
 for key, value in tag_type.items():
@@ -50,4 +53,5 @@ for key, value in tag_type.items():
             {"uni_z.tag.tag_type": value}
         }
     )
-print(f"Finnished updating EVCs")
+    print(f"{uni_z.modified_count} documents where UNI_Z tag_type {key}"
+          f" are modified to {value}")
