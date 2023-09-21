@@ -653,6 +653,7 @@ class EVCDeploy(EVCBase):
 
         try:
             nni_flows = self._prepare_nni_flows(path)
+        # pylint: disable=broad-except
         except Exception as err:
             log.error(f"Fail to remove NNI failover flows for {self}: {err}")
             nni_flows = {}
@@ -668,6 +669,7 @@ class EVCDeploy(EVCBase):
 
         try:
             uni_flows = self._prepare_uni_flows(path, skip_in=True)
+        # pylint: disable=broad-except
         except Exception as err:
             log.error(f"Fail to remove UNI failover flows for {self}: {err}")
             uni_flows = {}

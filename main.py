@@ -737,7 +737,7 @@ class Main(KytosNApp):
         """Change circuit when link is down or under_mantenance."""
         self.handle_link_down(event)
 
-    def handle_link_down(self, event):
+    def handle_link_down(self, event):  # pylint: disable=too-many-branches
         """Change circuit when link is down or under_mantenance."""
         link = event.content["link"]
         log.info("Event handle_link_down %s", link)
@@ -757,8 +757,11 @@ class Main(KytosNApp):
                     continue
                 try:
                     dpid_flows = evc.get_failover_flows()
+                # pylint: disable=broad-except
                 except Exception as err:
-                    log.error(f"Ignore Failover path for {evc} due to error: {err}")
+                    log.error(
+                        f"Ignore Failover path for {evc} due to error: {err}"
+                    )
                     evcs_normal.append(evc)
                     continue
                 for dpid, flows in dpid_flows.items():
