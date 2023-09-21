@@ -755,7 +755,13 @@ class Main(KytosNApp):
                 ):
                     evcs_normal.append(evc)
                     continue
-                for dpid, flows in evc.get_failover_flows().items():
+                try:
+                    dpid_flows = evc.get_failover_flows()
+                except Exception as err:
+                    log.error(f"Ignore Failover path for {evc} due to error: {err}")
+                    evcs_normal.append(evc)
+                    continue
+                for dpid, flows in dpid_flows.items():
                     switch_flows.setdefault(dpid, [])
                     switch_flows[dpid].extend(flows)
                 evcs_with_failover.append(evc)
@@ -806,7 +812,8 @@ class Main(KytosNApp):
         # Thus, we just need to further check the check_failover list
         for evc in check_failover:
             if evc.is_failover_path_affected_by_link(link):
-                evc.setup_failover_path()
+                with evc.lock:
+                    evc.setup_failover_path()
 
     @listen_to("kytos/mef_eline.evc_affected_by_link_down")
     def on_evc_affected_by_link_down(self, event):
@@ -884,7 +891,8 @@ class Main(KytosNApp):
             return
         evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
-            evc.remove_current_flows()
+            with evc.lock:
+                evc.remove_current_flows()
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
