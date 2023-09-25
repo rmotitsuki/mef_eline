@@ -135,14 +135,14 @@ class Main(KytosNApp):
         If you have some cleanup procedure, insert it here.
         """
 
-    @rest("/v3/evc/", methods=["GET"])
+    @rest("/v2/evc/", methods=["GET"])
     def list_circuits(self, request: Request) -> JSONResponse:
         """Endpoint to return circuits stored.
 
         archive query arg if defined (not null) will be filtered
         accordingly, by default only non archived evcs will be listed
         """
-        log.debug("list_circuits /v3/evc")
+        log.debug("list_circuits /v2/evc")
         args = request.query_params
         archived = args.get("archived", "false").lower()
         args = {k: v for k, v in args.items() if k not in {"archived"}}
@@ -151,7 +151,7 @@ class Main(KytosNApp):
         circuits = circuits['circuits']
         return JSONResponse(circuits)
 
-    @rest("/v3/evc/schedule", methods=["GET"])
+    @rest("/v2/evc/schedule", methods=["GET"])
     def list_schedules(self, _request: Request) -> JSONResponse:
         """Endpoint to return all schedules stored for all circuits.
 
@@ -160,7 +160,7 @@ class Main(KytosNApp):
          "circuit_id": <circuit_id>,
          "schedule": <schedule object>}]
         """
-        log.debug("list_schedules /v3/evc/schedule")
+        log.debug("list_schedules /v2/evc/schedule")
         circuits = self.mongo_controller.get_circuits()['circuits'].values()
         if not circuits:
             result = {}
@@ -183,11 +183,11 @@ class Main(KytosNApp):
         log.debug("list_schedules result %s %s", result, status)
         return JSONResponse(result, status_code=status)
 
-    @rest("/v3/evc/{circuit_id}", methods=["GET"])
+    @rest("/v2/evc/{circuit_id}", methods=["GET"])
     def get_circuit(self, request: Request) -> JSONResponse:
         """Endpoint to return a circuit based on id."""
         circuit_id = request.path_params["circuit_id"]
-        log.debug("get_circuit /v3/evc/%s", circuit_id)
+        log.debug("get_circuit /v2/evc/%s", circuit_id)
         circuit = self.mongo_controller.get_circuit(circuit_id)
         if not circuit:
             result = f"circuit_id {circuit_id} not found"
@@ -197,7 +197,7 @@ class Main(KytosNApp):
         log.debug("get_circuit result %s %s", circuit, status)
         return JSONResponse(circuit, status_code=status)
 
-    @rest("/v3/evc/", methods=["POST"])
+    @rest("/v2/evc/", methods=["POST"])
     @validate_openapi(spec)
     def create_circuit(self, request: Request) -> JSONResponse:
         """Try to create a new circuit.
@@ -224,7 +224,7 @@ class Main(KytosNApp):
         Finnaly, notify user of the status of its request.
         """
         # Try to create the circuit object
-        log.debug("create_circuit /v3/evc/")
+        log.debug("create_circuit /v2/evc/")
         data = get_json_or_400(request, self.controller.loop)
 
         try:
@@ -335,7 +335,7 @@ class Main(KytosNApp):
             log.debug("Flow removed in EVC %s", evc.id)
             evc.set_flow_removed_at()
 
-    @rest("/v3/evc/{circuit_id}", methods=["PATCH"])
+    @rest("/v2/evc/{circuit_id}", methods=["PATCH"])
     @validate_openapi(spec)
     def update(self, request: Request) -> JSONResponse:
         """Update a circuit based on payload.
@@ -345,7 +345,7 @@ class Main(KytosNApp):
         """
         data = get_json_or_400(request, self.controller.loop)
         circuit_id = request.path_params["circuit_id"]
-        log.debug("update /v3/evc/%s", circuit_id)
+        log.debug("update /v2/evc/%s", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
@@ -395,7 +395,7 @@ class Main(KytosNApp):
                    content=map_evc_event_content(evc, **data))
         return JSONResponse(result, status_code=status)
 
-    @rest("/v3/evc/{circuit_id}", methods=["DELETE"])
+    @rest("/v2/evc/{circuit_id}", methods=["DELETE"])
     def delete_circuit(self, request: Request) -> JSONResponse:
         """Remove a circuit.
 
@@ -403,7 +403,7 @@ class Main(KytosNApp):
         disabled.
         """
         circuit_id = request.path_params["circuit_id"]
-        log.debug("delete_circuit /v3/evc/%s", circuit_id)
+        log.debug("delete_circuit /v2/evc/%s", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
@@ -435,7 +435,7 @@ class Main(KytosNApp):
                    content=map_evc_event_content(evc))
         return JSONResponse(result, status_code=status)
 
-    @rest("v3/evc/{circuit_id}/metadata", methods=["GET"])
+    @rest("/v2/evc/{circuit_id}/metadata", methods=["GET"])
     def get_metadata(self, request: Request) -> JSONResponse:
         """Get metadata from an EVC."""
         circuit_id = request.path_params["circuit_id"]
@@ -449,7 +449,7 @@ class Main(KytosNApp):
                 detail=f"circuit_id {circuit_id} not found."
             ) from error
 
-    @rest("v3/evc/metadata", methods=["POST"])
+    @rest("/v2/evc/metadata", methods=["POST"])
     @validate_openapi(spec)
     def bulk_add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to a bulk of EVCs."""
@@ -470,7 +470,7 @@ class Main(KytosNApp):
             raise HTTPException(404, detail=fail_evcs)
         return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v3/evc/{circuit_id}/metadata", methods=["POST"])
+    @rest("/v2/evc/{circuit_id}/metadata", methods=["POST"])
     @validate_openapi(spec)
     def add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to an EVC."""
@@ -490,7 +490,7 @@ class Main(KytosNApp):
         evc.sync()
         return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v3/evc/metadata/{key}", methods=["DELETE"])
+    @rest("/v2/evc/metadata/{key}", methods=["DELETE"])
     @validate_openapi(spec)
     def bulk_delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metada from a bulk of EVCs"""
@@ -511,7 +511,7 @@ class Main(KytosNApp):
             raise HTTPException(404, detail=fail_evcs)
         return JSONResponse("Operation successful")
 
-    @rest("v3/evc/{circuit_id}/metadata/{key}", methods=["DELETE"])
+    @rest("/v2/evc/{circuit_id}/metadata/{key}", methods=["DELETE"])
     def delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metadata from an EVC."""
         circuit_id = request.path_params["circuit_id"]
@@ -528,11 +528,11 @@ class Main(KytosNApp):
         evc.sync()
         return JSONResponse("Operation successful")
 
-    @rest("/v3/evc/{circuit_id}/redeploy", methods=["PATCH"])
+    @rest("/v2/evc/{circuit_id}/redeploy", methods=["PATCH"])
     def redeploy(self, request: Request) -> JSONResponse:
         """Endpoint to force the redeployment of an EVC."""
         circuit_id = request.path_params["circuit_id"]
-        log.debug("redeploy /v3/evc/%s/redeploy", circuit_id)
+        log.debug("redeploy /v2/evc/%s/redeploy", circuit_id)
         try:
             evc = self.circuits[circuit_id]
         except KeyError:
@@ -552,7 +552,7 @@ class Main(KytosNApp):
 
         return JSONResponse(result, status_code=status)
 
-    @rest("/v3/evc/schedule/", methods=["POST"])
+    @rest("/v2/evc/schedule/", methods=["POST"])
     @validate_openapi(spec)
     def create_schedule(self, request: Request) -> JSONResponse:
         """
@@ -570,7 +570,7 @@ class Main(KytosNApp):
               }
             }
         """
-        log.debug("create_schedule /v3/evc/schedule/")
+        log.debug("create_schedule /v2/evc/schedule/")
         data = get_json_or_400(request, self.controller.loop)
         circuit_id = data["circuit_id"]
         schedule_data = data["schedule"]
@@ -614,7 +614,7 @@ class Main(KytosNApp):
         log.debug("create_schedule result %s %s", result, status)
         return JSONResponse(result, status_code=status)
 
-    @rest("/v3/evc/schedule/{schedule_id}", methods=["PATCH"])
+    @rest("/v2/evc/schedule/{schedule_id}", methods=["PATCH"])
     @validate_openapi(spec)
     def update_schedule(self, request: Request) -> JSONResponse:
         """Update a schedule.
@@ -631,7 +631,7 @@ class Main(KytosNApp):
         """
         data = get_json_or_400(request, self.controller.loop)
         schedule_id = request.path_params["schedule_id"]
-        log.debug("update_schedule /v3/evc/schedule/%s", schedule_id)
+        log.debug("update_schedule /v2/evc/schedule/%s", schedule_id)
 
         # Try to find a circuit schedule
         evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
@@ -666,7 +666,7 @@ class Main(KytosNApp):
         log.debug("update_schedule result %s %s", result, status)
         return JSONResponse(result, status_code=status)
 
-    @rest("/v3/evc/schedule/{schedule_id}", methods=["DELETE"])
+    @rest("/v2/evc/schedule/{schedule_id}", methods=["DELETE"])
     def delete_schedule(self, request: Request) -> JSONResponse:
         """Remove a circuit schedule.
 
@@ -675,7 +675,7 @@ class Main(KytosNApp):
         Save the EVC to the Storehouse.
         """
         schedule_id = request.path_params["schedule_id"]
-        log.debug("delete_schedule /v3/evc/schedule/%s", schedule_id)
+        log.debug("delete_schedule /v2/evc/schedule/%s", schedule_id)
         evc, found_schedule = self._find_evc_by_schedule_id(schedule_id)
 
         # Can not modify circuits deleted and archived

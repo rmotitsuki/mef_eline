@@ -427,7 +427,7 @@ class EVCBase(GenericEntity):
         tag_type = uni.user_tag.tag_type
         if isinstance(tag, int):
             result = uni.interface.use_tags(
-                self._controller, [tag, tag], tag_type
+                self._controller, tag, tag_type
             )
             if not result:
                 intf = uni.interface.id
@@ -441,7 +441,7 @@ class EVCBase(GenericEntity):
         tag_type = uni.user_tag.tag_type
         if isinstance(tag, int):
             result = uni.interface.make_tags_available(
-                self._controller, [tag, tag], tag_type
+                self._controller, tag, tag_type
             )
             if not result:
                 intf = uni.interface.id

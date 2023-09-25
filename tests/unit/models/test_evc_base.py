@@ -16,7 +16,7 @@ from napps.kytos.mef_eline.tests.helpers import (
 )  # NOQA  pycodestyle
 
 
-class TestEVC():  # pylint: disable=too-many-public-methods
+class TestEVC():  # pylint: disable=too-many-public-methods, no-member
     """Tests to verify EVC class."""
 
     def test_attributes_empty(self):
@@ -554,7 +554,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
         uni.interface.use_tags = MagicMock()
         evc._use_uni_vlan(uni)
         args = uni.interface.use_tags.call_args[0]
-        assert args[1] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[1] == uni.user_tag.value
         assert args[2] == uni.user_tag.tag_type
         assert uni.interface.use_tags.call_count == 1
 
@@ -582,7 +582,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods
 
         evc.make_uni_vlan_available(uni)
         args = uni.interface.make_tags_available.call_args[0]
-        assert args[1] == [uni.user_tag.value, uni.user_tag.value]
+        assert args[1] == uni.user_tag.value
         assert args[2] == uni.user_tag.tag_type
         assert uni.interface.make_tags_available.call_count == 1
 

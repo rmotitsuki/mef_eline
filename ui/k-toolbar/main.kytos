@@ -514,7 +514,7 @@ module.exports = {
         });
         
         let circuit_request = $.ajax({
-                                url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/",
+                                url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/",
                                 type:"POST",
                                 data: JSON.stringify(request),
                                 dataType: "json",

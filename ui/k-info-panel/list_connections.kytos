@@ -144,7 +144,7 @@ module.exports = {
       var _this = this;
 
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v3/evc/",
+        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/",
         type:"GET",
         data: JSON.stringify(),
         dataType: "json",

@@ -316,7 +316,7 @@ class TestMain:
         """Test if list circuits return 'no circuit stored.'."""
         circuits = {"circuits": {}}
         self.napp.mongo_controller.get_circuits.return_value = circuits
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         response = await self.api_client.get(url)
         assert response.status_code == 200, response.data
         assert not response.json()
@@ -326,7 +326,7 @@ class TestMain:
         circuits = {"circuits": {}}
         self.napp.mongo_controller.get_circuits.return_value = circuits
 
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         response = await self.api_client.get(url)
         expected_result = circuits["circuits"]
         assert response.json() == expected_result
@@ -340,7 +340,7 @@ class TestMain:
         get_circuits = self.napp.mongo_controller.get_circuits
         get_circuits.return_value = circuits
 
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         response = await self.api_client.get(url)
         expected_result = circuits["circuits"]
         get_circuits.assert_called_with(archived="false", metadata={})
@@ -357,7 +357,7 @@ class TestMain:
         get_circuits = self.napp.mongo_controller.get_circuits
         get_circuits.return_value = circuits
 
-        url = f"{self.base_endpoint}/v3/evc/?archived=true&metadata.a=1"
+        url = f"{self.base_endpoint}/v2/evc/?archived=true&metadata.a=1"
         response = await self.api_client.get(url)
         get_circuits.assert_called_with(archived="true",
                                         metadata={"metadata.a": "1"})
@@ -374,7 +374,7 @@ class TestMain:
         }
         self.napp.mongo_controller.get_circuits.return_value = circuits
 
-        url = f"{self.base_endpoint}/v3/evc/?archived=null"
+        url = f"{self.base_endpoint}/v2/evc/?archived=null"
         response = await self.api_client.get(url)
         expected_result = circuits["circuits"]
         assert response.json() == expected_result
@@ -384,7 +384,7 @@ class TestMain:
         circuit = {"name": "circuit_1"}
         self.napp.mongo_controller.get_circuit.return_value = circuit
 
-        url = f"{self.base_endpoint}/v3/evc/1"
+        url = f"{self.base_endpoint}/v2/evc/1"
         response = await self.api_client.get(url)
         expected_result = circuit
         assert response.json() == expected_result
@@ -392,7 +392,7 @@ class TestMain:
     async def test_circuit_with_invalid_id(self):
         """Test if get_circuit return invalid circuit_id."""
         self.napp.mongo_controller.get_circuit.return_value = None
-        url = f"{self.base_endpoint}/v3/evc/3"
+        url = f"{self.base_endpoint}/v2/evc/3"
         response = await self.api_client.get(url)
         expected_result = "circuit_id 3 not found"
         assert response.json()["description"] == expected_result
@@ -433,7 +433,7 @@ class TestMain:
         sched_add_mock.return_value = True
         self.napp.mongo_controller.get_circuits.return_value = {}
 
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         payload = {
             "name": "my evc1",
             "frequency": "* * * * *",
@@ -495,7 +495,7 @@ class TestMain:
     async def test_create_a_circuit_case_2(self, event_loop):
         """Test create a new circuit trying to send request without a json."""
         self.napp.controller.loop = event_loop
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
 
         response = await self.api_client.post(url)
         current_data = response.json()
@@ -506,7 +506,7 @@ class TestMain:
         """Test create a new circuit trying to send request with an
         invalid json."""
         self.napp.controller.loop = event_loop
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
 
         response = await self.api_client.post(
             url,
@@ -530,7 +530,7 @@ class TestMain:
         # pylint: disable=too-many-locals
         uni_from_dict_mock.side_effect = ValueError("Could not instantiate")
         mongo_controller_upsert_mock.return_value = True
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
 
         payload = {
             "name": "my evc1",
@@ -572,7 +572,7 @@ class TestMain:
         uni1.interface.switch.return_value = "00:00:00:00:00:00:00:01"
         uni1.interface.switch.status = EntityStatus.DISABLED
         uni_from_dict_mock.side_effect = [uni1, uni1]
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         payload = {
             "name": "my evc1",
             "dynamic_backup_path": True,
@@ -592,7 +592,7 @@ class TestMain:
     async def test_create_a_circuit_invalid_queue_id(self, event_loop):
         """Test create a new circuit with invalid queue_id."""
         self.napp.controller.loop = event_loop
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
 
         payload = {
             "name": "my evc1",
@@ -662,13 +662,13 @@ class TestMain:
 
         evc_as_dict_mock.return_value = payload
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload
         )
         assert 201 == response.status_code
 
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload
         )
         current_data = response.json()
@@ -680,7 +680,7 @@ class TestMain:
     async def test_create_circuit_case_5(self, uni_from_dict_mock, event_loop):
         """Test when neither primary path nor dynamic_backup_path is set."""
         self.napp.controller.loop = event_loop
-        url = f"{self.base_endpoint}/v3/evc/"
+        url = f"{self.base_endpoint}/v2/evc/"
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -714,7 +714,7 @@ class TestMain:
         evc1 = MagicMock()
         evc1.is_enabled.return_value = True
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
-        url = f"{self.base_endpoint}/v3/evc/1/redeploy"
+        url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
         assert response.status_code == 202, response.data
 
@@ -723,7 +723,7 @@ class TestMain:
         evc1 = MagicMock()
         evc1.is_enabled.return_value = False
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
-        url = f"{self.base_endpoint}/v3/evc/1/redeploy"
+        url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
         assert response.status_code == 409, response.data
 
@@ -732,7 +732,7 @@ class TestMain:
         evc1 = MagicMock()
         evc1.is_enabled.return_value = True
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
-        url = f"{self.base_endpoint}/v3/evc/3/redeploy"
+        url = f"{self.base_endpoint}/v2/evc/3/redeploy"
         response = await self.api_client.patch(url)
         assert response.status_code == 404, response.data
 
@@ -740,7 +740,7 @@ class TestMain:
         """Test if list circuits return all circuits stored."""
         self.napp.mongo_controller.get_circuits.return_value = {"circuits": {}}
 
-        url = f"{self.base_endpoint}/v3/evc/schedule"
+        url = f"{self.base_endpoint}/v2/evc/schedule"
 
         response = await self.api_client.get(url)
         assert response.status_code == 200
@@ -805,7 +805,7 @@ class TestMain:
             self.napp.mongo_controller.get_circuits
         )
 
-        url = f"{self.base_endpoint}/v3/evc/schedule"
+        url = f"{self.base_endpoint}/v2/evc/schedule"
 
         # Call URL
         response = await self.api_client.get(url)
@@ -862,7 +862,7 @@ class TestMain:
         evc = self.napp.mongo_controller.get_circuits()
         evc = evc["circuits"][requested_circuit_id]
         self.napp.mongo_controller.get_circuit.return_value = evc
-        url = f"{self.base_endpoint}/v3/evc/{requested_circuit_id}"
+        url = f"{self.base_endpoint}/v2/evc/{requested_circuit_id}"
 
         # Call URL
         response = await self.api_client.get(url)
@@ -880,7 +880,7 @@ class TestMain:
         """Test get specific schedule ID that does not exist."""
         requested_id = "blah"
         self.napp.mongo_controller.get_circuit.return_value = None
-        url = f"{self.base_endpoint}/v3/evc/{requested_id}"
+        url = f"{self.base_endpoint}/v2/evc/{requested_id}"
 
         # Call URL
         response = await self.api_client.get(url)
@@ -925,7 +925,7 @@ class TestMain:
         )
 
         requested_id = "bb:bb:bb"
-        url = f"{self.base_endpoint}/v3/evc/schedule/"
+        url = f"{self.base_endpoint}/v2/evc/schedule/"
 
         payload = {
             "circuit_id": requested_id,
@@ -960,7 +960,7 @@ class TestMain:
         self.napp.controller.loop = event_loop
         evc1 = MagicMock()
         self.napp.circuits = {'bb:bb:bb': evc1}
-        url = f'{self.base_endpoint}/v3/evc/schedule/'
+        url = f'{self.base_endpoint}/v2/evc/schedule/'
 
         # case 1: empty post
         response = await self.api_client.post(url, json={})
@@ -1077,7 +1077,7 @@ class TestMain:
         scheduler_remove_job_mock.return_value = True
 
         requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v3/evc/schedule/{requested_schedule_id}"
+        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
 
         payload = {"frequency": "*/1 * * * *", "action": "create"}
 
@@ -1098,7 +1098,7 @@ class TestMain:
     ):
         """Test update a circuit schedule."""
         self.napp.controller.loop = event_loop
-        url = f"{self.base_endpoint}/v3/evc/schedule/1"
+        url = f"{self.base_endpoint}/v2/evc/schedule/1"
         payload = {"frequency": "*/1 * * * *", "action": "create"}
 
         find_evc_by_schedule_id_mock.return_value = None, None
@@ -1144,7 +1144,7 @@ class TestMain:
         self.napp.mongo_controller.get_circuits.return_value = mongo_payload_1
 
         requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v3/evc/schedule/{requested_schedule_id}"
+        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
 
         payload = {"frequency": "*/1 * * * *", "action": "create"}
 
@@ -1198,7 +1198,7 @@ class TestMain:
         scheduler_remove_job_mock.return_value = True
 
         requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v3/evc/schedule/{requested_schedule_id}"
+        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
 
         # Call URL
         response = await self.api_client.delete(url)
@@ -1242,7 +1242,7 @@ class TestMain:
         self.napp.mongo_controller.get_circuits.return_value = mongo_payload_1
 
         requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v3/evc/schedule/{requested_schedule_id}"
+        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
 
         # Call URL
         response = await self.api_client.delete(url)
@@ -1252,7 +1252,7 @@ class TestMain:
     async def test_delete_schedule_not_found(self, mock_find_evc_by_sched):
         """Test delete a circuit schedule - unexisting."""
         mock_find_evc_by_sched.return_value = (None, False)
-        url = f'{self.base_endpoint}/v3/evc/schedule/1'
+        url = f'{self.base_endpoint}/v2/evc/schedule/1'
         response = await self.api_client.delete(url)
         assert response.status_code == 404
 
@@ -1277,9 +1277,9 @@ class TestMain:
             assert evcs_by_level[i].creation_time == i
 
     async def test_get_circuit_not_found(self):
-        """Test /v3/evc/<circuit_id> 404."""
+        """Test /v2/evc/<circuit_id> 404."""
         self.napp.mongo_controller.get_circuit.return_value = None
-        url = f'{self.base_endpoint}/v3/evc/1234'
+        url = f'{self.base_endpoint}/v2/evc/1234'
         response = await self.api_client.get(url)
         assert response.status_code == 404
 
@@ -1377,7 +1377,7 @@ class TestMain:
 
         evc_as_dict_mock.return_value = payloads[0]
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payloads[0],
         )
         assert 201 == response.status_code
@@ -1387,7 +1387,7 @@ class TestMain:
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payloads[1],
         )
         # evc_deploy.assert_called_once()
@@ -1396,7 +1396,7 @@ class TestMain:
         evc_deploy.reset_mock()
         evc_as_dict_mock.return_value = payloads[2]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payloads[2],
         )
         evc_deploy.assert_not_called()
@@ -1405,7 +1405,7 @@ class TestMain:
         evc_deploy.reset_mock()
         evc_as_dict_mock.return_value = payloads[3]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payloads[3],
         )
         evc_deploy.assert_called_once()
@@ -1413,7 +1413,7 @@ class TestMain:
 
         evc_deploy.reset_mock()
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             content=b'{"priority":5,}',
             headers={"Content-Type": "application/json"}
         )
@@ -1421,7 +1421,7 @@ class TestMain:
         assert 400 == response.status_code
 
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/1234",
+            f"{self.base_endpoint}/v2/evc/1234",
             json=payloads[1],
         )
         current_data = response.json()
@@ -1430,11 +1430,11 @@ class TestMain:
         assert 404 == response.status_code
 
         await self.api_client.delete(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}"
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         evc_deploy.reset_mock()
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payloads[1],
         )
         evc_deploy.assert_not_called()
@@ -1493,7 +1493,7 @@ class TestMain:
 
         evc_as_dict_mock.return_value = payload1
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload1
         )
         assert 201 == response.status_code
@@ -1502,7 +1502,7 @@ class TestMain:
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payload2
         )
         current_data = response.json()
@@ -1572,7 +1572,7 @@ class TestMain:
 
         evc_as_dict_mock.return_value = payload1
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload1,
         )
         assert 201 == response.status_code
@@ -1581,7 +1581,7 @@ class TestMain:
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=payload2,
         )
         current_data = response.json()
@@ -1647,7 +1647,7 @@ class TestMain:
         # Same mocks = intra-switch
         mock_get_unis.return_value = [uni_z, uni_z]
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=evc_payload,
         )
         assert 201 == response.status_code
@@ -1655,7 +1655,7 @@ class TestMain:
         circuit_id = current_data["circuit_id"]
 
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}",
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
             json=update_payload,
         )
         assert 409 == response.status_code
@@ -1728,7 +1728,7 @@ class TestMain:
         payload2 = {"dynamic_backup_path": False}
 
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload1,
         )
         assert 201 == response.status_code
@@ -1736,7 +1736,7 @@ class TestMain:
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
         response = await self.api_client.patch(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}", data=payload2
+            f"{self.base_endpoint}/v2/evc/{circuit_id}", data=payload2
         )
         current_data = response.json()
         assert 415 == response.status_code
@@ -1744,7 +1744,7 @@ class TestMain:
 
     async def test_delete_no_evc(self):
         """Test delete when EVC does not exist."""
-        url = f"{self.base_endpoint}/v3/evc/123"
+        url = f"{self.base_endpoint}/v2/evc/123"
         response = await self.api_client.delete(url)
         current_data = response.json()
         expected_data = "circuit_id 123 not found"
@@ -1804,7 +1804,7 @@ class TestMain:
 
         evc_as_dict_mock.return_value = payload1
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/",
+            f"{self.base_endpoint}/v2/evc/",
             json=payload1
         )
         assert 201 == response.status_code
@@ -1812,13 +1812,13 @@ class TestMain:
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
         response = await self.api_client.delete(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}"
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         assert 200 == response.status_code
         assert mock_remove_tags.call_count == 1
 
         response = await self.api_client.delete(
-            f"{self.base_endpoint}/v3/evc/{circuit_id}"
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         current_data = response.json()
         expected_data = f"Circuit {circuit_id} already removed"
@@ -2060,7 +2060,7 @@ class TestMain:
 
         payload = {"metadata1": 1, "metadata2": 2}
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/1234/metadata",
+            f"{self.base_endpoint}/v2/evc/1234/metadata",
             json=payload
         )
 
@@ -2072,7 +2072,7 @@ class TestMain:
         self.napp.controller.loop = event_loop
         payload = b'{"metadata1": 1, "metadata2": 2,}'
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/1234/metadata",
+            f"{self.base_endpoint}/v2/evc/1234/metadata",
             content=payload,
             headers={"Content-Type": "application/json"}
         )
@@ -2084,7 +2084,7 @@ class TestMain:
         """Test method to add metadata with no body"""
         self.napp.controller.loop = event_loop
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/1234/metadata"
+            f"{self.base_endpoint}/v2/evc/1234/metadata"
         )
         assert response.status_code == 400
         assert response.json()["description"] == \
@@ -2095,7 +2095,7 @@ class TestMain:
         self.napp.controller.loop = event_loop
         payload = {"metadata1": 1, "metadata2": 2}
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/1234/metadata",
+            f"{self.base_endpoint}/v2/evc/1234/metadata",
             json=payload,
         )
         assert response.status_code == 404
@@ -2107,7 +2107,7 @@ class TestMain:
         self.napp.controller.loop = event_loop
         payload = {"metadata1": 1, "metadata2": 2}
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/1234/metadata",
+            f"{self.base_endpoint}/v2/evc/1234/metadata",
             data=payload,
             headers={"Content-Type": "application/xml"}
         )
@@ -2122,7 +2122,7 @@ class TestMain:
         self.napp.circuits = {"1234": evc_mock}
 
         response = await self.api_client.get(
-            f"{self.base_endpoint}/v3/evc/1234/metadata",
+            f"{self.base_endpoint}/v2/evc/1234/metadata",
         )
         assert response.status_code == 200
         assert response.json() == {"metadata": evc_mock.metadata}
@@ -2135,14 +2135,14 @@ class TestMain:
         self.napp.circuits = {"1234": evc_mock}
 
         response = await self.api_client.delete(
-            f"{self.base_endpoint}/v3/evc/1234/metadata/metadata1",
+            f"{self.base_endpoint}/v2/evc/1234/metadata/metadata1",
         )
         assert response.status_code == 200
 
     async def test_delete_metadata_no_evc(self):
         """Test method to delete metadata with no evc"""
         response = await self.api_client.delete(
-            f"{self.base_endpoint}/v3/evc/1234/metadata/metadata1",
+            f"{self.base_endpoint}/v2/evc/1234/metadata/metadata1",
         )
         assert response.status_code == 404
         assert response.json()["description"] == \
@@ -2256,7 +2256,7 @@ class TestMain:
             "metadata2": 2
         }
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/metadata",
+            f"{self.base_endpoint}/v2/evc/metadata",
             json=payload
         )
         assert response.status_code == 201
@@ -2279,7 +2279,7 @@ class TestMain:
             "circuit_ids": ["1234", "4567"]
         }
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/metadata",
+            f"{self.base_endpoint}/v2/evc/metadata",
             json=payload
         )
         assert response.status_code == 404
@@ -2294,7 +2294,7 @@ class TestMain:
             "metadata": "data"
         }
         response = await self.api_client.post(
-            f"{self.base_endpoint}/v3/evc/metadata",
+            f"{self.base_endpoint}/v2/evc/metadata",
             json=payload
         )
         assert response.status_code == 400
@@ -2310,7 +2310,7 @@ class TestMain:
         }
         response = await self.api_client.request(
             "DELETE",
-            f"{self.base_endpoint}/v3/evc/metadata/metadata1",
+            f"{self.base_endpoint}/v2/evc/metadata/metadata1",
             json=payload
         )
         assert response.status_code == 200

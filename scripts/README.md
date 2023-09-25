@@ -96,10 +96,16 @@ export MONGO_HOST_SEEDS="mongo1:27017,mongo2:27018,mongo3:27099"
 
 #### How to use
 
-Run the script to change every ``tag_type`` to string
+The following `CMD` commands are available:
 
 ```
-python3 vlan_type_string.py
+CMD=aggregate_int_vlan python3 scripts/vlan_type_string.py
 ```
+`aggregate_int_vlan` command is to see which EVC needs to be changed whether they have an outdated value type for a TAG inside their `uni_a`, `uni_z`, `current_path`, `failover_path`, `backup_path` or `primary_path`.
+
+```
+CMD=update_database python3 scripts/vlan_type_string.py
+```
+`update_database` changes the value of every outdated TAG from integer to their respective string value.
 
 </details>
