@@ -10,6 +10,10 @@ Added
 =====
 - Added a UI button for redeploying an EVC
 
+Fixed
+=====
+- fixed race condition in ``failover_path`` when handling simulataneous Link Down events leading to inconsistencies on some EVC
+
 [2023.1.0] - 2023-06-27
 ***********************
 
