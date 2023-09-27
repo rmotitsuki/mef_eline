@@ -5,6 +5,7 @@ NApp to provision circuits from user request.
 """
 import pathlib
 import time
+import traceback
 from threading import Lock
 
 from pydantic import ValidationError
@@ -758,7 +759,8 @@ class Main(KytosNApp):
                 try:
                     dpid_flows = evc.get_failover_flows()
                 # pylint: disable=broad-except
-                except Exception as err:
+                except Exception:
+                    err = traceback.format_exc().replace("\n", ", ")
                     log.error(
                         f"Ignore Failover path for {evc} due to error: {err}"
                     )
