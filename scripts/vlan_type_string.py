@@ -1,7 +1,7 @@
 import os
 import sys
-from pymongo.operations import UpdateOne, UpdateMany
-from kytos.core.db import mongo_client, Mongo
+from pymongo.operations import UpdateMany
+from kytos.core.db import Mongo
 
 
 TAG_TYPE = {
