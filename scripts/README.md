@@ -74,7 +74,7 @@ EVC_IDS='d33539656d8b40,095e1d6f43c745' priority python3 scripts/002_unset_spf_a
 
 ### Change ``tag_type`` from integer to string type
 
-[`vlan_type_string.py`](./vlan_type_string.py) is a script to change every ``tag_type`` instance from integer to string type. These istances are found in evcs collection from MongoDB.
+[`003_vlan_type_string.py`](./003_vlan_type_string.py) is a script to change every ``tag_type`` instance from integer to string type. These istances are found in evcs collection from MongoDB.
 
 ```
     VLAN = 1 to 'vlan'
@@ -99,12 +99,12 @@ export MONGO_HOST_SEEDS="mongo1:27017,mongo2:27018,mongo3:27099"
 The following `CMD` commands are available:
 
 ```
-CMD=aggregate_int_vlan python3 scripts/vlan_type_string.py
+CMD=aggregate_int_vlan python3 scripts/003_vlan_type_string.py
 ```
 `aggregate_int_vlan` command is to see which EVC needs to be changed whether they have an outdated value type for a TAG inside their `uni_a`, `uni_z`, `current_path`, `failover_path`, `backup_path` or `primary_path`.
 
 ```
-CMD=update_database python3 scripts/vlan_type_string.py
+CMD=update_database python3 scripts/003_vlan_type_string.py
 ```
 `update_database` changes the value of every outdated TAG from integer to their respective string value.
 
