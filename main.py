@@ -877,8 +877,7 @@ class Main(KytosNApp):
 
         if evc.archived:
             return None
-        evc.deactivate()
-        evc.sync()
+
         self.circuits.setdefault(evc.id, evc)
         self.sched.add(evc)
         return evc

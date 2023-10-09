@@ -2175,8 +2175,6 @@ class TestMain:
 
         result = self.napp._load_evc(evc_dict)
         assert result == evc
-        evc.deactivate.assert_called()
-        evc.sync.assert_called()
         self.napp.sched.add.assert_called_with(evc)
         assert self.napp.circuits[1] == evc
 
