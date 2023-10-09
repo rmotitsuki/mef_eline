@@ -1367,10 +1367,13 @@ class LinkProtection(EVCDeploy):
             link(Link): Link affected by link.up event.
 
         """
-        if self.is_intra_switch():
-            return True
-
-        if self.is_using_primary_path():
+        if any(
+            (
+                self.is_enabled() and self.is_active(),
+                self.is_intra_switch(),
+                self.is_using_primary_path(),
+            )
+        ):
             return True
 
         success = False
