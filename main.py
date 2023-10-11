@@ -279,6 +279,11 @@ class Main(KytosNApp):
         except ValueError as exception:
             raise HTTPException(400, detail=str(exception)) from exception
 
+        try:
+            self._use_uni_tags(evc)
+        except ValueError as exception:
+            raise HTTPException(400, detail=str(exception)) from exception
+
         # save circuit
         try:
             evc.sync()
@@ -303,6 +308,20 @@ class Main(KytosNApp):
         emit_event(self.controller, name="created",
                    content=map_evc_event_content(evc))
         return JSONResponse(result, status_code=status)
+
+    @staticmethod
+    def _use_uni_tags(evc):
+        uni_a = evc.uni_a
+        try:
+            evc._use_uni_vlan(uni_a)
+        except ValueError as err:
+            raise err
+        try:
+            uni_z = evc.uni_z
+            evc._use_uni_vlan(uni_z)
+        except ValueError as err:
+            evc.make_uni_vlan_available(uni_a)
+            raise err
 
     @listen_to('kytos/flow_manager.flow.removed')
     def on_flow_delete(self, event):
@@ -406,6 +425,7 @@ class Main(KytosNApp):
             evc.disable()
             self.sched.remove(evc)
             evc.archive()
+            evc.remove_uni_tags()
             evc.sync()
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
@@ -416,7 +436,7 @@ class Main(KytosNApp):
                    content=map_evc_event_content(evc))
         return JSONResponse(result, status_code=status)
 
-    @rest("v2/evc/{circuit_id}/metadata", methods=["GET"])
+    @rest("/v2/evc/{circuit_id}/metadata", methods=["GET"])
     def get_metadata(self, request: Request) -> JSONResponse:
         """Get metadata from an EVC."""
         circuit_id = request.path_params["circuit_id"]
@@ -430,7 +450,7 @@ class Main(KytosNApp):
                 detail=f"circuit_id {circuit_id} not found."
             ) from error
 
-    @rest("v2/evc/metadata", methods=["POST"])
+    @rest("/v2/evc/metadata", methods=["POST"])
     @validate_openapi(spec)
     def bulk_add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to a bulk of EVCs."""
@@ -451,7 +471,7 @@ class Main(KytosNApp):
             raise HTTPException(404, detail=fail_evcs)
         return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v2/evc/{circuit_id}/metadata", methods=["POST"])
+    @rest("/v2/evc/{circuit_id}/metadata", methods=["POST"])
     @validate_openapi(spec)
     def add_metadata(self, request: Request) -> JSONResponse:
         """Add metadata to an EVC."""
@@ -471,7 +491,7 @@ class Main(KytosNApp):
         evc.sync()
         return JSONResponse("Operation successful", status_code=201)
 
-    @rest("v2/evc/metadata/{key}", methods=["DELETE"])
+    @rest("/v2/evc/metadata/{key}", methods=["DELETE"])
     @validate_openapi(spec)
     def bulk_delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metada from a bulk of EVCs"""
@@ -492,7 +512,7 @@ class Main(KytosNApp):
             raise HTTPException(404, detail=fail_evcs)
         return JSONResponse("Operation successful")
 
-    @rest("v2/evc/{circuit_id}/metadata/{key}", methods=["DELETE"])
+    @rest("/v2/evc/{circuit_id}/metadata/{key}", methods=["DELETE"])
     def delete_metadata(self, request: Request) -> JSONResponse:
         """Delete metadata from an EVC."""
         circuit_id = request.path_params["circuit_id"]
@@ -959,10 +979,13 @@ class Main(KytosNApp):
                 + f"Could not instantiate interface {interface_id}"
             )
             raise ValueError(result) from ValueError
-
+        tag_convert = {1: "vlan"}
         tag_dict = uni_dict.get("tag", None)
         if tag_dict:
-            tag = TAG.from_dict(tag_dict)
+            tag_type = tag_dict.get("tag_type")
+            tag_type = tag_convert.get(tag_type, tag_type)
+            tag_value = tag_dict.get("value")
+            tag = TAG(tag_type, tag_value)
         else:
             tag = None
         uni = UNI(interface, tag)

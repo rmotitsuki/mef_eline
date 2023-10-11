@@ -188,11 +188,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "circuit_scheduler": [
                 {"frequency": "* * * * *", "action": "create"}
@@ -227,11 +227,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "current_path": [],
             "primary_path": [
@@ -276,11 +276,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "primary_links": [
                 {
@@ -292,7 +292,7 @@ class TestMain:
                     },
                     "metadata": {
                         "s_vlan": {
-                            "tag_type": 1,
+                            "tag_type": 'vlan',
                             "value": 100
                         }
                     },
@@ -397,6 +397,7 @@ class TestMain:
         expected_result = "circuit_id 3 not found"
         assert response.json()["description"] == expected_result
 
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -411,6 +412,7 @@ class TestMain:
         uni_from_dict_mock,
         sched_add_mock,
         evc_deploy_mock,
+        mock_use_uni_tags,
         event_loop
     ):
         """Test create a new circuit."""
@@ -419,6 +421,7 @@ class TestMain:
         validate_mock.return_value = True
         mongo_controller_upsert_mock.return_value = True
         evc_deploy_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -436,11 +439,11 @@ class TestMain:
             "frequency": "* * * * *",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
             "primary_constraints": {
@@ -534,11 +537,11 @@ class TestMain:
             "frequency": "* * * * *",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:76",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
         }
 
@@ -575,11 +578,11 @@ class TestMain:
             "dynamic_backup_path": True,
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:01:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
         }
 
@@ -596,11 +599,11 @@ class TestMain:
             "queue_id": 8,
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:76",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
         }
         response = await self.api_client.post(url, json=payload)
@@ -610,6 +613,7 @@ class TestMain:
         assert response.status_code == 400
         assert expected_data in current_data["description"]
 
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -624,6 +628,7 @@ class TestMain:
         uni_from_dict_mock,
         sched_add_mock,
         evc_deploy_mock,
+        mock_use_uni_tags,
         event_loop
     ):
         """Test create an already created circuit."""
@@ -633,6 +638,7 @@ class TestMain:
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -645,11 +651,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
         }
@@ -688,11 +694,11 @@ class TestMain:
             "frequency": "* * * * *",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
         }
 
@@ -748,11 +754,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "circuit_scheduler": [
                 {"id": "1", "frequency": "* * * * *", "action": "create"},
@@ -765,11 +771,11 @@ class TestMain:
             "name": "my second evc2",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:2",
-                "tag": {"tag_type": 1, "value": 90},
+                "tag": {"tag_type": 'vlan', "value": 90},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:03:2",
-                "tag": {"tag_type": 1, "value": 100},
+                "tag": {"tag_type": 'vlan', "value": 100},
             },
             "circuit_scheduler": [
                 {"id": "3", "frequency": "1 * * * *", "action": "create"},
@@ -782,11 +788,11 @@ class TestMain:
             "name": "my third evc3",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:03:1",
-                "tag": {"tag_type": 1, "value": 90},
+                "tag": {"tag_type": 'vlan', "value": 90},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:04:2",
-                "tag": {"tag_type": 1, "value": 100},
+                "tag": {"tag_type": 'vlan', "value": 100},
             },
         }
         circuits["circuits"].update({"cc:cc:cc": payload_3})
@@ -1045,11 +1051,11 @@ class TestMain:
                     "name": "my evc1",
                     "uni_a": {
                         "interface_id": "00:00:00:00:00:00:00:01:1",
-                        "tag": {"tag_type": 1, "value": 80},
+                        "tag": {"tag_type": 'vlan', "value": 80},
                     },
                     "uni_z": {
                         "interface_id": "00:00:00:00:00:00:00:02:2",
-                        "tag": {"tag_type": 1, "value": 1},
+                        "tag": {"tag_type": 'vlan', "value": 1},
                     },
                     "circuit_scheduler": [
                         {
@@ -1168,11 +1174,11 @@ class TestMain:
                     "name": "my evc1",
                     "uni_a": {
                         "interface_id": "00:00:00:00:00:00:00:01:1",
-                        "tag": {"tag_type": 1, "value": 80},
+                        "tag": {"tag_type": 'vlan', "value": 80},
                     },
                     "uni_z": {
                         "interface_id": "00:00:00:00:00:00:00:02:2",
-                        "tag": {"tag_type": 1, "value": 1},
+                        "tag": {"tag_type": 'vlan', "value": 1},
                     },
                     "circuit_scheduler": [
                         {
@@ -1278,6 +1284,7 @@ class TestMain:
         assert response.status_code == 404
 
     @patch('requests.post')
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.controllers.ELineController.update_evc')
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
@@ -1298,11 +1305,13 @@ class TestMain:
         _mongo_controller_upsert_mock,
         _mongo_controller_update_mock,
         _sched_add_mock,
+        mock_use_uni_tags,
         requests_mock,
         event_loop,
     ):
         """Test update a circuit circuit."""
         self.napp.controller.loop = event_loop
+        mock_use_uni_tags.return_value = True
         interface_by_id_mock.return_value = get_uni_mocked().interface
         unis = [
             get_uni_mocked(switch_dpid="00:00:00:00:00:00:00:01"),
@@ -1319,11 +1328,11 @@ class TestMain:
                 "name": "my evc1",
                 "uni_a": {
                     "interface_id": "00:00:00:00:00:00:00:01:1",
-                    "tag": {"tag_type": 1, "value": 80},
+                    "tag": {"tag_type": 'vlan', "value": 80},
                 },
                 "uni_z": {
                     "interface_id": "00:00:00:00:00:00:00:02:2",
-                    "tag": {"tag_type": 1, "value": 1},
+                    "tag": {"tag_type": 'vlan', "value": 1},
                 },
                 "dynamic_backup_path": True,
             },
@@ -1349,14 +1358,14 @@ class TestMain:
                 "uni_a": {
                     "interface_id": "00:00:00:00:00:00:00:01:1",
                     "tag": {
-                        "tag_type": 1,
+                        "tag_type": 'vlan',
                         "value": 80
                     }
                 },
                 "uni_z": {
                     "interface_id": "00:00:00:00:00:00:00:02:2",
                     "tag": {
-                        "tag_type": 1,
+                        "tag_type": 'vlan',
                         "value": 1
                     }
                 },
@@ -1432,6 +1441,7 @@ class TestMain:
         assert 409 == response.status_code
         assert "Can't update archived EVC" in response.json()["description"]
 
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -1446,6 +1456,7 @@ class TestMain:
         uni_from_dict_mock,
         sched_add_mock,
         evc_deploy_mock,
+        mock_use_uni_tags,
         event_loop
     ):
         """Test update a circuit circuit."""
@@ -1454,6 +1465,7 @@ class TestMain:
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -1466,11 +1478,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
         }
@@ -1497,6 +1509,7 @@ class TestMain:
         assert 400 == response.status_code
         assert "must have a primary path or" in current_data["description"]
 
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -1515,6 +1528,7 @@ class TestMain:
         uni_from_dict_mock,
         sched_add_mock,
         evc_deploy_mock,
+        mock_use_uni_tags,
         event_loop
     ):
         """Test update a circuit circuit."""
@@ -1524,6 +1538,7 @@ class TestMain:
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         link_from_dict_mock.return_value = 1
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
@@ -1537,11 +1552,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
         }
@@ -1574,6 +1589,8 @@ class TestMain:
         assert 400 == response.status_code
         assert current_data["description"] == expected_data
 
+    @patch("napps.kytos.mef_eline.models.evc.EVC._get_unis_use_tags")
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch('napps.kytos.mef_eline.models.evc.EVC._validate')
     @patch('napps.kytos.mef_eline.models.evc.EVCDeploy.deploy')
@@ -1584,6 +1601,8 @@ class TestMain:
         evc_deploy,
         _mock_validate,
         _mongo_controller_upsert_mock,
+        mock_use_uni_tags,
+        mock_get_unis,
         event_loop,
     ):
         """Test update a circuit that result in an intra-switch EVC
@@ -1591,29 +1610,29 @@ class TestMain:
         evc_deploy.return_value = True
         _mock_validate.return_value = True
         _mongo_controller_upsert_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         self.napp.controller.loop = event_loop
         # Interfaces from get_uni_mocked() are disabled
-        unis = [
-            get_uni_mocked(
-                switch_dpid="00:00:00:00:00:00:00:01",
-                switch_id="00:00:00:00:00:00:00:01"
-            ),
-            get_uni_mocked(
-                switch_dpid="00:00:00:00:00:00:00:02",
-                switch_id="00:00:00:00:00:00:00:02"
-            ),
-        ]
+        uni_a = get_uni_mocked(
+            switch_dpid="00:00:00:00:00:00:00:01",
+            switch_id="00:00:00:00:00:00:00:01"
+        )
+        uni_z = get_uni_mocked(
+            switch_dpid="00:00:00:00:00:00:00:02",
+            switch_id="00:00:00:00:00:00:00:02"
+        )
+        unis = [uni_a, uni_z]
         uni_from_dict_mock.side_effect = 2 * unis
 
         evc_payload = {
             "name": "Intra-EVC",
             "dynamic_backup_path": True,
             "uni_a": {
-                "tag": {"value": 101, "tag_type": 1},
+                "tag": {"value": 101, "tag_type": 'vlan'},
                 "interface_id": "00:00:00:00:00:00:00:02:2"
             },
             "uni_z": {
-                "tag": {"value": 101, "tag_type": 1},
+                "tag": {"value": 101, "tag_type": 'vlan'},
                 "interface_id": "00:00:00:00:00:00:00:01:1"
             }
         }
@@ -1621,10 +1640,12 @@ class TestMain:
         # With this update the EVC will be intra-switch
         update_payload = {
             "uni_z": {
-                "tag": {"value": 101, "tag_type": 1},
+                "tag": {"value": 101, "tag_type": 'vlan'},
                 "interface_id": "00:00:00:00:00:00:00:02:1"
             }
         }
+        # Same mocks = intra-switch
+        mock_get_unis.return_value = [uni_z, uni_z]
         response = await self.api_client.post(
             f"{self.base_endpoint}/v2/evc/",
             json=evc_payload,
@@ -1638,7 +1659,7 @@ class TestMain:
             json=update_payload,
         )
         assert 409 == response.status_code
-        description = "00:00:00:00:00:00:00:01:1 is disabled"
+        description = "00:00:00:00:00:00:00:02:1 is disabled"
         assert description in response.json()["description"]
 
     def test_link_from_dict_non_existent_intf(self):
@@ -1660,6 +1681,7 @@ class TestMain:
         with pytest.raises(ValueError):
             self.napp._uni_from_dict(uni_dict)
 
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -1672,6 +1694,7 @@ class TestMain:
         uni_from_dict_mock,
         sched_add_mock,
         evc_deploy_mock,
+        mock_use_uni_tags,
         event_loop
     ):
         """Test update a circuit with wrong mimetype."""
@@ -1679,6 +1702,7 @@ class TestMain:
         validate_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
+        mock_use_uni_tags.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -1692,11 +1716,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
         }
@@ -1727,6 +1751,8 @@ class TestMain:
         assert current_data["description"] == expected_data
         assert 404 == response.status_code
 
+    @patch("napps.kytos.mef_eline.models.evc.EVC.remove_uni_tags")
+    @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch("napps.kytos.mef_eline.models.evc.EVC.remove_current_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy")
     @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
@@ -1743,6 +1769,8 @@ class TestMain:
         sched_add_mock,
         evc_deploy_mock,
         remove_current_flows_mock,
+        mock_remove_tags,
+        mock_use_uni,
         event_loop
     ):
         """Try to delete an archived EVC"""
@@ -1752,6 +1780,7 @@ class TestMain:
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
         remove_current_flows_mock.return_value = True
+        mock_use_uni.return_value = True
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -1764,11 +1793,11 @@ class TestMain:
             "name": "my evc1",
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:01:1",
-                "tag": {"tag_type": 1, "value": 80},
+                "tag": {"tag_type": 'vlan', "value": 80},
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:2",
-                "tag": {"tag_type": 1, "value": 1},
+                "tag": {"tag_type": 'vlan', "value": 1},
             },
             "dynamic_backup_path": True,
         }
@@ -1786,6 +1815,7 @@ class TestMain:
             f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         assert 200 == response.status_code
+        assert mock_remove_tags.call_count == 1
 
         response = await self.api_client.delete(
             f"{self.base_endpoint}/v2/evc/{circuit_id}"
@@ -2204,7 +2234,7 @@ class TestMain:
         _get_interface_by_id_mock.return_value = None
         uni_dict = {
             "interface_id": "00:01:1",
-            "tag": {"tag_type": 1, "value": 81},
+            "tag": {"tag_type": 'vlan', "value": 81},
         }
         with pytest.raises(ValueError):
             self.napp._uni_from_dict(uni_dict)
@@ -2310,6 +2340,29 @@ class TestMain:
         calls = self.napp.mongo_controller.update_evcs.call_count
         assert calls == 1
         assert evc_mock.remove_metadata.call_count == 1
+
+    async def test_use_uni_tags(self, event_loop):
+        """Test _use_uni_tags"""
+        self.napp.controller.loop = event_loop
+        evc_mock = create_autospec(EVC)
+        evc_mock.uni_a = "uni_a_mock"
+        evc_mock.uni_z = "uni_z_mock"
+        self.napp._use_uni_tags(evc_mock)
+        assert evc_mock._use_uni_vlan.call_count == 2
+        assert evc_mock._use_uni_vlan.call_args[0][0] == evc_mock.uni_z
+
+        # One UNI tag is not available
+        evc_mock._use_uni_vlan.side_effect = [ValueError(), None]
+        with pytest.raises(ValueError):
+            self.napp._use_uni_tags(evc_mock)
+        assert evc_mock._use_uni_vlan.call_count == 3
+        assert evc_mock.make_uni_vlan_available.call_count == 0
+
+        evc_mock._use_uni_vlan.side_effect = [None, ValueError()]
+        with pytest.raises(ValueError):
+            self.napp._use_uni_tags(evc_mock)
+        assert evc_mock._use_uni_vlan.call_count == 5
+        assert evc_mock.make_uni_vlan_available.call_count == 1
 
     async def test_handle_topology_update(self):
         """Test handle_topology_update"""

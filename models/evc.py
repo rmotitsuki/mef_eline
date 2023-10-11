@@ -22,8 +22,7 @@ from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
-                                         map_dl_vlan, map_evc_event_content,
-                                         notify_link_available_tags)
+                                         map_dl_vlan, map_evc_event_content)
 
 from .path import DynamicPathManager, Path
 
@@ -96,6 +95,7 @@ class EVCBase(GenericEntity):
             ValueError: raised when object attributes are invalid.
 
         """
+        self._controller = controller
         self._validate(**kwargs)
         super().__init__()
 
@@ -141,7 +141,6 @@ class EVCBase(GenericEntity):
 
         self.metadata = kwargs.get("metadata", {})
 
-        self._controller = controller
         self._mongo_controller = controllers.ELineController()
 
         if kwargs.get("active", False):
@@ -172,6 +171,36 @@ class EVCBase(GenericEntity):
             return
         self._mongo_controller.upsert_evc(self.as_dict())
 
+    def _get_unis_use_tags(self, **kwargs) -> (UNI, UNI):
+        """Obtain both UNIs (uni_a, uni_z).
+        If a UNI is changing, verify tags"""
+        uni_a = kwargs.get("uni_a", None)
+        uni_a_flag = False
+        if uni_a and uni_a != self.uni_a:
+            uni_a_flag = True
+            try:
+                self._use_uni_vlan(uni_a)
+            except ValueError as err:
+                raise err
+
+        uni_z = kwargs.get("uni_z", None)
+        if uni_z and uni_z != self.uni_z:
+            try:
+                self._use_uni_vlan(uni_z)
+                self.make_uni_vlan_available(self.uni_z)
+            except ValueError as err:
+                if uni_a_flag:
+                    self.make_uni_vlan_available(uni_a)
+                raise err
+        else:
+            uni_z = self.uni_z
+
+        if uni_a_flag:
+            self.make_uni_vlan_available(self.uni_a)
+        else:
+            uni_a = self.uni_a
+        return uni_a, uni_z
+
     def update(self, **kwargs):
         """Update evc attributes.
 
@@ -188,8 +217,7 @@ class EVCBase(GenericEntity):
 
         """
         enable, redeploy = (None, None)
-        uni_a = kwargs.get("uni_a") or self.uni_a
-        uni_z = kwargs.get("uni_z") or self.uni_z
+        uni_a, uni_z = self._get_unis_use_tags(**kwargs)
         check_disabled_component(uni_a, uni_z)
         self._validate_has_primary_or_dynamic(
             primary_path=kwargs.get("primary_path"),
@@ -264,14 +292,6 @@ class EVCBase(GenericEntity):
                 uni = kwargs.get(attribute)
                 if not isinstance(uni, UNI):
                     raise ValueError(f"{attribute} is an invalid UNI.")
-
-                if not uni.is_valid():
-                    try:
-                        tag = uni.user_tag.value
-                    except AttributeError:
-                        tag = None
-                    message = f"VLAN tag {tag} is not available in {attribute}"
-                    raise ValueError(message)
 
     def _validate_has_primary_or_dynamic(
         self,
@@ -399,6 +419,39 @@ class EVCBase(GenericEntity):
     def archive(self):
         """Archive this EVC on deletion."""
         self.archived = True
+
+    def _use_uni_vlan(self, uni: UNI):
+        """Use tags from UNI"""
+        if uni.user_tag is None:
+            return
+        tag = uni.user_tag.value
+        tag_type = uni.user_tag.tag_type
+        if isinstance(tag, int):
+            result = uni.interface.use_tags(
+                self._controller, tag, tag_type
+            )
+            if not result:
+                intf = uni.interface.id
+                raise ValueError(f"Tag {tag} is not available in {intf}")
+
+    def make_uni_vlan_available(self, uni: UNI):
+        """Make available tag from UNI"""
+        if uni.user_tag is None:
+            return
+        tag = uni.user_tag.value
+        tag_type = uni.user_tag.tag_type
+        if isinstance(tag, int):
+            result = uni.interface.make_tags_available(
+                self._controller, tag, tag_type
+            )
+            if not result:
+                intf = uni.interface.id
+                log.warning(f"Tag {tag} was already available in {intf}")
+
+    def remove_uni_tags(self):
+        """Remove both UNI usage of a tag"""
+        self.make_uni_vlan_available(self.uni_a)
+        self.make_uni_vlan_available(self.uni_z)
 
 
 # pylint: disable=fixme, too-many-public-methods
@@ -604,10 +657,7 @@ class EVCDeploy(EVCBase):
                     f"Error removing flows from switch {switch.id} for"
                     f"EVC {self}: {err}"
                 )
-        for link in links:
-            link.make_tag_available(link.get_metadata("s_vlan"))
-            link.remove_metadata("s_vlan")
-            notify_link_available_tags(self._controller, link)
+        self.failover_path.make_vlans_available(self._controller)
         self.failover_path = Path([])
         if sync:
             self.sync()
@@ -638,9 +688,7 @@ class EVCDeploy(EVCBase):
                     f"EVC {self}: {err}"
                 )
 
-        current_path.make_vlans_available()
-        for link in current_path:
-            notify_link_available_tags(self._controller, link)
+        current_path.make_vlans_available(self._controller)
         self.current_path = Path([])
         self.deactivate()
         self.sync()
@@ -695,9 +743,7 @@ class EVCDeploy(EVCBase):
                     f"dpid={dpid} evc={self} error={err}"
                 )
 
-        path.make_vlans_available()
-        for link in path:
-            notify_link_available_tags(self._controller, link)
+        path.make_vlans_available(self._controller)
 
     @staticmethod
     def links_zipped(path=None):
@@ -741,9 +787,7 @@ class EVCDeploy(EVCBase):
         use_path = path
         if self.should_deploy(use_path):
             try:
-                use_path.choose_vlans()
-                for link in use_path:
-                    notify_link_available_tags(self._controller, link)
+                use_path.choose_vlans(self._controller)
             except KytosNoTagAvailableError:
                 use_path = None
         else:
@@ -751,9 +795,7 @@ class EVCDeploy(EVCBase):
                 if use_path is None:
                     continue
                 try:
-                    use_path.choose_vlans()
-                    for link in use_path:
-                        notify_link_available_tags(self._controller, link)
+                    use_path.choose_vlans(self._controller)
                     break
                 except KytosNoTagAvailableError:
                     pass
@@ -769,7 +811,7 @@ class EVCDeploy(EVCBase):
                 self._install_direct_uni_flows()
             else:
                 log.warning(
-                    f"{self} was not deployed. " "No available path was found."
+                    f"{self} was not deployed. No available path was found."
                 )
                 return False
         except FlowModException as err:
@@ -811,9 +853,7 @@ class EVCDeploy(EVCBase):
             if not use_path:
                 continue
             try:
-                use_path.choose_vlans()
-                for link in use_path:
-                    notify_link_available_tags(self._controller, link)
+                use_path.choose_vlans(self._controller)
                 break
             except KytosNoTagAvailableError:
                 pass

@@ -47,6 +47,7 @@ def get_link_mocked(**kwargs):
         switch_b,
     )
     link = Mock(spec=Link, endpoint_a=endpoint_a, endpoint_b=endpoint_b)
+    link.make_tags_available.return_value = True, True
     link.endpoint_a.link = link
     link.endpoint_b.link = link
     link.as_dict.return_value = kwargs.get(
@@ -86,14 +87,14 @@ def get_uni_mocked(**kwargs):
     Args:
         interface_name(str): Interface name. Defaults to "eth1".
         interface_port(int): Interface pror. Defaults to 1.
-        tag_type(int): Type of a tag. Defaults to 1.
+        tag_type(str): Type of a tag. Defaults to 'vlan'.
         tag_value(int): Value of a tag. Defaults to 81
         is_valid(bool): Value returned by is_valid method.
                         Defaults to False.
     """
     interface_name = kwargs.get("interface_name", "eth1")
     interface_port = kwargs.get("interface_port", 1)
-    tag_type = kwargs.get("tag_type", 1)
+    tag_type = kwargs.get("tag_type", 'vlan')
     tag_value = kwargs.get("tag_value", 81)
     is_valid = kwargs.get("is_valid", False)
     switch = Mock(spec=Switch)
