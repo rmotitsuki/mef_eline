@@ -14,14 +14,14 @@ class TestDBModels():
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:04:1",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 100,
                 },
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:3",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 100,
                 }
             },
@@ -38,14 +38,14 @@ class TestDBModels():
             "uni_a": {
                 "interface_id": "00:00:00:00:00:00:00:04:1",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 100,
                 },
             },
             "uni_z": {
                 "interface_id": "00:00:00:00:00:00:00:02:3",
                 "tag": {
-                    "tag_type": 1,
+                    "tag_type": 'vlan',
                     "value": 100,
                 }
             },
@@ -98,18 +98,18 @@ class TestDBModels():
 
     def test_tagdoc_value(self):
         """Test TAGDoc value restrictions"""
-        tag_mask = {"tag_type": 1, "value": "untagged"}
+        tag_mask = {"tag_type": 'vlan', "value": "untagged"}
         tag = TAGDoc(**tag_mask)
-        assert tag.tag_type == 1
+        assert tag.tag_type == 'vlan'
         assert tag.value == "untagged"
 
-        tag_mask = {"tag_type": 1, "value": "any"}
+        tag_mask = {"tag_type": 'vlan', "value": "any"}
         tag = TAGDoc(**tag_mask)
-        assert tag.tag_type == 1
+        assert tag.tag_type == 'vlan'
         assert tag.value == "any"
 
     def test_tagdoc_fail(self):
         """Test TAGDoc value fail case"""
-        tag_fail = {"tag_type": 1, "value": "test_fail"}
+        tag_fail = {"tag_type": 'vlan', "value": "test_fail"}
         with pytest.raises(ValueError):
             TAGDoc(**tag_fail)

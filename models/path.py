@@ -3,6 +3,7 @@ import requests
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
+from kytos.core.interface import TAG
 from kytos.core.link import Link
 from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import InvalidPath
@@ -32,16 +33,26 @@ class Path(list, GenericEntity):
                 return link
         return None
 
-    def choose_vlans(self):
+    def choose_vlans(self, controller):
         """Choose the VLANs to be used for the circuit."""
         for link in self:
-            tag = link.get_next_available_tag()
+            tag_value = link.get_next_available_tag(controller, link.id)
+            tag = TAG('vlan', tag_value)
             link.add_metadata("s_vlan", tag)
 
-    def make_vlans_available(self):
+    def make_vlans_available(self, controller):
         """Make the VLANs used in a path available when undeployed."""
         for link in self:
-            link.make_tag_available(link.get_metadata("s_vlan"))
+            tag = link.get_metadata("s_vlan")
+            result_a, result_b = link.make_tags_available(
+                controller, tag.value, link.id, tag.tag_type
+            )
+            if result_a is False:
+                log.error(f"Tag {tag} was already available in"
+                          f"{link.endpoint_a.id}")
+            if result_b is False:
+                log.error(f"Tag {tag} was already available in"
+                          f"{link.endpoint_b.id}")
             link.remove_metadata("s_vlan")
 
     def is_valid(self, switch_a, switch_z, is_scheduled=False):

@@ -8,7 +8,21 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Added
 =====
-- Added a UI button for redeploying an EVC
+- Added a UI button for redeploying an EVC.
+- UNI tag_type are now accepted as string.
+
+Changed
+=======
+- UNIs now will use and free tags from ``Interface.available_tags``.
+- UNI tag_type is changed to string from 1, 2 and 3 values to ``"vlan"``, ``"vlan_qinq"`` and ``"mpls"`` respectively.
+
+Deprecated
+==========
+- Deleted emition of ``kytos/.*.link_available_tags`` event. ``kytos/core.interface_tags`` event through Interface takes its place.
+
+General Information
+===================
+- ``scripts/vlan_type_string.py`` can be used to update the collection ``evcs`` by changing ``tag_type`` from integer to string.
 
 Fixed
 =====
