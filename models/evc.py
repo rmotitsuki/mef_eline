@@ -101,8 +101,8 @@ class EVCBase(GenericEntity):
 
         # required attributes
         self._id = kwargs.get("id", uuid4().hex)[:14]
-        self.uni_a = kwargs.get("uni_a")
-        self.uni_z = kwargs.get("uni_z")
+        self.uni_a: UNI = kwargs.get("uni_a")
+        self.uni_z: UNI = kwargs.get("uni_z")
         self.name = kwargs.get("name")
 
         # optional attributes
@@ -1500,10 +1500,17 @@ class LinkProtection(EVCDeploy):
             return
 
         active, interfaces = self.is_uni_interface_active(
-            interface_a, interface_z
+            interface_a, interface_z,
+            ignore={'deactivated'},
         )
         if self.is_active() != active:
             if active:
+                if [
+                    interface for interface in interfaces.values()
+                    if 'deactivated' in interface['status_reason']
+                ]:
+                    log.debug(f'Aborting activation of EVC {self.id}')
+                    return
                 self.activate()
                 log.info(f"Activating EVC {self.id}. Interfaces: "
                          f"{interfaces}.")
@@ -1522,32 +1529,86 @@ class LinkProtection(EVCDeploy):
 
     @staticmethod
     def is_uni_interface_active(
-        interface_a: Interface,
-        interface_z: Interface
+        *interfaces: Interface,
+        ignore=frozenset(),
     ) -> tuple[bool, dict]:
         """Determine whether a UNI should be active"""
         active = True
-        interfaces = {}
-        interface_a_dict = {
-            "status": interface_a.status.value,
-            "status_reason": interface_a.status_reason
-        }
-        interface_z_dict = {
-            "status": interface_z.status.value,
-            "status_reason": interface_z.status_reason
-        }
-        if (interface_a.status != EntityStatus.UP
-                or interface_a.status_reason != set()):
+        bad_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status_reason - ignore
+        ]
+        if bad_interfaces:
             active = False
-            interfaces[interface_a.id] = interface_a_dict
-        if (interface_z.status != EntityStatus.UP
-                or interface_z.status_reason != set()):
-            active = False
-            interfaces[interface_z.id] = interface_z_dict
-        if active:
-            interfaces[interface_a.id] = interface_a_dict
-            interfaces[interface_z.id] = interface_z_dict
-        return active, interfaces
+            interfaces = bad_interfaces
+        return active, {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in interfaces
+        }
+
+    def handle_interface_link_up(self, interface: Interface):
+        """
+        Handler for interface link_up events
+        """
+        if self.is_active():
+            return
+        interfaces = (self.uni_a.interface, self.uni_z.interface)
+        if interface not in interfaces:
+            return
+        down_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status != EntityStatus.UP
+        ]
+        if down_interfaces:
+            return
+        interface_dicts = {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in interfaces
+        }
+        self.activate()
+        log.info(
+            f"Activating EVC {self.id}. Interfaces: "
+            f"{interface_dicts}."
+        )
+        self.sync()
+
+    def handle_interface_link_down(self, interface):
+        """
+        Handler for interface link_down events
+        """
+        if not self.is_active():
+            return
+        interfaces = (self.uni_a.interface, self.uni_z.interface)
+        if interface not in interfaces:
+            return
+        down_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status != EntityStatus.UP
+        ]
+        if not down_interfaces:
+            return
+        interface_dicts = {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in down_interfaces
+        }
+        self.deactivate()
+        log.info(
+            f"Deactivating EVC {self.id}. Interfaces: "
+            f"{interface_dicts}."
+        )
+        self.sync()
 
 
 class EVC(LinkProtection):
