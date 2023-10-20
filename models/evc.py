@@ -1478,48 +1478,6 @@ class LinkProtection(EVCDeploy):
         interface = switch.interfaces[uni.interface.port_number]
         return interface
 
-    def handle_topology_update(self, switches: dict):
-        """Handle changes in the topology"""
-        # All intra-switch EVCs do not have current_path.
-        # In case of inter-switch EVC and not current_path,
-        # link_down should take care of deactivation.
-        if not self.is_intra_switch and not self.current_path:
-            return
-        try:
-            interface_a = self.get_interface_from_switch(self.uni_a, switches)
-        except KeyError:
-            id_ = self.uni_a.interface.id
-            log.warning(f"The interface {id_} was not found")
-            return
-
-        try:
-            interface_z = self.get_interface_from_switch(self.uni_z, switches)
-        except KeyError:
-            id_ = self.uni_z.interface.id
-            log.warning(f"The interface {id_} was not found")
-            return
-
-        active, interfaces = self.is_uni_interface_active(
-            interface_a, interface_z,
-            ignore={'deactivated'},
-        )
-        if self.is_active() != active:
-            if active:
-                if [
-                    interface for interface in interfaces.values()
-                    if 'deactivated' in interface['status_reason']
-                ]:
-                    log.debug(f'Aborting activation of EVC {self.id}')
-                    return
-                self.activate()
-                log.info(f"Activating EVC {self.id}. Interfaces: "
-                         f"{interfaces}.")
-            else:
-                self.deactivate()
-                log.info(f"Deactivating EVC {self.id}. Interfaces: "
-                         f"{interfaces}.")
-            self.sync()
-
     def are_unis_active(self, switches: dict) -> bool:
         """Determine whether this EVC should be active"""
         interface_a = self.get_interface_from_switch(self.uni_a, switches)
@@ -1538,6 +1496,7 @@ class LinkProtection(EVCDeploy):
             interface
             for interface in interfaces
             if interface.status_reason - ignore
+            or interface.status != EntityStatus.UP
         ]
         if bad_interfaces:
             active = False

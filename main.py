@@ -770,27 +770,6 @@ class Main(KytosNApp):
                 interface
             )
 
-    @listen_to("kytos/topology.updated")
-    def on_topology_update(self, event):
-        """Capture topology update event"""
-        self.handle_topology_update(event)
-
-    def handle_topology_update(self, event):
-        """Handle topology update"""
-        with self._lock:
-            if (
-                self._topology_updated_at
-                and self._topology_updated_at > event.timestamp
-            ):
-                return
-            self._topology_updated_at = event.timestamp
-            for evc in self.get_evcs_by_svc_level():
-                if evc.is_enabled() and not evc.archived:
-                    with evc.lock:
-                        evc.handle_topology_update(
-                            event.content["topology"].switches
-                        )
-
     @listen_to("kytos/topology.link_down")
     def on_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""

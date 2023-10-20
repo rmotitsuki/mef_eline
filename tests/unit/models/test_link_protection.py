@@ -708,51 +708,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         actual_interface = self.evc.get_interface_from_switch(uni, switches)
         assert interface == actual_interface
 
-    @patch("napps.kytos.mef_eline.models.evc.EVCBase.sync")
-    async def test_handle_topology_update(self, mock_sync):
-        """Test handle_topology_update"""
-        self.evc.get_interface_from_switch = MagicMock()
-        self.evc.is_uni_interface_active = MagicMock()
-        self.evc.activate = MagicMock()
-        self.evc.deactivate = MagicMock()
-        interface = id_to_interface_mock('00:01:1')
-
-        self.evc.is_uni_interface_active.return_value = (True, {})
-        self.evc._active = False
-        self.evc.handle_topology_update('mocked_switches')
-        assert self.evc.activate.call_count == 1
-        assert self.evc.deactivate.call_count == 0
-        assert mock_sync.call_count == 1
-
-        self.evc.is_uni_interface_active.return_value = (
-            False,
-            {interface.id: {
-                'status': interface.status.value,
-                'status_reason': interface.status_reason
-            }}
-        )
-        self.evc._active = True
-        self.evc.handle_topology_update('mocked_switches')
-        assert self.evc.activate.call_count == 1
-        assert self.evc.deactivate.call_count == 1
-        assert mock_sync.call_count == 2
-
-        self.evc.is_uni_interface_active.return_value = (True, {})
-        self.evc._active = True
-        self.evc.handle_topology_update('mocked_switches')
-        assert self.evc.activate.call_count == 1
-        assert self.evc.deactivate.call_count == 1
-        assert mock_sync.call_count == 2
-
-    async def test_handle_topology_update_error(self):
-        """Test handle_topology_update with error and early return"""
-        self.evc.get_interface_from_switch = MagicMock()
-        self.evc.get_interface_from_switch.side_effect = KeyError
-        self.evc.is_uni_interface_active = MagicMock()
-
-        self.evc.handle_topology_update('mocked_switches')
-        assert self.evc.is_uni_interface_active.call_count == 0
-
     async def test_are_unis_active(self):
         """Test are_unis_active"""
         interface = id_to_interface_mock('00:01:1')
