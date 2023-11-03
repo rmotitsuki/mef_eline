@@ -15,6 +15,7 @@ Changed
 =======
 - UNIs now will use and free tags from ``Interface.available_tags``.
 - UNI tag_type is changed to string from 1, 2 and 3 values to ``"vlan"``, ``"vlan_qinq"`` and ``"mpls"`` respectively.
+- Add ``set_vlan`` only if UNI A vlan and UNI z vlan are different.
 
 Deprecated
 ==========
@@ -23,6 +24,7 @@ Deprecated
 General Information
 ===================
 - ``scripts/vlan_type_string.py`` can be used to update the collection ``evcs`` by changing ``tag_type`` from integer to string.
+- ``scripts/redeploy_evpls_same_vlans.py`` can be used to redeploy symmetric (same UNI vlans) EVPLs in batch.
 
 Fixed
 =====
