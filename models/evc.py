@@ -1443,7 +1443,7 @@ class LinkProtection(EVCDeploy):
                        content=map_evc_event_content(self))
             return True
 
-        return True
+        return False
 
     def handle_link_down(self):
         """Handle circuit when link down.
