@@ -695,6 +695,43 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         self.evc.backup_path.is_affected_by_link = return_false_mock
         self.evc.dynamic_backup_path = True
         self.evc.deploy_to_path = return_false_mock
+        assert not self.evc.handle_link_up(MagicMock())
+
+    async def test_handle_link_up_case_6(self):
+        """Test handle_link_up method."""
+        # not possible to deploy this evc (it will not benefit from link up)
+        return_false_mock = MagicMock(return_value=False)
+        return_true_mock = MagicMock(return_value=True)
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.dynamic_backup_path = True
+        self.evc.deploy_to_path = return_false_mock
+        assert not self.evc.handle_link_up(MagicMock())
+
+        self.evc.is_enabled = return_true_mock
+        self.evc.is_active = return_false_mock
+        assert not self.evc.handle_link_up(MagicMock())
+
+        self.evc.is_enabled = return_false_mock
+        self.evc.is_active = return_true_mock
+        assert not self.evc.handle_link_up(MagicMock())
+
+        self.evc.is_enabled = return_true_mock
+        self.evc.is_active = return_true_mock
+        assert self.evc.handle_link_up(MagicMock())
+
+        self.evc.is_enabled = return_false_mock
+        self.evc.is_active = return_false_mock
+        self.evc.is_intra_switch = return_true_mock
+        assert self.evc.handle_link_up(MagicMock())
+
+        self.evc.is_enabled = return_false_mock
+        self.evc.is_active = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.is_using_primary_path = return_true_mock
         assert self.evc.handle_link_up(MagicMock())
 
     async def test_get_interface_from_switch(self):
