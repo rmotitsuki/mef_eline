@@ -1487,16 +1487,14 @@ class LinkProtection(EVCDeploy):
 
     @staticmethod
     def is_uni_interface_active(
-        *interfaces: Interface,
-        ignore=frozenset(),
+        *interfaces: Interface
     ) -> tuple[bool, dict]:
         """Determine whether a UNI should be active"""
         active = True
         bad_interfaces = [
             interface
             for interface in interfaces
-            if interface.status_reason - ignore
-            or interface.status != EntityStatus.UP
+            if interface.status != EntityStatus.UP
         ]
         if bad_interfaces:
             active = False
