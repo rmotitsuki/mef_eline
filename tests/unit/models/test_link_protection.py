@@ -754,14 +754,12 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
             'custom_switch_dpid': interface.switch
         }
 
-        interface.status_reason = set()
         interface.status = EntityStatus.UP
         assert self.evc.are_unis_active(switches) is True
 
-        interface.status_reason = {'disabled'}
+        interface.status = EntityStatus.DOWN
         assert self.evc.are_unis_active(switches) is False
 
-        interface.status_reason = set()
         interface.status = EntityStatus.DISABLED
         assert self.evc.are_unis_active(switches) is False
 
