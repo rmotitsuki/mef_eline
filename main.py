@@ -745,7 +745,7 @@ class Main(KytosNApp):
         with self._lock:
             _, _, event_type = event.name.rpartition('.')
             iface = event.content.get("interface")
-            if event_type in ('link_up','created'):
+            if event_type in ('link_up', 'created'):
                 self.handle_interface_link_up(iface)
             elif event_type in ('link_down', 'deleted'):
                 self.handle_interface_link_down(iface)
