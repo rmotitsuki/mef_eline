@@ -798,3 +798,50 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         }
         expected = (False, interfaces)
         assert actual == expected
+
+    async def test_handle_interface_link(self):
+        """
+        Test Interface Link Up
+        """
+        return_false_mock = MagicMock(return_value=False)
+        return_true_mock = MagicMock(return_value=True)
+        interface_a = self.evc.uni_a.interface
+        interface_a.enable()
+        interface_b = self.evc.uni_z.interface
+        interface_b.enable()
+
+        self.evc.activate = MagicMock()
+        self.evc.deactivate = MagicMock()
+        self.evc.sync = MagicMock()
+
+        # Test do nothing
+        self.evc.is_active = return_true_mock
+
+        self.evc.handle_interface_link_up(interface_a)
+
+        self.evc.activate.assert_not_called()
+        self.evc.sync.assert_not_called()
+
+        # Test deactivating
+        interface_a.deactivate()
+
+        self.evc.handle_interface_link_down(interface_a)
+
+        self.evc.deactivate.assert_called_once()
+        self.evc.sync.assert_called_once()
+
+        # Test do nothing
+        self.evc.is_active = return_false_mock
+
+        self.evc.handle_interface_link_down(interface_a)
+
+        self.evc.deactivate.assert_called_once()
+        self.evc.sync.assert_called_once()
+
+        # Test activating
+        interface_a.activate()
+
+        self.evc.handle_interface_link_up(interface_a)
+
+        self.evc.activate.assert_called_once()
+        assert self.evc.sync.call_count == 2
