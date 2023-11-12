@@ -87,21 +87,26 @@ class Main(KytosNApp):
             self.execute_consistency()
         log.debug("Finished consistency routine")
 
-    def should_be_checked(self, circuit):
+    def should_be_checked(self, circuit: EVC):
         "Verify if the circuit meets the necessary conditions to be checked"
         # pylint: disable=too-many-boolean-expressions
-        if (
-                circuit.is_enabled()
-                and not circuit.is_active()
-                and not circuit.lock.locked()
-                and not circuit.has_recent_removed_flow()
-                and not circuit.is_recent_updated()
-                and circuit.are_unis_active(self.controller.switches)
-                # if a inter-switch EVC does not have current_path, it does not
-                # make sense to run sdntrace on it
-                and (circuit.is_intra_switch() or circuit.current_path)
-                ):
+        log.info(f'Checking if {circuit} should be checked')
+        conditions = (
+            circuit.is_enabled(),
+            not circuit.is_active(),
+            not circuit.lock.locked(),
+            not circuit.has_recent_removed_flow(),
+            not circuit.is_recent_updated(),
+            circuit.are_unis_active(self.controller.switches),
+            # if a inter-switch EVC does not have current_path, it does not
+            # make sense to run sdntrace on it
+            circuit.is_intra_switch() or circuit.current_path,
+        )
+        log.info(f'{conditions}')
+        if all(conditions):
+            log.info(f'Running consistency check on {circuit}')
             return True
+        log.info(f'Not running consistency check on {circuit}')
         return False
 
     def execute_consistency(self):
@@ -948,7 +953,7 @@ class Main(KytosNApp):
                 try:
                     data[attribute] = self._uni_from_dict(value)
                 except ValueError as exception:
-                    result = "Error creating UNI: Invalid value"
+                    result = f"Error creating UNI: {exception}"
                     raise ValueError(result) from exception
 
             if attribute == "circuit_scheduler":
