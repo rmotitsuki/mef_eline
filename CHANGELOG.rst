@@ -10,6 +10,7 @@ Added
 =====
 - Added a UI button for redeploying an EVC.
 - UNI tag_type are now accepted as string.
+- Event ``kytos/mef_eline.evcs_loaded`` gets published during NApp setup
 
 Changed
 =======
