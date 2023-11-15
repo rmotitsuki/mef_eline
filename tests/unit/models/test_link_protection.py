@@ -697,6 +697,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         self.evc.deploy_to_path = return_false_mock
         assert not self.evc.handle_link_up(MagicMock())
 
+    # pylint: disable=too-many-statements
     async def test_handle_link_up_case_6(self):
         """Test handle_link_up method."""
         # not possible to deploy this evc (it will not benefit from link up)
@@ -708,31 +709,125 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         self.evc.is_using_dynamic_path = return_false_mock
         self.evc.backup_path.is_affected_by_link = return_false_mock
         self.evc.dynamic_backup_path = True
-        self.evc.deploy_to_path = return_false_mock
+
+        self.evc.deploy_to_primary_path = MagicMock(return_value=False)
+        self.evc.deploy_to_backup_path = MagicMock(return_value=False)
+        self.evc.deploy_to_path = MagicMock(return_value=False)
+
         assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_path.call_count == 1
 
-        self.evc.is_enabled = return_true_mock
-        self.evc.is_active = return_false_mock
-        assert not self.evc.handle_link_up(MagicMock())
-
-        self.evc.is_enabled = return_false_mock
-        self.evc.is_active = return_true_mock
-        assert not self.evc.handle_link_up(MagicMock())
-
-        self.evc.is_enabled = return_true_mock
-        self.evc.is_active = return_true_mock
-        assert self.evc.handle_link_up(MagicMock())
-
-        self.evc.is_enabled = return_false_mock
-        self.evc.is_active = return_false_mock
-        self.evc.is_intra_switch = return_true_mock
-        assert self.evc.handle_link_up(MagicMock())
-
-        self.evc.is_enabled = return_false_mock
-        self.evc.is_active = return_false_mock
-        self.evc.is_intra_switch = return_false_mock
         self.evc.is_using_primary_path = return_true_mock
         assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_path.call_count == 1
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_true_mock
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_path.call_count == 1
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_true_mock
+        assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 1
+        assert self.evc.deploy_to_path.call_count == 2
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_true_mock
+        self.evc.deploy_to_primary_path.return_value = True
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 2
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_true_mock
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 2
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_true_mock
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 2
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_true_mock
+        assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_backup_path.call_count == 1
+        assert self.evc.deploy_to_path.call_count == 3
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_true_mock
+        self.evc.deploy_to_backup_path.return_value = True
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_backup_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 3
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_backup_path.return_value = False
+        self.evc.dynamic_backup_path = True
+        assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_backup_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 4
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_backup_path.return_value = False
+        self.evc.dynamic_backup_path = True
+        self.evc.deploy_to_path.return_value = True
+        assert self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_backup_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 5
+
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.is_intra_switch = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_primary_path.return_value = False
+        self.evc.is_using_backup_path = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.deploy_to_backup_path.return_value = False
+        self.evc.dynamic_backup_path = False
+        self.evc.deploy_to_path.return_value = False
+        assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_primary_path.call_count == 2
+        assert self.evc.deploy_to_backup_path.call_count == 2
+        assert self.evc.deploy_to_path.call_count == 5
 
     async def test_get_interface_from_switch(self):
         """Test get_interface_from_switch"""

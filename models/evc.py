@@ -1407,42 +1407,54 @@ class LinkProtection(EVCDeploy):
             link(Link): Link affected by link.up event.
 
         """
-        if any(
+        condition_pairs = [
             (
-                self.is_enabled() and self.is_active(),
-                self.is_intra_switch(),
-                self.is_using_primary_path(),
+                lambda me: me.is_using_primary_path(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me: me.is_intra_switch(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me: me.primary_path.is_affected_by_link(link),
+                lambda me: (me.deploy_to_primary_path(), 'redeploy')
+            ),
+            # We tried to deploy(primary_path) without success.
+            # And in this case is up by some how. Nothing to do.
+            (
+                lambda me: me.is_using_backup_path(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me:  me.is_using_dynamic_path(),
+                lambda _: (True, 'nothing')
+            ),
+            # In this case, probably the circuit is not being used and
+            # we can move to backup
+            (
+                lambda me: me.backup_path.is_affected_by_link(link),
+                lambda me: (me.deploy_to_backup_path(), 'redeploy')
+            ),
+            # In this case, the circuit is not being used and we should
+            # try a dynamic path
+            (
+                lambda me: me.dynamic_backup_path,
+                lambda me: (me.deploy_to_path(), 'redeploy')
             )
-        ):
-            return True
-
-        success = False
-        if self.primary_path.is_affected_by_link(link):
-            success = self.deploy_to_primary_path()
-
-        if success:
-            return True
-
-        # We tried to deploy(primary_path) without success.
-        # And in this case is up by some how. Nothing to do.
-        if self.is_using_backup_path() or self.is_using_dynamic_path():
-            return True
-
-        # In this case, probably the circuit is not being used and
-        # we can move to backup
-        if self.backup_path.is_affected_by_link(link):
-            success = self.deploy_to_backup_path()
-
-        # In this case, the circuit is not being used and we should
-        # try a dynamic path
-        if not success and self.dynamic_backup_path:
-            success = self.deploy_to_path()
-
-        if success:
-            emit_event(self._controller, "redeployed_link_up",
-                       content=map_evc_event_content(self))
-            return True
-
+        ]
+        for predicate, action in condition_pairs:
+            if not predicate(self):
+                continue
+            success, succcess_type = action(self)
+            if success:
+                if succcess_type == 'redeploy':
+                    emit_event(
+                        self._controller,
+                        "redeployed_link_up",
+                        content=map_evc_event_content(self)
+                    )
+                return True
         return False
 
     def handle_link_down(self):
