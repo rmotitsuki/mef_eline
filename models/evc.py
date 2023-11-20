@@ -1523,7 +1523,7 @@ class LinkProtection(EVCDeploy):
         """
         Handler for interface link_up events
         """
-        if self.archived:
+        if self.archived:  # TODO: Remove when addressing issue #369
             return
         if self.is_active():
             return
