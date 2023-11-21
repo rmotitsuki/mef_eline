@@ -1453,7 +1453,7 @@ class EVCDeploy(EVCBase):
             i = 0
             for circuit in list_circuits:
                 if isinstance(circuit.uni_a.user_tag, TAGRange):
-                    length = circuit.uni_a.user_tag.mask_list
+                    length = len(circuit.uni_a.user_tag.mask_list)
                     circuits_checked[circuit.id] = EVCDeploy.check_range(
                         circuit, traces[i:i+length*2]
                     )
@@ -1658,7 +1658,7 @@ class LinkProtection(EVCDeploy):
         """
         Handler for interface link_up events
         """
-        if self.archived: # TODO: Remove when addressing issue #369
+        if self.archived:  # TODO: Remove when addressing issue #369
             return
         if self.is_active():
             return
