@@ -19,6 +19,7 @@ Changed
 - UNIs now will use and free tags from ``Interface.available_tags``.
 - UNI tag_type is changed to string from 1, 2 and 3 values to ``"vlan"``, ``"vlan_qinq"`` and ``"mpls"`` respectively.
 - Add ``set_vlan`` only if UNI A vlan and UNI z vlan are different.
+- Updated ``openapi.yml``, ``Tag`` now can accept ``array`` as ``value``.
 
 Deprecated
 ==========

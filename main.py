@@ -235,10 +235,7 @@ class Main(KytosNApp):
 
         try:
             evc = self._evc_from_dict(data)
-        except ValueError as exception:
-            log.debug("create_circuit result %s %s", exception, 400)
-            raise HTTPException(400, detail=str(exception)) from exception
-        except KytosTagError as exception:
+        except (ValueError, KytosTagError) as exception:
             log.debug("create_circuit result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
         try:
@@ -370,11 +367,7 @@ class Main(KytosNApp):
             enable, redeploy = evc.update(
                 **self._evc_dict_with_instances(data)
             )
-        except KytosTagError as exception:
-            raise HTTPException(400, detail=str(exception)) from exception
-        except ValidationError as exception:
-            raise HTTPException(400, detail=str(exception)) from exception
-        except ValueError as exception:
+        except (ValueError, KytosTagError, ValidationError) as exception:
             log.debug("update result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
         except DisabledSwitch as exception:
@@ -919,12 +912,7 @@ class Main(KytosNApp):
         """Load one EVC from mongodb to memory."""
         try:
             evc = self._evc_from_dict(circuit_dict)
-        except ValueError as exception:
-            log.error(
-                f"Could not load EVC: dict={circuit_dict} error={exception}"
-            )
-            return None
-        except KytosTagError as exception:
+        except (ValueError, KytosTagError) as exception:
             log.error(
                 f"Could not load EVC: dict={circuit_dict} error={exception}"
             )

@@ -1425,9 +1425,7 @@ class EVCDeploy(EVCBase):
     def check_range(circuit, traces: list) -> bool:
         """Check traces when for UNI with TAGRange"""
         check = True
-        mask_list = (circuit.uni_a.user_tag.mask_list or
-                     circuit.uni_z.user_tag.mask_list)
-        for i, mask in enumerate(mask_list):
+        for i, mask in enumerate(circuit.uni_a.user_tag.mask_list):
             trace_a = traces[i*2]
             trace_z = traces[i*2+1]
             check &= EVCDeploy.check_trace(
@@ -1455,8 +1453,7 @@ class EVCDeploy(EVCBase):
             i = 0
             for circuit in list_circuits:
                 if isinstance(circuit.uni_a.user_tag, TAGRange):
-                    length = (len(circuit.uni_a.user_tag.mask_list) or
-                              len(circuit.uni_z.user_tag.mask_list))
+                    length = circuit.uni_a.user_tag.mask_list
                     circuits_checked[circuit.id] = EVCDeploy.check_range(
                         circuit, traces[i:i+length*2]
                     )
@@ -1661,7 +1658,7 @@ class LinkProtection(EVCDeploy):
         """
         Handler for interface link_up events
         """
-        if self.archived:
+        if self.archived: # TODO: Remove when addressing issue #369
             return
         if self.is_active():
             return
