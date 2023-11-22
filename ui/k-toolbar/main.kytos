@@ -458,11 +458,11 @@ module.exports = {
         
         if (this.tag_type_a != "" && this.tag_value_a != "") {
             request.uni_a['tag'] = {tag_type: this.tag_type_a,
-                                    value: parseInt(this.tag_value_a)}
+                                    value: JSON.parse(this.tag_value_a)}
         }
         if (this.tag_type_z != "" && this.tag_value_z != "") {
             request.uni_z['tag'] = {tag_type: this.tag_type_z,
-                                    value: parseInt(this.tag_value_z)}
+                                    value: JSON.parse(this.tag_value_z)}
         }
         if (this.service_level !== undefined && this.service_level !== "") {
             request.service_level = parseInt(this.service_level)

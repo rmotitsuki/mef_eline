@@ -513,10 +513,10 @@ module.exports = {
       };
 
       // Tag is optional, but can be edited
-      let tag_a = {'value': this.circuit['uni_a']['tag'] ? this.circuit['uni_a']['tag']['value'] : "", 
+      let tag_a = {'value': this.circuit['uni_a']['tag'] ? JSON.stringify(this.circuit['uni_a']['tag']['value']) : "", 
                    'editable':true, 
                    'name':'tag_a'};
-      let tag_z = {'value': this.circuit['uni_z']['tag'] ? this.circuit['uni_z']['tag']['value'] : "", 
+      let tag_z = {'value': this.circuit['uni_z']['tag'] ? JSON.stringify(this.circuit['uni_z']['tag']['value']) : "", 
                    'editable':true, 
                   'name':'tag_z'};
       this.endpoints_data['VLAN'] = [tag_a, tag_z];
@@ -803,13 +803,13 @@ module.exports = {
       if(this.endpoints_data["VLAN"][0]["value"]) {
         payload["uni_a"]["tag"] = {
           tag_type: this.TAG_TYPE_VLAN,
-          value: parseInt(this.endpoints_data["VLAN"][0]["value"])
+          value: JSON.parse(this.endpoints_data["VLAN"][0]["value"])
         };
       }
       if(this.endpoints_data["VLAN"][1]["value"]) {
         payload["uni_z"]["tag"] = {
           tag_type: this.TAG_TYPE_VLAN,
-          value: parseInt(this.endpoints_data["VLAN"][1]["value"])
+          value: JSON.parse(this.endpoints_data["VLAN"][1]["value"])
         };
       }
 
