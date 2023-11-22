@@ -1,6 +1,7 @@
 """Classes used in the main application."""  # pylint: disable=too-many-lines
 import traceback
 from collections import OrderedDict
+from copy import deepcopy
 from datetime import datetime
 from operator import eq, ne
 from threading import Lock
@@ -13,16 +14,18 @@ from requests.exceptions import Timeout
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
-from kytos.core.exceptions import KytosNoTagAvailableError
+from kytos.core.exceptions import KytosNoTagAvailableError, KytosTagError
 from kytos.core.helpers import get_time, now
-from kytos.core.interface import UNI, Interface
+from kytos.core.interface import UNI, Interface, TAGRange
 from kytos.core.link import Link
+from kytos.core.tag_ranges import range_difference
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
-                                         map_dl_vlan, map_evc_event_content)
+                                         make_uni_list, map_dl_vlan,
+                                         map_evc_event_content)
 
 from .path import DynamicPathManager, Path
 
@@ -101,8 +104,8 @@ class EVCBase(GenericEntity):
 
         # required attributes
         self._id = kwargs.get("id", uuid4().hex)[:14]
-        self.uni_a = kwargs.get("uni_a")
-        self.uni_z = kwargs.get("uni_z")
+        self.uni_a: UNI = kwargs.get("uni_a")
+        self.uni_z: UNI = kwargs.get("uni_z")
         self.name = kwargs.get("name")
 
         # optional attributes
@@ -171,32 +174,29 @@ class EVCBase(GenericEntity):
             return
         self._mongo_controller.upsert_evc(self.as_dict())
 
-    def _get_unis_use_tags(self, **kwargs) -> (UNI, UNI):
+    def _get_unis_use_tags(self, **kwargs) -> tuple[UNI, UNI]:
         """Obtain both UNIs (uni_a, uni_z).
         If a UNI is changing, verify tags"""
         uni_a = kwargs.get("uni_a", None)
         uni_a_flag = False
         if uni_a and uni_a != self.uni_a:
             uni_a_flag = True
-            try:
-                self._use_uni_vlan(uni_a)
-            except ValueError as err:
-                raise err
+            self._use_uni_vlan(uni_a, uni_dif=self.uni_a)
 
         uni_z = kwargs.get("uni_z", None)
         if uni_z and uni_z != self.uni_z:
             try:
-                self._use_uni_vlan(uni_z)
-                self.make_uni_vlan_available(self.uni_z)
-            except ValueError as err:
+                self._use_uni_vlan(uni_z, uni_dif=self.uni_z)
+                self.make_uni_vlan_available(self.uni_z, uni_dif=uni_z)
+            except KytosTagError as err:
                 if uni_a_flag:
-                    self.make_uni_vlan_available(uni_a)
+                    self.make_uni_vlan_available(uni_a, uni_dif=self.uni_a)
                 raise err
         else:
             uni_z = self.uni_z
 
         if uni_a_flag:
-            self.make_uni_vlan_available(self.uni_a)
+            self.make_uni_vlan_available(self.uni_a, uni_dif=uni_a)
         else:
             uni_a = self.uni_a
         return uni_a, uni_z
@@ -217,6 +217,10 @@ class EVCBase(GenericEntity):
 
         """
         enable, redeploy = (None, None)
+        if not self._tag_lists_equal(**kwargs):
+            raise ValueError(
+                "UNI_A and UNI_Z tag lists should be the same."
+            )
         uni_a, uni_z = self._get_unis_use_tags(**kwargs)
         check_disabled_component(uni_a, uni_z)
         self._validate_has_primary_or_dynamic(
@@ -277,7 +281,6 @@ class EVCBase(GenericEntity):
         """Do Basic validations.
 
         Verify required attributes: name, uni_a, uni_z
-        Verify if the attributes uni_a and uni_z are valid.
 
         Raises:
             ValueError: message with error detail.
@@ -292,6 +295,19 @@ class EVCBase(GenericEntity):
                 uni = kwargs.get(attribute)
                 if not isinstance(uni, UNI):
                     raise ValueError(f"{attribute} is an invalid UNI.")
+
+    def _tag_lists_equal(self, **kwargs):
+        """Verify that tag lists are the same."""
+        uni_a = kwargs.get("uni_a") or self.uni_a
+        uni_z = kwargs.get("uni_z") or self.uni_z
+        uni_a_list = uni_z_list = False
+        if (uni_a.user_tag and isinstance(uni_a.user_tag, TAGRange)):
+            uni_a_list = True
+        if (uni_z.user_tag and isinstance(uni_z.user_tag, TAGRange)):
+            uni_z_list = True
+        if uni_a_list and uni_z_list:
+            return uni_a.user_tag.value == uni_z.user_tag.value
+        return uni_a_list == uni_z_list
 
     def _validate_has_primary_or_dynamic(
         self,
@@ -420,33 +436,55 @@ class EVCBase(GenericEntity):
         """Archive this EVC on deletion."""
         self.archived = True
 
-    def _use_uni_vlan(self, uni: UNI):
+    def _use_uni_vlan(
+        self,
+        uni: UNI,
+        uni_dif: Union[None, UNI] = None
+    ):
         """Use tags from UNI"""
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
+        if not tag or isinstance(tag, str):
+            return
         tag_type = uni.user_tag.tag_type
-        if isinstance(tag, int):
-            result = uni.interface.use_tags(
-                self._controller, tag, tag_type
-            )
-            if not result:
-                intf = uni.interface.id
-                raise ValueError(f"Tag {tag} is not available in {intf}")
+        if (uni_dif and isinstance(tag, list) and
+                isinstance(uni_dif.user_tag.value, list)):
+            tag = range_difference(tag, uni_dif.user_tag.value)
+            if not tag:
+                return
+        uni.interface.use_tags(
+            self._controller, tag, tag_type, use_lock=True, check_order=False
+        )
 
-    def make_uni_vlan_available(self, uni: UNI):
+    def make_uni_vlan_available(
+        self,
+        uni: UNI,
+        uni_dif: Union[None, UNI] = None,
+    ):
         """Make available tag from UNI"""
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
+        if not tag or isinstance(tag, str):
+            return
         tag_type = uni.user_tag.tag_type
-        if isinstance(tag, int):
-            result = uni.interface.make_tags_available(
-                self._controller, tag, tag_type
+        if (uni_dif and isinstance(tag, list) and
+                isinstance(uni_dif.user_tag.value, list)):
+            tag = range_difference(tag, uni_dif.user_tag.value)
+            if not tag:
+                return
+        try:
+            conflict = uni.interface.make_tags_available(
+                self._controller, tag, tag_type, use_lock=True,
+                check_order=False
             )
-            if not result:
-                intf = uni.interface.id
-                log.warning(f"Tag {tag} was already available in {intf}")
+        except KytosTagError as err:
+            log.error(f"Error in circuit {self._id}: {err}")
+            return
+        if conflict:
+            intf = uni.interface.id
+            log.warning(f"Tags {conflict} was already available in {intf}")
 
     def remove_uni_tags(self):
         """Remove both UNI usage of a tag"""
@@ -657,7 +695,10 @@ class EVCDeploy(EVCBase):
                     f"Error removing flows from switch {switch.id} for"
                     f"EVC {self}: {err}"
                 )
-        self.failover_path.make_vlans_available(self._controller)
+        try:
+            self.failover_path.make_vlans_available(self._controller)
+        except KytosTagError as err:
+            log.error(f"Error when removing failover flows: {err}")
         self.failover_path = Path([])
         if sync:
             self.sync()
@@ -687,8 +728,10 @@ class EVCDeploy(EVCBase):
                     f"Error removing flows from switch {switch.id} for"
                     f"EVC {self}: {err}"
                 )
-
-        current_path.make_vlans_available(self._controller)
+        try:
+            current_path.make_vlans_available(self._controller)
+        except KytosTagError as err:
+            log.error(f"Error when removing current path flows: {err}")
         self.current_path = Path([])
         self.deactivate()
         self.sync()
@@ -742,8 +785,10 @@ class EVCDeploy(EVCBase):
                     "Error removing failover flows: "
                     f"dpid={dpid} evc={self} error={err}"
                 )
-
-        path.make_vlans_available(self._controller)
+        try:
+            path.make_vlans_available(self._controller)
+        except KytosTagError as err:
+            log.error(f"Error when removing path flows: {err}")
 
     @staticmethod
     def links_zipped(path=None):
@@ -896,6 +941,7 @@ class EVCDeploy(EVCBase):
             return {}
         return self._prepare_uni_flows(self.failover_path, skip_out=True)
 
+    # pylint: disable=too-many-branches
     def _prepare_direct_uni_flows(self):
         """Prepare flows connecting two UNIs for intra-switch EVC."""
         vlan_a = self._get_value_from_uni_tag(self.uni_a)
@@ -910,13 +956,7 @@ class EVCDeploy(EVCBase):
             self.queue_id, vlan_z
         )
 
-        if vlan_a is not None:
-            flow_mod_az["match"]["dl_vlan"] = vlan_a
-
-        if vlan_z is not None:
-            flow_mod_za["match"]["dl_vlan"] = vlan_z
-
-        if vlan_z not in self.special_cases:
+        if not isinstance(vlan_z, list) and vlan_z not in self.special_cases:
             flow_mod_az["actions"].insert(
                 0, {"action_type": "set_vlan", "vlan_id": vlan_z}
             )
@@ -924,8 +964,12 @@ class EVCDeploy(EVCBase):
                 flow_mod_az["actions"].insert(
                     0, {"action_type": "push_vlan", "tag_type": "c"}
                 )
+            if vlan_a == 0:
+                flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
+        elif vlan_a == 0 and vlan_z == "4096/4096":
+            flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
 
-        if vlan_a not in self.special_cases:
+        if not isinstance(vlan_a, list) and vlan_a not in self.special_cases:
             flow_mod_za["actions"].insert(
                     0, {"action_type": "set_vlan", "vlan_id": vlan_a}
                 )
@@ -935,15 +979,31 @@ class EVCDeploy(EVCBase):
                 )
             if vlan_z == 0:
                 flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
-
         elif vlan_a == "4096/4096" and vlan_z == 0:
             flow_mod_az["actions"].insert(0, {"action_type": "pop_vlan"})
 
-        elif vlan_a == 0 and vlan_z:
-            flow_mod_za["actions"].insert(0, {"action_type": "pop_vlan"})
+        flows = []
+        if isinstance(vlan_a, list):
+            for mask_a in vlan_a:
+                flow_aux = deepcopy(flow_mod_az)
+                flow_aux["match"]["dl_vlan"] = mask_a
+                flows.append(flow_aux)
+        else:
+            if vlan_a is not None:
+                flow_mod_az["match"]["dl_vlan"] = vlan_a
+            flows.append(flow_mod_az)
 
+        if isinstance(vlan_z, list):
+            for mask_z in vlan_z:
+                flow_aux = deepcopy(flow_mod_za)
+                flow_aux["match"]["dl_vlan"] = mask_z
+                flows.append(flow_aux)
+        else:
+            if vlan_z is not None:
+                flow_mod_za["match"]["dl_vlan"] = vlan_z
+            flows.append(flow_mod_za)
         return (
-            self.uni_a.interface.switch.id, [flow_mod_az, flow_mod_za]
+            self.uni_a.interface.switch.id, flows
         )
 
     def _install_direct_uni_flows(self):
@@ -999,16 +1059,18 @@ class EVCDeploy(EVCBase):
             self._send_flow_mods(dpid, flows)
 
     @staticmethod
-    def _get_value_from_uni_tag(uni):
+    def _get_value_from_uni_tag(uni: UNI):
         """Returns the value from tag. In case of any and untagged
         it should return 4096/4096 and 0 respectively"""
         special = {"any": "4096/4096", "untagged": 0}
-
         if uni.user_tag:
             value = uni.user_tag.value
+            if isinstance(value, list):
+                return uni.user_tag.mask_list
             return special.get(value, value)
         return None
 
+    # pylint: disable=too-many-locals
     def _prepare_uni_flows(self, path=None, skip_in=False, skip_out=False):
         """Prepare flows to install UNIs."""
         uni_flows = {}
@@ -1036,15 +1098,27 @@ class EVCDeploy(EVCBase):
 
         # Flow for one direction, pushing the service tag
         if not skip_in:
-            push_flow = self._prepare_push_flow(
-                self.uni_a.interface,
-                endpoint_a,
-                in_vlan_a,
-                out_vlan_a,
-                in_vlan_z,
-                queue_id=self.queue_id,
-            )
-            flows_a.append(push_flow)
+            if isinstance(in_vlan_a, list):
+                for in_mask_a in in_vlan_a:
+                    push_flow = self._prepare_push_flow(
+                        self.uni_a.interface,
+                        endpoint_a,
+                        in_mask_a,
+                        out_vlan_a,
+                        in_vlan_z,
+                        queue_id=self.queue_id,
+                    )
+                    flows_a.append(push_flow)
+            else:
+                push_flow = self._prepare_push_flow(
+                    self.uni_a.interface,
+                    endpoint_a,
+                    in_vlan_a,
+                    out_vlan_a,
+                    in_vlan_z,
+                    queue_id=self.queue_id,
+                )
+                flows_a.append(push_flow)
 
         # Flow for the other direction, popping the service tag
         if not skip_out:
@@ -1063,15 +1137,27 @@ class EVCDeploy(EVCBase):
 
         # Flow for one direction, pushing the service tag
         if not skip_in:
-            push_flow = self._prepare_push_flow(
-                self.uni_z.interface,
-                endpoint_z,
-                in_vlan_z,
-                out_vlan_z,
-                in_vlan_a,
-                queue_id=self.queue_id,
-            )
-            flows_z.append(push_flow)
+            if isinstance(in_vlan_z, list):
+                for in_mask_z in in_vlan_z:
+                    push_flow = self._prepare_push_flow(
+                        self.uni_z.interface,
+                        endpoint_z,
+                        in_mask_z,
+                        out_vlan_z,
+                        in_vlan_a,
+                        queue_id=self.queue_id,
+                    )
+                    flows_z.append(push_flow)
+            else:
+                push_flow = self._prepare_push_flow(
+                    self.uni_z.interface,
+                    endpoint_z,
+                    in_vlan_z,
+                    out_vlan_z,
+                    in_vlan_a,
+                    queue_id=self.queue_id,
+                )
+                flows_z.append(push_flow)
 
         # Flow for the other direction, popping the service tag
         if not skip_out:
@@ -1133,6 +1219,8 @@ class EVCDeploy(EVCBase):
     @staticmethod
     def get_priority(vlan):
         """Return priority value depending on vlan value"""
+        if isinstance(vlan, list):
+            return settings.EVPL_SB_PRIORITY
         if vlan not in {None, "4096/4096", 0}:
             return settings.EVPL_SB_PRIORITY
         if vlan == 0:
@@ -1185,9 +1273,9 @@ class EVCDeploy(EVCBase):
         Arguments:
             in_interface(str): Interface input.
             out_interface(str): Interface output.
-            in_vlan(str): Vlan input.
+            in_vlan(int,str,None): Vlan input.
             out_vlan(str): Vlan output.
-            new_c_vlan(str): New client vlan.
+            new_c_vlan(int,str,list,None): New client vlan.
 
         Return:
             dict: An python dictionary representing a FlowMod
@@ -1195,8 +1283,9 @@ class EVCDeploy(EVCBase):
         """
         # assign all arguments
         in_interface, out_interface, in_vlan, out_vlan, new_c_vlan = args
+        vlan_pri = in_vlan if not isinstance(new_c_vlan, list) else new_c_vlan
         flow_mod = self._prepare_flow_mod(
-            in_interface, out_interface, queue_id, in_vlan
+            in_interface, out_interface, queue_id, vlan_pri
         )
         # the service tag must be always pushed
         new_action = {"action_type": "set_vlan", "vlan_id": out_vlan}
@@ -1209,7 +1298,8 @@ class EVCDeploy(EVCBase):
             # if in_vlan is set, it must be included in the match
             flow_mod["match"]["dl_vlan"] = in_vlan
 
-        if new_c_vlan not in self.special_cases and in_vlan != new_c_vlan:
+        if (not isinstance(new_c_vlan, list) and in_vlan != new_c_vlan and
+                new_c_vlan not in self.special_cases):
             # new_in_vlan is an integer but zero, action to set is required
             new_action = {"action_type": "set_vlan", "vlan_id": new_c_vlan}
             flow_mod["actions"].insert(0, new_action)
@@ -1226,7 +1316,9 @@ class EVCDeploy(EVCBase):
             new_action = {"action_type": "pop_vlan"}
             flow_mod["actions"].insert(0, new_action)
 
-        elif not in_vlan and new_c_vlan not in self.special_cases:
+        elif (not in_vlan and
+                (not isinstance(new_c_vlan, list) and
+                 new_c_vlan not in self.special_cases)):
             # new_in_vlan is an integer but zero and in_vlan is not set
             # then it is set now
             new_action = {"action_type": "push_vlan", "tag_type": "c"}
@@ -1248,21 +1340,23 @@ class EVCDeploy(EVCBase):
         return flow_mod
 
     @staticmethod
-    def run_bulk_sdntraces(uni_list):
+    def run_bulk_sdntraces(
+        uni_list: list[tuple[Interface, Union[str, int, None]]]
+    ) -> dict:
         """Run SDN traces on control plane starting from EVC UNIs."""
         endpoint = f"{settings.SDN_TRACE_CP_URL}/traces"
         data = []
-        for uni in uni_list:
+        for interface, tag_value in uni_list:
             data_uni = {
                 "trace": {
                             "switch": {
-                                "dpid": uni.interface.switch.dpid,
-                                "in_port": uni.interface.port_number,
+                                "dpid": interface.switch.dpid,
+                                "in_port": interface.port_number,
                             }
                         }
                 }
-            if uni.user_tag:
-                uni_dl_vlan = map_dl_vlan(uni.user_tag.value)
+            if tag_value:
+                uni_dl_vlan = map_dl_vlan(tag_value)
                 if uni_dl_vlan:
                     data_uni["trace"]["eth"] = {
                                             "dl_type": 0x8100,
@@ -1279,24 +1373,32 @@ class EVCDeploy(EVCBase):
             return {"result": []}
         return response.json()
 
-    # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-return-statements, too-many-arguments
     @staticmethod
-    def check_trace(circuit, trace_a, trace_z):
+    def check_trace(
+        tag_a: Union[None, int, str],
+        tag_z: Union[None, int, str],
+        interface_a: Interface,
+        interface_z: Interface,
+        current_path: list,
+        trace_a: list,
+        trace_z: list
+    ) -> bool:
         """Auxiliar function to check an individual trace"""
         if (
-            len(trace_a) != len(circuit.current_path) + 1
-            or not compare_uni_out_trace(circuit.uni_z, trace_a[-1])
+            len(trace_a) != len(current_path) + 1
+            or not compare_uni_out_trace(tag_z, interface_z, trace_a[-1])
         ):
             log.warning(f"Invalid trace from uni_a: {trace_a}")
             return False
         if (
-            len(trace_z) != len(circuit.current_path) + 1
-            or not compare_uni_out_trace(circuit.uni_a, trace_z[-1])
+            len(trace_z) != len(current_path) + 1
+            or not compare_uni_out_trace(tag_a, interface_a, trace_z[-1])
         ):
             log.warning(f"Invalid trace from uni_z: {trace_z}")
             return False
 
-        for link, trace1, trace2 in zip(circuit.current_path,
+        for link, trace1, trace2 in zip(current_path,
                                         trace_a[1:],
                                         trace_z[:0:-1]):
             metadata_vlan = None
@@ -1320,33 +1422,66 @@ class EVCDeploy(EVCBase):
         return True
 
     @staticmethod
-    def check_list_traces(list_circuits):
+    def check_range(circuit, traces: list) -> bool:
+        """Check traces when for UNI with TAGRange"""
+        check = True
+        for i, mask in enumerate(circuit.uni_a.user_tag.mask_list):
+            trace_a = traces[i*2]
+            trace_z = traces[i*2+1]
+            check &= EVCDeploy.check_trace(
+                mask, mask,
+                circuit.uni_a.interface,
+                circuit.uni_z.interface,
+                circuit.current_path,
+                trace_a, trace_z,
+            )
+        return check
+
+    @staticmethod
+    def check_list_traces(list_circuits: list) -> dict:
         """Check if current_path is deployed comparing with SDN traces."""
         if not list_circuits:
             return {}
-        uni_list = []
-        for circuit in list_circuits:
-            uni_list.append(circuit.uni_a)
-            uni_list.append(circuit.uni_z)
+        uni_list = make_uni_list(list_circuits)
+        traces = EVCDeploy.run_bulk_sdntraces(uni_list)["result"]
 
-        traces = EVCDeploy.run_bulk_sdntraces(uni_list)
-        traces = traces["result"]
-        circuits_checked = {}
         if not traces:
-            return circuits_checked
+            return {}
 
         try:
-            for i, circuit in enumerate(list_circuits):
-                trace_a = traces[2*i]
-                trace_z = traces[2*i+1]
-                circuits_checked[circuit.id] = EVCDeploy.check_trace(
-                        circuit, trace_a, trace_z
+            circuits_checked = {}
+            i = 0
+            for circuit in list_circuits:
+                if isinstance(circuit.uni_a.user_tag, TAGRange):
+                    length = len(circuit.uni_a.user_tag.mask_list)
+                    circuits_checked[circuit.id] = EVCDeploy.check_range(
+                        circuit, traces[i:i+length*2]
                     )
+                    i += length*2
+                else:
+                    trace_a = traces[i]
+                    trace_z = traces[i+1]
+                    tag_a = None
+                    if circuit.uni_a.user_tag:
+                        tag_a = circuit.uni_a.user_tag.value
+                    tag_z = None
+                    if circuit.uni_z.user_tag:
+                        tag_z = circuit.uni_z.user_tag.value
+                    circuits_checked[circuit.id] = EVCDeploy.check_trace(
+                        tag_a,
+                        tag_z,
+                        circuit.uni_a.interface,
+                        circuit.uni_z.interface,
+                        circuit.current_path,
+                        trace_a, trace_z
+                    )
+                    i += 2
         except IndexError as err:
             log.error(
                 f"Bulk sdntraces returned fewer items than expected."
                 f"Error = {err}"
             )
+            return {}
 
         return circuits_checked
 
@@ -1407,40 +1542,55 @@ class LinkProtection(EVCDeploy):
             link(Link): Link affected by link.up event.
 
         """
-        if self.is_intra_switch():
-            return True
-
-        if self.is_using_primary_path():
-            return True
-
-        success = False
-        if self.primary_path.is_affected_by_link(link):
-            success = self.deploy_to_primary_path()
-
-        if success:
-            return True
-
-        # We tried to deploy(primary_path) without success.
-        # And in this case is up by some how. Nothing to do.
-        if self.is_using_backup_path() or self.is_using_dynamic_path():
-            return True
-
-        # In this case, probably the circuit is not being used and
-        # we can move to backup
-        if self.backup_path.is_affected_by_link(link):
-            success = self.deploy_to_backup_path()
-
-        # In this case, the circuit is not being used and we should
-        # try a dynamic path
-        if not success and self.dynamic_backup_path:
-            success = self.deploy_to_path()
-
-        if success:
-            emit_event(self._controller, "redeployed_link_up",
-                       content=map_evc_event_content(self))
-            return True
-
-        return True
+        condition_pairs = [
+            (
+                lambda me: me.is_using_primary_path(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me: me.is_intra_switch(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me: me.primary_path.is_affected_by_link(link),
+                lambda me: (me.deploy_to_primary_path(), 'redeploy')
+            ),
+            # We tried to deploy(primary_path) without success.
+            # And in this case is up by some how. Nothing to do.
+            (
+                lambda me: me.is_using_backup_path(),
+                lambda _: (True, 'nothing')
+            ),
+            (
+                lambda me:  me.is_using_dynamic_path(),
+                lambda _: (True, 'nothing')
+            ),
+            # In this case, probably the circuit is not being used and
+            # we can move to backup
+            (
+                lambda me: me.backup_path.is_affected_by_link(link),
+                lambda me: (me.deploy_to_backup_path(), 'redeploy')
+            ),
+            # In this case, the circuit is not being used and we should
+            # try a dynamic path
+            (
+                lambda me: me.dynamic_backup_path,
+                lambda me: (me.deploy_to_path(), 'redeploy')
+            )
+        ]
+        for predicate, action in condition_pairs:
+            if not predicate(self):
+                continue
+            success, succcess_type = action(self)
+            if success:
+                if succcess_type == 'redeploy':
+                    emit_event(
+                        self._controller,
+                        "redeployed_link_up",
+                        content=map_evc_event_content(self)
+                    )
+                return True
+        return False
 
     def handle_link_down(self):
         """Handle circuit when link down.
@@ -1475,41 +1625,6 @@ class LinkProtection(EVCDeploy):
         interface = switch.interfaces[uni.interface.port_number]
         return interface
 
-    def handle_topology_update(self, switches: dict):
-        """Handle changes in the topology"""
-        # All intra-switch EVCs do not have current_path.
-        # In case of inter-switch EVC and not current_path,
-        # link_down should take care of deactivation.
-        if not self.is_intra_switch and not self.current_path:
-            return
-        try:
-            interface_a = self.get_interface_from_switch(self.uni_a, switches)
-        except KeyError:
-            id_ = self.uni_a.interface.id
-            log.warning(f"The interface {id_} was not found")
-            return
-
-        try:
-            interface_z = self.get_interface_from_switch(self.uni_z, switches)
-        except KeyError:
-            id_ = self.uni_z.interface.id
-            log.warning(f"The interface {id_} was not found")
-            return
-
-        active, interfaces = self.is_uni_interface_active(
-            interface_a, interface_z
-        )
-        if self.is_active() != active:
-            if active:
-                self.activate()
-                log.info(f"Activating EVC {self.id}. Interfaces: "
-                         f"{interfaces}.")
-            else:
-                self.deactivate()
-                log.info(f"Deactivating EVC {self.id}. Interfaces: "
-                         f"{interfaces}.")
-            self.sync()
-
     def are_unis_active(self, switches: dict) -> bool:
         """Determine whether this EVC should be active"""
         interface_a = self.get_interface_from_switch(self.uni_a, switches)
@@ -1519,32 +1634,89 @@ class LinkProtection(EVCDeploy):
 
     @staticmethod
     def is_uni_interface_active(
-        interface_a: Interface,
-        interface_z: Interface
+        *interfaces: Interface
     ) -> tuple[bool, dict]:
         """Determine whether a UNI should be active"""
         active = True
-        interfaces = {}
-        interface_a_dict = {
-            "status": interface_a.status.value,
-            "status_reason": interface_a.status_reason
-        }
-        interface_z_dict = {
-            "status": interface_z.status.value,
-            "status_reason": interface_z.status_reason
-        }
-        if (interface_a.status != EntityStatus.UP
-                or interface_a.status_reason != set()):
+        bad_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status != EntityStatus.UP
+        ]
+        if bad_interfaces:
             active = False
-            interfaces[interface_a.id] = interface_a_dict
-        if (interface_z.status != EntityStatus.UP
-                or interface_z.status_reason != set()):
-            active = False
-            interfaces[interface_z.id] = interface_z_dict
-        if active:
-            interfaces[interface_a.id] = interface_a_dict
-            interfaces[interface_z.id] = interface_z_dict
-        return active, interfaces
+            interfaces = bad_interfaces
+        return active, {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in interfaces
+        }
+
+    def handle_interface_link_up(self, interface: Interface):
+        """
+        Handler for interface link_up events
+        """
+        if self.archived:  # TODO: Remove when addressing issue #369
+            return
+        if self.is_active():
+            return
+        interfaces = (self.uni_a.interface, self.uni_z.interface)
+        if interface not in interfaces:
+            return
+        down_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status != EntityStatus.UP
+        ]
+        if down_interfaces:
+            return
+        interface_dicts = {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in interfaces
+        }
+        self.activate()
+        log.info(
+            f"Activating EVC {self.id}. Interfaces: "
+            f"{interface_dicts}."
+        )
+        self.sync()
+
+    def handle_interface_link_down(self, interface):
+        """
+        Handler for interface link_down events
+        """
+        if self.archived:
+            return
+        if not self.is_active():
+            return
+        interfaces = (self.uni_a.interface, self.uni_z.interface)
+        if interface not in interfaces:
+            return
+        down_interfaces = [
+            interface
+            for interface in interfaces
+            if interface.status != EntityStatus.UP
+        ]
+        if not down_interfaces:
+            return
+        interface_dicts = {
+            interface.id: {
+                'status': interface.status.value,
+                'status_reason': interface.status_reason,
+            }
+            for interface in down_interfaces
+        }
+        self.deactivate()
+        log.info(
+            f"Deactivating EVC {self.id}. Interfaces: "
+            f"{interface_dicts}."
+        )
+        self.sync()
 
 
 class EVC(LinkProtection):
