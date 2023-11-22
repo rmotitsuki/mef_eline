@@ -2306,6 +2306,10 @@ class TestMain:
         self.napp.circuits = {2: 'circuit_2', 3: 'circuit_3'}
         self.napp.load_all_evcs()
         load_evc_mock.assert_has_calls([call('circuit_1'), call('circuit_4')])
+        assert self.napp.controller.buffers.app.put.call_count > 1
+        call_args = self.napp.controller.buffers.app.put.call_args[0]
+        assert call_args[0].name == "kytos/mef_eline.evcs_loaded"
+        assert dict(call_args[0].content) == mock_circuits["circuits"]
 
     @patch('napps.kytos.mef_eline.main.Main._evc_from_dict')
     def test_load_evc(self, evc_from_dict_mock):

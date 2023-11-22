@@ -10,6 +10,7 @@ Added
 =====
 - Added a UI button for redeploying an EVC.
 - UNI tag_type are now accepted as string.
+- Event ``kytos/mef_eline.evcs_loaded`` gets published during NApp setup
 - EVCs now listen to ``switch.interface.(link_up|link_down|created|deleted)`` events for activation/deactivation
 - Circuits with a vlan range are supported now. The ranges follows ``list[list[int]]`` format and both UNIs vlan should have the same ranges.
 
