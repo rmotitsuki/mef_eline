@@ -272,11 +272,6 @@ class Main(KytosNApp):
                     detail=f"backup_path is not valid: {exception}"
                 ) from exception
 
-        if self._is_duplicated_evc(evc):
-            result = "The EVC already exists."
-            log.debug("create_circuit result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
-
         if not evc._tag_lists_equal():
             detail = "UNI_A and UNI_Z tag lists should be the same."
             raise HTTPException(400, detail=detail)
@@ -376,11 +371,6 @@ class Main(KytosNApp):
                     409,
                     detail=f"Path is not valid: {exception}"
                 ) from exception
-
-        if self._is_duplicated_evc(evc):
-            result = "The EVC already exists."
-            log.debug("create_circuit result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         if evc.is_active():
             if enable is False:  # disable if active
@@ -710,22 +700,6 @@ class Main(KytosNApp):
         log.debug("delete_schedule result %s %s", result, status)
         return JSONResponse(result, status_code=status)
 
-    def _is_duplicated_evc(self, evc):
-        """Verify if the circuit given is duplicated with the stored evcs.
-
-        Args:
-            evc (EVC): circuit to be analysed.
-
-        Returns:
-            boolean: True if the circuit is duplicated, otherwise False.
-
-        """
-        for circuit in tuple(self.circuits.values()):
-            if (not circuit.archived and circuit._id != evc._id
-                    and circuit.shares_uni(evc)):
-                return True
-        return False
-
     @listen_to("kytos/topology.link_up")
     def on_link_up(self, event):
         """Change circuit when link is up or end_maintenance."""
@@ -907,6 +881,7 @@ class Main(KytosNApp):
         for circuit_id, circuit in circuits:
             if circuit_id not in self.circuits:
                 self._load_evc(circuit)
+        emit_event(self.controller, "evcs_loaded", content=dict(circuits))
 
     def _load_evc(self, circuit_dict):
         """Load one EVC from mongodb to memory."""

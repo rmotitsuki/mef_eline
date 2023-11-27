@@ -588,26 +588,26 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
 
         uni.user_tag.value = "any"
         evc._use_uni_vlan(uni)
-        assert uni.interface.use_tags.call_count == 1
+        assert uni.interface.use_tags.call_count == 2
 
         uni.user_tag.value = [[1, 10]]
         uni_dif = get_uni_mocked(tag_value=[[1, 2]])
         mock_difference.return_value = [[3, 10]]
         evc._use_uni_vlan(uni, uni_dif)
-        assert uni.interface.use_tags.call_count == 2
+        assert uni.interface.use_tags.call_count == 3
 
         mock_difference.return_value = []
         evc._use_uni_vlan(uni, uni_dif)
-        assert uni.interface.use_tags.call_count == 2
+        assert uni.interface.use_tags.call_count == 3
 
         uni.interface.use_tags.side_effect = KytosTagError("")
         with pytest.raises(KytosTagError):
             evc._use_uni_vlan(uni)
-        assert uni.interface.use_tags.call_count == 3
+        assert uni.interface.use_tags.call_count == 4
 
         uni.user_tag = None
         evc._use_uni_vlan(uni)
-        assert uni.interface.use_tags.call_count == 3
+        assert uni.interface.use_tags.call_count == 4
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     def test_make_uni_vlan_available(self, mock_log):

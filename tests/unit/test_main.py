@@ -651,8 +651,10 @@ class TestMain:
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
-        mock_use_uni_tags.return_value = True
         mock_tags_equal.return_value = True
+        mock_use_uni_tags.side_effect = [
+            None, KytosTagError("The EVC already exists.")
+        ]
         uni1 = create_autospec(UNI)
         uni2 = create_autospec(UNI)
         uni1.interface = create_autospec(Interface)
@@ -688,7 +690,7 @@ class TestMain:
         current_data = response.json()
         expected_data = "The EVC already exists."
         assert current_data["description"] == expected_data
-        assert 409 == response.status_code
+        assert 400 == response.status_code
 
     @patch("napps.kytos.mef_eline.models.evc.EVC._tag_lists_equal")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
@@ -788,20 +790,17 @@ class TestMain:
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 400, response.data
 
-    @patch("napps.kytos.mef_eline.main.Main._is_duplicated_evc")
     @patch("napps.kytos.mef_eline.main.check_disabled_component")
     @patch("napps.kytos.mef_eline.main.Main._evc_from_dict")
     async def test_create_circuit_case_8(
         self,
         mock_evc,
         mock_check_disabled_component,
-        mock_duplicated,
         event_loop
     ):
         """Test create_circuit wit no equal tag lists"""
         self.napp.controller.loop = event_loop
         mock_check_disabled_component.return_value = True
-        mock_duplicated.return_value = False
         url = f"{self.base_endpoint}/v2/evc/"
         uni1 = get_uni_mocked()
         uni2 = get_uni_mocked()
@@ -2306,6 +2305,10 @@ class TestMain:
         self.napp.circuits = {2: 'circuit_2', 3: 'circuit_3'}
         self.napp.load_all_evcs()
         load_evc_mock.assert_has_calls([call('circuit_1'), call('circuit_4')])
+        assert self.napp.controller.buffers.app.put.call_count > 1
+        call_args = self.napp.controller.buffers.app.put.call_args[0]
+        assert call_args[0].name == "kytos/mef_eline.evcs_loaded"
+        assert dict(call_args[0].content) == mock_circuits["circuits"]
 
     @patch('napps.kytos.mef_eline.main.Main._evc_from_dict')
     def test_load_evc(self, evc_from_dict_mock):
