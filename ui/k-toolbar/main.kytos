@@ -33,8 +33,8 @@
 
             <k-input id="endpoint-a-tag-value" :value.sync="tag_value_a"
                     title="Tag Value A:"
-                    tooltip="Enter VLAN A value"
-                    placeholder="VLAN A" icon="arrow-right"></k-input>
+                    tooltip="Enter VLAN A value. The list format is [[inclusive, inclusive]]."
+                    placeholder="VLAN A (int or [[int, int]])" icon="arrow-right"></k-input>
 
             <k-input-auto id="endpoint-z-input" :value.sync="endpoint_z"
                     title="Endpoint Z:"
@@ -61,8 +61,8 @@
 
            <k-input id="endpoint-z-tag-value" :value.sync="tag_value_z"
                     title="Tag Value Z:"
-                    tooltip="Enter VLAN Z value"
-                    placeholder="VLAN Z" icon="arrow-right"></k-input>
+                    tooltip="Enter VLAN Z value. The list format is [[inclusive, inclusive]]."
+                    placeholder="VLAN Z (int or [[int, int]])" icon="arrow-right"></k-input>
 
            <k-input id="service-level-input" :value.sync="service_level"
                     title="Service level:"
