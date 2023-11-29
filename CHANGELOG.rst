@@ -13,6 +13,7 @@ Added
 - Event ``kytos/mef_eline.evcs_loaded`` gets published during NApp setup
 - EVCs now listen to ``switch.interface.(link_up|link_down|created|deleted)`` events for activation/deactivation
 - Circuits with a vlan range are supported now. The ranges follows ``list[list[int]]`` format and both UNIs vlan should have the same ranges.
+- Usage of special vlans ``"untagged"`` and ``"any"`` now send an event to each Interface.
 
 Changed
 =======

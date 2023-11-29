@@ -445,7 +445,7 @@ class EVCBase(GenericEntity):
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
-        if not tag or isinstance(tag, str):
+        if not tag:
             return
         tag_type = uni.user_tag.tag_type
         if (uni_dif and isinstance(tag, list) and
@@ -466,7 +466,7 @@ class EVCBase(GenericEntity):
         if uni.user_tag is None:
             return
         tag = uni.user_tag.value
-        if not tag or isinstance(tag, str):
+        if not tag:
             return
         tag_type = uni.user_tag.tag_type
         if (uni_dif and isinstance(tag, list) and
