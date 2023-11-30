@@ -286,8 +286,8 @@ class Main(KytosNApp):
         try:
             self._check_no_tag_duplication(evc.id, evc.uni_a, evc.uni_z)
         except DuplicatedNoTagUNI as exception:
-            log.debug("create_circuit result %s %s", exception, 400)
-            raise HTTPException(400, detail=str(exception)) from exception
+            log.debug("update result %s %s", exception, 409)
+            raise HTTPException(409, detail=str(exception)) from exception
 
         try:
             self._use_uni_tags(evc)
@@ -373,12 +373,12 @@ class Main(KytosNApp):
                 updated_data.get("uni_z")
             )
             enable, redeploy = evc.update(**updated_data)
-        except (
-            ValueError, KytosTagError,
-            ValidationError, DuplicatedNoTagUNI
-        ) as exception:
+        except (ValueError, KytosTagError, ValidationError) as exception:
             log.debug("update result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
+        except DuplicatedNoTagUNI as exception:
+            log.debug("update result %s %s", exception, 409)
+            raise HTTPException(409, detail=str(exception)) from exception
         except DisabledSwitch as exception:
             log.debug("update result %s %s", exception, 409)
             raise HTTPException(
@@ -733,7 +733,7 @@ class Main(KytosNApp):
         if (not (uni_a and not uni_a.user_tag) and
                 not (uni_z and not uni_z.user_tag)):
             return
-        for circuit in self.circuits.values():
+        for circuit in self.circuits.copy().values():
             if (not circuit.archived and circuit._id != evc_id):
                 if uni_a and uni_a.user_tag is None:
                     circuit.check_no_tag_duplicate(uni_a)
