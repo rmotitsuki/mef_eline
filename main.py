@@ -286,7 +286,7 @@ class Main(KytosNApp):
         try:
             self._check_no_tag_duplication(evc.id, evc.uni_a, evc.uni_z)
         except DuplicatedNoTagUNI as exception:
-            log.debug("update result %s %s", exception, 409)
+            log.debug("create_circuit result %s %s", exception, 409)
             raise HTTPException(409, detail=str(exception)) from exception
 
         try:
