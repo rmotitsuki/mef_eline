@@ -1,21 +1,22 @@
 """Module to test the EVCBase class."""
 import sys
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, call, patch
+
+import pytest
+
 from kytos.core.exceptions import KytosTagError
 from kytos.core.interface import TAGRange
 from napps.kytos.mef_eline.models import Path
-import pytest
+
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position, disable=ungrouped-imports
+from napps.kytos.mef_eline.exceptions import DuplicatedNoTagUNI  # NOQA  pycodestyle
 from napps.kytos.mef_eline.models import EVC  # NOQA  pycodestyle
-from napps.kytos.mef_eline.scheduler import (
-    CircuitSchedule,
-)  # NOQA  pycodestyle
-from napps.kytos.mef_eline.tests.helpers import (
-    get_uni_mocked,
-    get_controller_mock,
-)  # NOQA  pycodestyle
+from napps.kytos.mef_eline.scheduler import \
+    CircuitSchedule  # NOQA  pycodestyle
+from napps.kytos.mef_eline.tests.helpers import (  # NOQA  pycodestyle
+    get_controller_mock, get_uni_mocked)
 
 
 class TestEVC():  # pylint: disable=too-many-public-methods, no-member
@@ -676,3 +677,24 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
 
         update_dict = {"uni_a": uni, "uni_z": uni}
         assert evc._tag_lists_equal(**update_dict)
+
+    def test_check_no_tag_duplicate(self):
+        """Test check_no_tag_duplicate"""
+        uni_01_1 = get_uni_mocked(interface_port=1, switch_dpid="01")
+        uni_01_1.user_tag = None
+        uni_a = uni_01_1
+        uni_z = get_uni_mocked(is_valid=True)
+        attributes = {
+            "controller": get_controller_mock(),
+            "name": "circuit_name",
+            "enable": True,
+            "uni_a": uni_a,
+            "uni_z": uni_z
+        }
+        evc = EVC(**attributes)
+        other_uni = uni_01_1
+        with pytest.raises(DuplicatedNoTagUNI):
+            evc.check_no_tag_duplicate(other_uni)
+
+        other_uni = get_uni_mocked(interface_port=1, switch_dpid="02")
+        assert evc.check_no_tag_duplicate(other_uni) is None

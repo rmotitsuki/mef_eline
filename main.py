@@ -7,6 +7,7 @@ import pathlib
 import time
 import traceback
 from threading import Lock
+from typing import Optional
 
 from pydantic import ValidationError
 
@@ -21,7 +22,8 @@ from kytos.core.rest_api import (HTTPException, JSONResponse, Request,
                                  get_json_or_400)
 from kytos.core.tag_ranges import get_tag_ranges
 from napps.kytos.mef_eline import controllers, settings
-from napps.kytos.mef_eline.exceptions import DisabledSwitch, InvalidPath
+from napps.kytos.mef_eline.exceptions import (DisabledSwitch,
+                                              DuplicatedNoTagUNI, InvalidPath)
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
@@ -282,6 +284,12 @@ class Main(KytosNApp):
             raise HTTPException(400, detail=str(exception)) from exception
 
         try:
+            self._check_no_tag_duplication(evc.id, evc.uni_a, evc.uni_z)
+        except DuplicatedNoTagUNI as exception:
+            log.debug("create_circuit result %s %s", exception, 409)
+            raise HTTPException(409, detail=str(exception)) from exception
+
+        try:
             self._use_uni_tags(evc)
         except KytosTagError as exception:
             raise HTTPException(400, detail=str(exception)) from exception
@@ -359,12 +367,18 @@ class Main(KytosNApp):
             raise HTTPException(409, detail=result)
 
         try:
-            enable, redeploy = evc.update(
-                **self._evc_dict_with_instances(data)
+            updated_data = self._evc_dict_with_instances(data)
+            self._check_no_tag_duplication(
+                circuit_id, updated_data.get("uni_a"),
+                updated_data.get("uni_z")
             )
+            enable, redeploy = evc.update(**updated_data)
         except (ValueError, KytosTagError, ValidationError) as exception:
             log.debug("update result %s %s", exception, 400)
             raise HTTPException(400, detail=str(exception)) from exception
+        except DuplicatedNoTagUNI as exception:
+            log.debug("update result %s %s", exception, 409)
+            raise HTTPException(409, detail=str(exception)) from exception
         except DisabledSwitch as exception:
             log.debug("update result %s %s", exception, 409)
             raise HTTPException(
@@ -699,6 +713,32 @@ class Main(KytosNApp):
 
         log.debug("delete_schedule result %s %s", result, status)
         return JSONResponse(result, status_code=status)
+
+    def _check_no_tag_duplication(
+        self,
+        evc_id: str,
+        uni_a: Optional[UNI] = None,
+        uni_z: Optional[UNI] = None
+    ):
+        """Check if the given EVC has UNIs with no tag and if these are
+         duplicated. Raise DuplicatedNoTagUNI if duplication is found.
+        Args:
+            evc (dict): EVC to be analyzed.
+        """
+
+        # No UNIs
+        if not (uni_a or uni_z):
+            return
+
+        if (not (uni_a and not uni_a.user_tag) and
+                not (uni_z and not uni_z.user_tag)):
+            return
+        for circuit in self.circuits.copy().values():
+            if (not circuit.archived and circuit._id != evc_id):
+                if uni_a and uni_a.user_tag is None:
+                    circuit.check_no_tag_duplicate(uni_a)
+                if uni_z and uni_z.user_tag is None:
+                    circuit.check_no_tag_duplicate(uni_z)
 
     @listen_to("kytos/topology.link_up")
     def on_link_up(self, event):
