@@ -20,7 +20,8 @@ from kytos.core.interface import UNI, Interface, TAGRange
 from kytos.core.link import Link
 from kytos.core.tag_ranges import range_difference
 from napps.kytos.mef_eline import controllers, settings
-from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath, DuplicatedNoTagUNI
+from napps.kytos.mef_eline.exceptions import (DuplicatedNoTagUNI,
+                                              FlowModException, InvalidPath)
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
