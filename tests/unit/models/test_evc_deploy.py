@@ -1535,6 +1535,61 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
+    def test_check_list_traces_ordered_unordered(self, run_bulk_mock, _):
+        """Test check_list_traces with UNIs ordered and unordered."""
+        evc = self.create_evc_inter_switch()
+
+        for link in evc.primary_links:
+            link.metadata['s_vlan'] = MagicMock(value=link.metadata['s_vlan'])
+        evc.current_path = evc.primary_links
+
+        trace_a = [
+            {
+                "dpid": 1,
+                "port": 2,
+                "time": "t1",
+                "type": "starting",
+                "vlan": 82
+            },
+            {
+                "dpid": 2,
+                "port": 10,
+                "time": "t2",
+                "type": "intermediary",
+                "vlan": 5
+            },
+            {"dpid": 3, "port": 12, "time": "t3", "type": "last", "vlan": 6},
+        ]
+        trace_z = [
+            {
+                "dpid": 3,
+                "port": 3,
+                "time": "t1",
+                "type": "starting",
+                "vlan": 83
+            },
+            {
+                "dpid": 2,
+                "port": 11,
+                "time": "t2",
+                "type": "intermediary",
+                "vlan": 6
+            },
+            {"dpid": 1, "port": 9, "time": "t3", "type": "last", "vlan": 5},
+        ]
+
+        run_bulk_mock.return_value = {"result": [trace_a, trace_z]}
+        result = EVCDeploy.check_list_traces([evc])
+        assert result[evc.id]
+
+        # swapped UNIs since uni_a and uni_z might not be ordered with cur path
+        run_bulk_mock.return_value = {"result": [trace_z, trace_a]}
+        evc.uni_a, evc.uni_z = evc.uni_z, evc.uni_a
+        result = EVCDeploy.check_list_traces([evc])
+        assert result[evc.id]
+
+    @patch("napps.kytos.mef_eline.models.evc.log")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.run_bulk_sdntraces")
     def test_check_list_traces(self, run_bulk_sdntraces_mock, _):
         """Test check_list_traces method."""
         evc = self.create_evc_inter_switch()
