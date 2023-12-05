@@ -2082,6 +2082,7 @@ class TestEVC():
         call_list = []
         for i in range(0, 3):
             call_list.append(call(
+                circuit.id, circuit.name,
                 mask_list[i], mask_list[i],
                 uni_a.interface,
                 uni_z.interface,
