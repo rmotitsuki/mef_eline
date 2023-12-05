@@ -36,6 +36,7 @@ General Information
 Fixed
 =====
 - fixed race condition in ``failover_path`` when handling simulataneous Link Down events leading to inconsistencies on some EVC
+- Required at least one circuit_id on ``POST v2/evc/metadata``
 
 [2023.1.0] - 2023-06-27
 ***********************
