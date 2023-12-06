@@ -501,10 +501,10 @@ module.exports = {
               }
             }
           });
-          if(_flexible_metrics !== {}) {
+          if(_flexible_metrics != {}) {
             request[_type].flexible_metrics = _flexible_metrics;
           }
-          if(_mandatory_metrics !== {}) {
+          if(_mandatory_metrics != {}) {
             request[_type].mandatory_metrics = _mandatory_metrics;
           }
 
