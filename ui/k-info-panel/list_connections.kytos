@@ -126,7 +126,7 @@ module.exports = {
         "title": "Circuit Details",
         "subtitle": "by kytos/mef_eline"
       }
-      this.$kytos.$emit("showInfoPanel", content);
+      this.$kytos.eventBus.$emit("showInfoPanel", content);
     },
     forceRerender: function() {
       /**

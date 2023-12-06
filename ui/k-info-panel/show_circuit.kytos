@@ -365,7 +365,7 @@ module.exports = {
           title: "View Connections",
           subtitle: "by kytos/mef_eline"
       }
-      this.$kytos.$emit("showInfoPanel", listConnections);
+      this.$kytos.eventBus.$emit("showInfoPanel", listConnections);
     },
     showModalDeleteEvc: function() {
       /**
@@ -416,7 +416,7 @@ module.exports = {
             title: 'Error loading EVC.',
             description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
     deleteEVC: function() {
@@ -439,7 +439,7 @@ module.exports = {
             title: 'Error deleting EVC.',
             description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
     load_topology(){
@@ -640,7 +640,7 @@ module.exports = {
           title: 'Error loading EVC names.',
           description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
 
@@ -888,7 +888,7 @@ module.exports = {
           title: 'EVC id: ' + data[id].id + ' | name: ' + data[id].name + ' updated.',
           description: ''
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
         _this.loadEVC(_this.content.id);
       });
       request.fail(function(data) {
@@ -896,7 +896,7 @@ module.exports = {
           title: 'Update EVC failed',
           description: 'Error updating EVC ' + id +'. ' + data.responseJSON.description + parse_error
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
   },
@@ -945,7 +945,7 @@ module.exports = {
       });
   },
   created() {
-    // Check if the UI component k-input-auto exists
+// Check if the UI component k-input-auto exists
     compexists = this.$root.$options.components['k-input-auto'] != null;
   },
   destroyed() {

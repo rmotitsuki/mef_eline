@@ -419,7 +419,7 @@ module.exports = {
         }, 50);
     },
     hideInfoPanel() {
-        this.$kytos.$emit("hideInfoPanel");
+        this.$kytos.eventBus.$emit("hideInfoPanel");
     },
     showInfoPanel() {
         let listConnections = {
@@ -429,7 +429,7 @@ module.exports = {
             title: "View Connections",
             subtitle: "by kytos/mef_eline"
         };
-        this.$kytos.$emit("showInfoPanel", listConnections);
+        this.$kytos.eventBus.$emit("showInfoPanel", listConnections);
     },
     set_default_values() {
       this.circuit_name = "";
@@ -461,7 +461,7 @@ module.exports = {
             description: 'Circuit with id: ' + data.circuit_id + ' | name: ' + this.circuit_name + ' was created.'
         }
     
-        this.$kytos.$emit("setNotification" , notification);
+        this.$kytos.eventBus.$emit("setNotification" , notification);
         // Clear fields if the POST is a success
         this.set_default_values();
     },
@@ -472,7 +472,7 @@ module.exports = {
             description: data.responseJSON.description
         }
     
-        this.$kytos.$emit("setNotification" , notification);
+        this.$kytos.eventBus.$emit("setNotification" , notification);
     },
     request_circuit () {
         var _this = this;
@@ -615,13 +615,13 @@ module.exports = {
     this.fetch_dpids();
     this.load_topology();
     this.init_path_constraints();
-    compexists = this.$root.$options.components['k-input-auto'] != null;
+compexists = this.$root.$options.components['k-input-auto'] != null;
     // Close constraint accordion-item
     this.$refs.accordion_checked.forEach((item) => {
       item.checked = false;
     });
   },
-  created() {
+created() {
     compexists = this.$root.$options.components['k-input-auto'] != null;
   }
 }
