@@ -36,7 +36,8 @@ General Information
 
 Fixed
 =====
-- fixed race condition in ``failover_path`` when handling simulataneous Link Down events leading to inconsistencies on some EVC
+- fixed race condition in ``failover_path`` when handling simultaneous Link Down events leading to inconsistencies on some EVC
+- fixed sdntrace_cp check_trace ``current_path`` comparison with the expected UNI order
 
 [2023.1.0] - 2023-06-27
 ***********************
