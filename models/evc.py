@@ -1375,6 +1375,8 @@ class EVCDeploy(EVCBase):
     # pylint: disable=too-many-return-statements, too-many-arguments
     @staticmethod
     def check_trace(
+        evc_id: str,
+        evc_name: str,
         tag_a: Union[None, int, str],
         tag_z: Union[None, int, str],
         interface_a: Interface,
@@ -1388,13 +1390,15 @@ class EVCDeploy(EVCBase):
             len(trace_a) != len(current_path) + 1
             or not compare_uni_out_trace(tag_z, interface_z, trace_a[-1])
         ):
-            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_a: {trace_a}")
             return False
         if (
             len(trace_z) != len(current_path) + 1
             or not compare_uni_out_trace(tag_a, interface_a, trace_z[-1])
         ):
-            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_z: {trace_z}")
             return False
 
         for link, trace1, trace2 in zip(current_path,
@@ -1408,14 +1412,16 @@ class EVCDeploy(EVCBase):
                                         metadata_vlan,
                                         trace2
                                     ) is False:
-                log.warning(f"Invalid trace from uni_a: {trace_a}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_a: {trace_a}")
                 return False
             if compare_endpoint_trace(
                                         link.endpoint_b,
                                         metadata_vlan,
                                         trace1
                                     ) is False:
-                log.warning(f"Invalid trace from uni_z: {trace_z}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_z: {trace_z}")
                 return False
 
         return True
@@ -1428,6 +1434,7 @@ class EVCDeploy(EVCBase):
             trace_a = traces[i*2]
             trace_z = traces[i*2+1]
             check &= EVCDeploy.check_trace(
+                circuit.id, circuit.name,
                 mask, mask,
                 circuit.uni_a.interface,
                 circuit.uni_z.interface,
@@ -1467,8 +1474,8 @@ class EVCDeploy(EVCBase):
                     if circuit.uni_z.user_tag:
                         tag_z = circuit.uni_z.user_tag.value
                     circuits_checked[circuit.id] = EVCDeploy.check_trace(
-                        tag_a,
-                        tag_z,
+                        circuit.id, circuit.name,
+                        tag_a, tag_z,
                         circuit.uni_a.interface,
                         circuit.uni_z.interface,
                         circuit.current_path,

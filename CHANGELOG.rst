@@ -22,7 +22,8 @@ Changed
 - UNI tag_type is changed to string from 1, 2 and 3 values to ``"vlan"``, ``"vlan_qinq"`` and ``"mpls"`` respectively.
 - Add ``set_vlan`` only if UNI A vlan and UNI z vlan are different.
 - Updated ``openapi.yml``, ``Tag`` now can accept ``array`` as ``value``.
-- Updated UI interface to support list of ranges of VLANs
+- Updated UI interface to support list of ranges of VLANs.
+- Improved log for invalid traces by adding ``From EVC(evc_id) named 'evc_name'``
 
 Deprecated
 ==========
