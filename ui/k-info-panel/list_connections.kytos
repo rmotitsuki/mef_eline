@@ -298,7 +298,7 @@ module.exports = {
       this.search_cols = JSON.parse(localStorage.getItem('mef_eline/k-info-panel/list_connections/search_cols'));
     }
   },
-  destroyed() {
+  unmounted() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
   },
   watch: {
