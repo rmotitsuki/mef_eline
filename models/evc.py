@@ -20,7 +20,8 @@ from kytos.core.interface import UNI, Interface, TAGRange
 from kytos.core.link import Link
 from kytos.core.tag_ranges import range_difference
 from napps.kytos.mef_eline import controllers, settings
-from napps.kytos.mef_eline.exceptions import FlowModException, InvalidPath
+from napps.kytos.mef_eline.exceptions import (DuplicatedNoTagUNI,
+                                              FlowModException, InvalidPath)
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
@@ -353,14 +354,12 @@ class EVCBase(GenericEntity):
         """Check if the UNIs are in the same switch."""
         return self.uni_a.interface.switch == self.uni_z.interface.switch
 
-    def shares_uni(self, other):
-        """Check if two EVCs share an UNI."""
-        if other.uni_a in (self.uni_a, self.uni_z) or other.uni_z in (
-            self.uni_a,
-            self.uni_z,
-        ):
-            return True
-        return False
+    def check_no_tag_duplicate(self, other_uni: UNI):
+        """Check if a no tag UNI is duplicated."""
+        if other_uni in (self.uni_a, self.uni_z):
+            msg = f"UNI with interface {other_uni.interface.id} is"\
+                  f" duplicated with EVC {self.id}."
+            raise DuplicatedNoTagUNI(msg)
 
     def as_dict(self, keys: set = None):
         """Return a dictionary representing an EVC object.
@@ -1376,6 +1375,8 @@ class EVCDeploy(EVCBase):
     # pylint: disable=too-many-return-statements, too-many-arguments
     @staticmethod
     def check_trace(
+        evc_id: str,
+        evc_name: str,
         tag_a: Union[None, int, str],
         tag_z: Union[None, int, str],
         interface_a: Interface,
@@ -1389,13 +1390,15 @@ class EVCDeploy(EVCBase):
             len(trace_a) != len(current_path) + 1
             or not compare_uni_out_trace(tag_z, interface_z, trace_a[-1])
         ):
-            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_a: {trace_a}")
             return False
         if (
             len(trace_z) != len(current_path) + 1
             or not compare_uni_out_trace(tag_a, interface_a, trace_z[-1])
         ):
-            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_z: {trace_z}")
             return False
 
         if not current_path:
@@ -1429,14 +1432,16 @@ class EVCDeploy(EVCBase):
                                         metadata_vlan,
                                         trace2
                                     ) is False:
-                log.warning(f"Invalid trace from uni_a: {trace_a}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_a: {trace_a}")
                 return False
             if compare_endpoint_trace(
                                         link.endpoint_b,
                                         metadata_vlan,
                                         trace1
                                     ) is False:
-                log.warning(f"Invalid trace from uni_z: {trace_z}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_z: {trace_z}")
                 return False
 
         return True
@@ -1449,6 +1454,7 @@ class EVCDeploy(EVCBase):
             trace_a = traces[i*2]
             trace_z = traces[i*2+1]
             check &= EVCDeploy.check_trace(
+                circuit.id, circuit.name,
                 mask, mask,
                 circuit.uni_a.interface,
                 circuit.uni_z.interface,
@@ -1488,8 +1494,8 @@ class EVCDeploy(EVCBase):
                     if circuit.uni_z.user_tag:
                         tag_z = circuit.uni_z.user_tag.value
                     circuits_checked[circuit.id] = EVCDeploy.check_trace(
-                        tag_a,
-                        tag_z,
+                        circuit.id, circuit.name,
+                        tag_a, tag_z,
                         circuit.uni_a.interface,
                         circuit.uni_z.interface,
                         circuit.current_path,
