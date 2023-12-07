@@ -1470,26 +1470,7 @@ class TestMain:
                 "enable": True
             },
             {
-                "name": "my evc1",
-                "active": True,
-                "enable": True,
-                "uni_a": {
-                    "interface_id": "00:00:00:00:00:00:00:01:1",
-                    "tag": {
-                        "tag_type": 'vlan',
-                        "value": 80
-                    }
-                },
-                "uni_z": {
-                    "interface_id": "00:00:00:00:00:00:00:02:2",
-                    "tag": {
-                        "tag_type": 'vlan',
-                        "value": 1
-                    }
-                },
-                "priority": 3,
-                "bandwidth": 1000,
-                "dynamic_backup_path": True
+                "sb_priority": 100
             }
         ]
 
@@ -1546,6 +1527,15 @@ class TestMain:
         expected_data = "circuit_id 1234 not found"
         assert current_data["description"] == expected_data
         assert 404 == response.status_code
+
+        self.napp.circuits[circuit_id]._active = False
+        evc_deploy.reset_mock()
+        response = await self.api_client.patch(
+            f"{self.base_endpoint}/v2/evc/{circuit_id}",
+            json=payloads[4]
+        )
+        assert 200 == response.status_code
+        evc_deploy.assert_called_once()
 
         await self.api_client.delete(
             f"{self.base_endpoint}/v2/evc/{circuit_id}"

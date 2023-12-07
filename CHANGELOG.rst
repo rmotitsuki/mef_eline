@@ -24,6 +24,7 @@ Changed
 - Updated ``openapi.yml``, ``Tag`` now can accept ``array`` as ``value``.
 - Updated UI interface to support list of ranges of VLANs.
 - Improved log for invalid traces by adding ``From EVC(evc_id) named 'evc_name'``
+- An inactive and enabled EVC will be redeploy if an attribute from ``attributes_requiring_redeploy`` is updated.
 
 Deprecated
 ==========

@@ -297,6 +297,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         msg = f"{evc} deployed after link down."
         log_mocked.debug.assert_called_once_with(msg)
 
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
@@ -304,10 +305,12 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
     @patch("napps.kytos.mef_eline.models.path.DynamicPathManager.get_paths")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.DOWN)
     async def test_handle_link_down_case_3(
-        self, get_paths_mocked, deploy_to_mocked, deploy_mocked, log_mocked, _
+        self, get_paths_mocked, deploy_to_mocked, deploy_mocked,
+        log_mocked, _, mock_remove_current
     ):
         """Test if circuit without dynamic path is return failed."""
         deploy_mocked.return_value = False
+        mock_remove_current.return_value = True
         deploy_to_mocked.return_value = False
         primary_path = [
             get_link_mocked(

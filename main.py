@@ -398,6 +398,10 @@ class Main(KytosNApp):
             if enable is True:  # enable if inactive
                 with evc.lock:
                     evc.deploy()
+            elif evc.is_enabled() and redeploy:
+                with evc.lock:
+                    evc.remove()
+                    evc.deploy()
         result = {evc.id: evc.as_dict()}
         status = 200
 
