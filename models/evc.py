@@ -647,8 +647,8 @@ class EVCDeploy(EVCBase):
 
     def remove(self):
         """Remove EVC path and disable it."""
-        self.remove_current_flows()
-        self.remove_failover_flows()
+        self.remove_current_flows(sync=False)
+        self.remove_failover_flows(sync=False)
         self.disable()
         self.sync()
         emit_event(self._controller, "undeployed",
@@ -702,7 +702,8 @@ class EVCDeploy(EVCBase):
         if sync:
             self.sync()
 
-    def remove_current_flows(self, current_path=None, force=True):
+    def remove_current_flows(self, current_path=None, force=True,
+                             sync=True):
         """Remove all flows from current path."""
         switches = set()
 
@@ -733,7 +734,8 @@ class EVCDeploy(EVCBase):
             log.error(f"Error when removing current path flows: {err}")
         self.current_path = Path([])
         self.deactivate()
-        self.sync()
+        if sync:
+            self.sync()
 
     def remove_path_flows(self, path=None, force=True):
         """Remove all flows from path."""
@@ -1610,8 +1612,8 @@ class LinkProtection(EVCDeploy):
         if success:
             log.debug(f"{self} deployed after link down.")
         else:
+            self.remove_current_flows(sync=False)
             self.deactivate()
-            self.current_path = Path([])
             self.sync()
             log.debug(f"Failed to re-deploy {self} after link down.")
 

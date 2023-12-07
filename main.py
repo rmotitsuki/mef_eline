@@ -400,7 +400,7 @@ class Main(KytosNApp):
                     evc.deploy()
             elif evc.is_enabled() and redeploy:
                 with evc.lock:
-                    evc.remove_current_flows()
+                    evc.remove()
                     evc.deploy()
         result = {evc.id: evc.as_dict()}
         status = 200
