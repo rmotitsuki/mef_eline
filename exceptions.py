@@ -23,3 +23,12 @@ class InvalidPath(MEFELineException):
 
 class DisabledSwitch(MEFELineException):
     """Exception for disabled switch in path"""
+
+
+class DuplicatedNoTagUNI(MEFELineException):
+    """Exception for duplicated no TAG UNI"""
+    def __init__(self, msg: str) -> None:
+        self.msg = msg
+
+    def __repr__(self) -> str:
+        return f"DuplicatedNoTagUNI, {self.msg}"
