@@ -1377,6 +1377,8 @@ class EVCDeploy(EVCBase):
     # pylint: disable=too-many-return-statements, too-many-arguments
     @staticmethod
     def check_trace(
+        evc_id: str,
+        evc_name: str,
         tag_a: Union[None, int, str],
         tag_z: Union[None, int, str],
         interface_a: Interface,
@@ -1390,18 +1392,40 @@ class EVCDeploy(EVCBase):
             len(trace_a) != len(current_path) + 1
             or not compare_uni_out_trace(tag_z, interface_z, trace_a[-1])
         ):
-            log.warning(f"Invalid trace from uni_a: {trace_a}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_a: {trace_a}")
             return False
         if (
             len(trace_z) != len(current_path) + 1
             or not compare_uni_out_trace(tag_a, interface_a, trace_z[-1])
         ):
-            log.warning(f"Invalid trace from uni_z: {trace_z}")
+            log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                        f"Invalid trace from uni_z: {trace_z}")
+            return False
+
+        if not current_path:
+            return True
+
+        first_link, trace_path_begin, trace_path_end = current_path[0], [], []
+        if (
+            first_link.endpoint_a.switch.id == trace_a[0]["dpid"]
+        ):
+            trace_path_begin, trace_path_end = trace_a, trace_z
+        elif (
+            first_link.endpoint_a.switch.id == trace_z[0]["dpid"]
+        ):
+            trace_path_begin, trace_path_end = trace_z, trace_a
+        else:
+            msg = (
+                f"first link {first_link} endpoint_a didn't match the first "
+                f"step of trace_a {trace_a} or trace_z {trace_z}"
+            )
+            log.warning(msg)
             return False
 
         for link, trace1, trace2 in zip(current_path,
-                                        trace_a[1:],
-                                        trace_z[:0:-1]):
+                                        trace_path_begin[1:],
+                                        trace_path_end[:0:-1]):
             metadata_vlan = None
             if link.metadata:
                 metadata_vlan = glom(link.metadata, 's_vlan.value')
@@ -1410,14 +1434,16 @@ class EVCDeploy(EVCBase):
                                         metadata_vlan,
                                         trace2
                                     ) is False:
-                log.warning(f"Invalid trace from uni_a: {trace_a}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_a: {trace_a}")
                 return False
             if compare_endpoint_trace(
                                         link.endpoint_b,
                                         metadata_vlan,
                                         trace1
                                     ) is False:
-                log.warning(f"Invalid trace from uni_z: {trace_z}")
+                log.warning(f"From EVC({evc_id}) named '{evc_name}'. "
+                            f"Invalid trace from uni_z: {trace_z}")
                 return False
 
         return True
@@ -1430,6 +1456,7 @@ class EVCDeploy(EVCBase):
             trace_a = traces[i*2]
             trace_z = traces[i*2+1]
             check &= EVCDeploy.check_trace(
+                circuit.id, circuit.name,
                 mask, mask,
                 circuit.uni_a.interface,
                 circuit.uni_z.interface,
@@ -1469,8 +1496,8 @@ class EVCDeploy(EVCBase):
                     if circuit.uni_z.user_tag:
                         tag_z = circuit.uni_z.user_tag.value
                     circuits_checked[circuit.id] = EVCDeploy.check_trace(
-                        tag_a,
-                        tag_z,
+                        circuit.id, circuit.name,
+                        tag_a, tag_z,
                         circuit.uni_a.interface,
                         circuit.uni_z.interface,
                         circuit.current_path,

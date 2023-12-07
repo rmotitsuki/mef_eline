@@ -22,7 +22,8 @@ Changed
 - UNI tag_type is changed to string from 1, 2 and 3 values to ``"vlan"``, ``"vlan_qinq"`` and ``"mpls"`` respectively.
 - Add ``set_vlan`` only if UNI A vlan and UNI z vlan are different.
 - Updated ``openapi.yml``, ``Tag`` now can accept ``array`` as ``value``.
-- Updated UI interface to support list of ranges of VLANs
+- Updated UI interface to support list of ranges of VLANs.
+- Improved log for invalid traces by adding ``From EVC(evc_id) named 'evc_name'``
 - An inactive and enabled EVC will be redeploy if an attribute from ``attributes_requiring_redeploy`` is updated.
 
 Deprecated
@@ -36,7 +37,9 @@ General Information
 
 Fixed
 =====
-- fixed race condition in ``failover_path`` when handling simulataneous Link Down events leading to inconsistencies on some EVC
+- required at least one circuit_id on ``POST v2/evc/metadata``
+- fixed race condition in ``failover_path`` when handling simultaneous Link Down events leading to inconsistencies on some EVC
+- fixed sdntrace_cp check_trace ``current_path`` comparison with the expected UNI order
 
 [2023.1.0] - 2023-06-27
 ***********************
