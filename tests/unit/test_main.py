@@ -2441,6 +2441,24 @@ class TestMain:
         assert calls == 1
         evc_mock.extend_metadata.assert_called_with(payload)
 
+    async def test_add_bulk_metadata_empty_list(self, event_loop):
+        """Test add_bulk_metadata method empty list"""
+        self.napp.controller.loop = event_loop
+        evc_mock = create_autospec(EVC)
+        evc_mock.id = 1234
+        self.napp.circuits = {"1234": evc_mock}
+        payload = {
+            "circuit_ids": [],
+            "metadata1": 1,
+            "metadata2": 2
+        }
+        response = await self.api_client.post(
+            f"{self.base_endpoint}/v2/evc/metadata",
+            json=payload
+        )
+        assert response.status_code == 400
+        assert "invalid" in response.json()["description"]
+
     async def test_add_bulk_metadata_no_id(self, event_loop):
         """Test add_bulk_metadata with unknown evc id"""
         self.napp.controller.loop = event_loop
