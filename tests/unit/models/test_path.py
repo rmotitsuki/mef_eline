@@ -466,6 +466,28 @@ class TestDynamicPathManager():
         )
         mock_requests_post.assert_has_calls([expected_call])
 
+    @patch("napps.kytos.mef_eline.models.path.log")
+    @patch("requests.post")
+    def test_get_best_paths_error(self, mock_requests_post, mock_log):
+        """Test get_best_paths method."""
+        controller = MagicMock()
+        DynamicPathManager.set_controller(controller)
+        circuit = MagicMock()
+        circuit.id = "id"
+        circuit.uni_a.interface.id = "1"
+        circuit.uni_z.interface.id = "2"
+        circuit.name = "some_name"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 400
+        mock_response.json.return_value = {}
+        mock_requests_post.return_value = mock_response
+
+        res_paths = list(DynamicPathManager.get_best_paths(circuit))
+        assert not res_paths
+        assert isinstance(res_paths, list)
+        assert mock_log.error.call_count == 1
+
     @patch("requests.post")
     def test_get_disjoint_paths(self, mock_requests_post):
         """Test get_disjoint_paths method."""
