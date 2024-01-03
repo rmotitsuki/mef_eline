@@ -40,6 +40,7 @@ Fixed
 - required at least one circuit_id on ``POST v2/evc/metadata``
 - fixed race condition in ``failover_path`` when handling simultaneous Link Down events leading to inconsistencies on some EVC
 - fixed sdntrace_cp check_trace ``current_path`` comparison with the expected UNI order
+- fixed ``DynamicPathManager.get_paths`` return value when ``pathfinder`` returns a request error
 
 [2023.1.0] - 2023-06-27
 ***********************

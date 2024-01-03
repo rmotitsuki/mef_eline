@@ -134,7 +134,7 @@ class DynamicPathManager:
         cls.controller = controller
 
     @staticmethod
-    def get_paths(circuit, max_paths=2, **kwargs):
+    def get_paths(circuit, max_paths=2, **kwargs) -> list[dict]:
         """Get a valid path for the circuit from the Pathfinder."""
         endpoint = settings.PATHFINDER_URL
         spf_attribute = kwargs.get("spf_attribute") or settings.SPF_ATTRIBUTE
@@ -149,13 +149,15 @@ class DynamicPathManager:
 
         if api_reply.status_code != getattr(requests.codes, "ok"):
             log.error(
-                "Failed to get paths at %s. Returned %s",
+                "Failed to get paths at %s. Returned %s. Payload %s. EVC %s",
                 endpoint,
                 api_reply.text,
+                request_data,
+                circuit,
             )
-            return None
+            return []
         reply_data = api_reply.json()
-        return reply_data.get("paths")
+        return reply_data.get("paths", [])
 
     @staticmethod
     def _clear_path(path):
