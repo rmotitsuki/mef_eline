@@ -925,7 +925,8 @@ class Main(KytosNApp):
         for circuit_id, circuit in circuits:
             if circuit_id not in self.circuits:
                 self._load_evc(circuit)
-        emit_event(self.controller, "evcs_loaded", content=dict(circuits))
+        emit_event(self.controller, "evcs_loaded", content=dict(circuits),
+                   timeout=1)
 
     def _load_evc(self, circuit_dict):
         """Load one EVC from mongodb to memory."""

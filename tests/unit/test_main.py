@@ -2317,6 +2317,8 @@ class TestMain:
         call_args = self.napp.controller.buffers.app.put.call_args[0]
         assert call_args[0].name == "kytos/mef_eline.evcs_loaded"
         assert dict(call_args[0].content) == mock_circuits["circuits"]
+        timeout_d = {"timeout": 1}
+        assert self.napp.controller.buffers.app.put.call_args[1] == timeout_d
 
     @patch('napps.kytos.mef_eline.main.Main._evc_from_dict')
     def test_load_evc(self, evc_from_dict_mock):

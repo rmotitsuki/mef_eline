@@ -18,11 +18,12 @@ def map_evc_event_content(evc, **kwargs):
                      "uni_z": evc.uni_z.as_dict()}
 
 
-def emit_event(controller, name, context="kytos/mef_eline", content=None):
+def emit_event(controller, name, context="kytos/mef_eline", content=None,
+               timeout=None):
     """Send an event when something happens with an EVC."""
     event_name = f"{context}.{name}"
     event = KytosEvent(name=event_name, content=content)
-    controller.buffers.app.put(event)
+    controller.buffers.app.put(event, timeout=timeout)
 
 
 async def aemit_event(controller, name, content):
