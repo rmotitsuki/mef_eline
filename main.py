@@ -65,7 +65,7 @@ class Main(KytosNApp):
         # Every create/update/delete must be synced to mongodb.
         self.circuits = {}
 
-        self.intf_last_update = defaultdict()
+        self.intf_events = defaultdict(dict)
         self.lock_interfaces = defaultdict(Lock)
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
@@ -767,26 +767,46 @@ class Main(KytosNApp):
     )
     def on_interface_link_change(self, event: KytosEvent):
         """
-        Handler for interface link_up and link_down events
+        Handler for interface link_up and link_down events.
+
+        To avoid multiple database updated (link flap):
+        First check the time when interface was last updated.
+        Second check the time when the last interface event was received.
+        Last event received always updates database.
         """
-        time.sleep(0.1)
         iface = event.content.get("interface")
+        self.intf_events[iface.id].update({"received": now()})
         with self.lock_interfaces[iface.id]:
-            last_update = self.intf_last_update.get(iface.id)
-            if last_update:
-                last_update = last_update.replace(tzinfo=timezone.utc)
-            if (
-                last_update
-                and (now() - last_update).microseconds/1000
-                < 100
-            ):
+            last_updated = self.intf_events[iface.id].get("updated")
+            _now = now()
+            if not last_updated:
+                self.intf_events[iface.id].update({"updated": _now})
+                self.handle_on_interface_link_change(event)
+            elif int((_now - last_updated).total_seconds() * 1000) >= 100:
+                last_updated = last_updated.replace(tzinfo=timezone.utc)
+                self.intf_events[iface.id].update({"updated": _now})
+                self.handle_on_interface_link_change(event)
+
+        time.sleep(0.1)
+        with self.lock_interfaces[iface.id]:
+            last_received = self.intf_events[iface.id].get("received")
+            _now = now()
+            last_received = last_received.replace(tzinfo=timezone.utc)
+            if int((_now - last_received).total_seconds() * 1000) < 100:
                 return
-            self.intf_last_update[iface.id] = now()
-            _, _, event_type = event.name.rpartition('.')
-            if event_type in ('link_up', 'created'):
-                self.handle_interface_link_up(iface)
-            elif event_type in ('link_down', 'deleted'):
-                self.handle_interface_link_down(iface)
+            self.intf_events[iface.id].update({"updated": _now})
+            self.handle_on_interface_link_change(event)
+
+    def handle_on_interface_link_change(self, event: KytosEvent):
+        """
+        Handler to sort interface events {link_(up, down), create, deleted}
+        """
+        _, _, event_type = event.name.rpartition('.')
+        iface = event.content.get("interface")
+        if event_type in ('link_up', 'created'):
+            self.handle_interface_link_up(iface)
+        elif event_type in ('link_down', 'deleted'):
+            self.handle_interface_link_down(iface)
 
     def handle_interface_link_up(self, interface):
         """
