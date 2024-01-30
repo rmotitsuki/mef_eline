@@ -586,6 +586,12 @@ components:
           type: string
           description: The exact user who should have ownership or be authorized to use the link.
           example: "Bill"
+        not_ownership:
+          type: array
+          items:
+            type: string
+          description: The list of users whose links should not be used.
+          example: ["Ted"]
     Circuit: # Can be referenced via '#/components/schemas/Circuit'
       type: object
       properties:

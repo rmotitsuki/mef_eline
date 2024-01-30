@@ -2,7 +2,8 @@
 import pytest
 from pydantic import ValidationError
 
-from db.models import EVCBaseDoc, DocumentBaseModel, TAGDoc, EVCUpdateDoc
+from db.models import (DocumentBaseModel, EVCBaseDoc, EVCUpdateDoc,
+                       LinkConstraints, TAGDoc)
 
 
 class TestDBModels():
@@ -118,3 +119,61 @@ class TestDBModels():
         tag_fail = {"tag_type": 'vlan', "value": "test_fail"}
         with pytest.raises(ValueError):
             TAGDoc(**tag_fail)
+
+    @pytest.mark.parametrize(
+        'attribute,acceptable_value',
+        [
+            ('bandwidth', 1.0),
+            ('bandwidth', 1),
+            ('ownership', 'Test A'),
+            ('reliability', 0.9),
+            ('reliability', 1),
+            ('utilization', 30.0),
+            ('utilization', 30),
+            ('delay', 10.0),
+            ('delay', 10),
+            ('priority', 1),
+            ('not_ownership', []),
+            ('not_ownership', ['Test B']),
+            ('not_ownership', ['Test B', 'Test C']),
+        ]
+    )
+    def test_link_metrics(
+        self,
+        attribute,
+        acceptable_value,
+    ):
+        """
+        Test attributes of link constraints across
+        various acceptable values
+        """
+        constraints = {
+            attribute: acceptable_value
+        }
+        LinkConstraints(**constraints)
+
+    @pytest.mark.parametrize(
+        'attribute,unacceptable_value',
+        [
+            ('bandwidth', 'E'),
+            ('reliability', 'D'),
+            ('utilization', 'C'),
+            ('delay', 'B'),
+            ('priority', 'A'),
+            ('not_ownership', 'Yo'),
+        ]
+    )
+    def test_link_unacceptable_metrics(
+        self,
+        attribute,
+        unacceptable_value,
+    ):
+        """
+        Test attributes of link constraints across
+        various unacceptable values
+        """
+        constraints = {
+            attribute: unacceptable_value
+        }
+        with pytest.raises(ValidationError):
+            LinkConstraints(**constraints)
