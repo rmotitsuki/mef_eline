@@ -7,7 +7,6 @@ import pathlib
 import time
 import traceback
 from collections import defaultdict
-from datetime import timezone
 from threading import Lock
 from typing import Optional
 
@@ -16,7 +15,7 @@ from pydantic import ValidationError
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
 from kytos.core.exceptions import KytosTagError
-from kytos.core.helpers import (alisten_to, listen_to, load_spec, now,
+from kytos.core.helpers import (alisten_to, listen_to, load_spec,
                                 validate_openapi)
 from kytos.core.interface import TAG, UNI, TAGRange
 from kytos.core.link import Link
@@ -770,31 +769,28 @@ class Main(KytosNApp):
         Handler for interface link_up and link_down events.
 
         To avoid multiple database updated (link flap):
-        First check the time when interface was last updated.
-        Second check the time when the last interface event was received.
-        Last event received always updates database.
+        Every interface is identfied and processed in parallel.
+        Once an interface event is received a time is started.
+        While time is running self.intf_events will be updated.
+        After time has passed last received event will be processed.
         """
         iface = event.content.get("interface")
-        self.intf_events[iface.id].update({"received": now()})
         with self.lock_interfaces[iface.id]:
-            last_updated = self.intf_events[iface.id].get("updated")
-            _now = now()
-            if not last_updated:
-                self.intf_events[iface.id].update({"updated": _now})
-                self.handle_on_interface_link_change(event)
-            elif int((_now - last_updated).total_seconds() * 1000) >= 100:
-                last_updated = last_updated.replace(tzinfo=timezone.utc)
-                self.intf_events[iface.id].update({"updated": _now})
-                self.handle_on_interface_link_change(event)
-
-        time.sleep(0.1)
-        with self.lock_interfaces[iface.id]:
-            last_received = self.intf_events[iface.id].get("received")
-            _now = now()
-            last_received = last_received.replace(tzinfo=timezone.utc)
-            if int((_now - last_received).total_seconds() * 1000) < 100:
+            _now = event.timestamp
+            # Return out of order events
+            if (
+                iface.id in self.intf_events
+                and self.intf_events[iface.id]["event"].timestamp > _now
+            ):
                 return
-            self.intf_events[iface.id].update({"updated": _now})
+            self.intf_events[iface.id].update({"event": event})
+            if self.intf_events[iface.id].get("time_lock"):
+                return
+            self.intf_events[iface.id].update({"time_lock": True})
+        time.sleep(settings.TIME_INTERFACE)
+        with self.lock_interfaces[iface.id]:
+            event = self.intf_events[iface.id]["event"]
+            self.intf_events[iface.id].update({"time_lock": False})
             self.handle_on_interface_link_change(event)
 
     def handle_on_interface_link_change(self, event: KytosEvent):

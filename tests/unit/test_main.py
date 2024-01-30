@@ -2565,3 +2565,19 @@ class TestMain:
 
         self.napp._check_no_tag_duplication(evc_id, None, None)
         assert evc.check_no_tag_duplicate.call_count == 3
+
+    @patch("napps.kytos.mef_eline.main.Main.handle_interface_link_up")
+    @patch("napps.kytos.mef_eline.main.Main.handle_interface_link_down")
+    def test_handle_on_interface_link_change(self, mock_down, mock_up):
+        """Test handle_on_interface_link_change"""
+        content = {"interface": "mock_intf"}
+        name = '.*.switch.interface.created'
+        event = KytosEvent(name=name, content=content)
+        self.napp.handle_on_interface_link_change(event)
+        assert mock_down.call_count == 0
+        assert mock_up.call_count == 1
+        name = '.*.switch.interface.deleted'
+        event = KytosEvent(name=name, content=content)
+        self.napp.handle_on_interface_link_change(event)
+        assert mock_down.call_count == 1
+        assert mock_up.call_count == 1
