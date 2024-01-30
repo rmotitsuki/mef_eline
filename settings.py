@@ -58,4 +58,4 @@ SPF_ATTRIBUTE = "hop"
 
 # Time (seconds) to update EVC after interface event
 # ".*.switch.interface.(link_up|link_down|created|deleted)"
-TIME_INTERFACE = 0.1
+UNI_STATE_CHANGE_DELAY = 0.1

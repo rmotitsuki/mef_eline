@@ -15,7 +15,7 @@ from pydantic import ValidationError
 from kytos.core import KytosNApp, log, rest
 from kytos.core.events import KytosEvent
 from kytos.core.exceptions import KytosTagError
-from kytos.core.helpers import (alisten_to, listen_to, load_spec,
+from kytos.core.helpers import (alisten_to, listen_to, load_spec, now,
                                 validate_openapi)
 from kytos.core.interface import TAG, UNI, TAGRange
 from kytos.core.link import Link
@@ -64,7 +64,7 @@ class Main(KytosNApp):
         # Every create/update/delete must be synced to mongodb.
         self.circuits = {}
 
-        self.intf_events = defaultdict(dict)
+        self._intf_events = defaultdict(dict)
         self.lock_interfaces = defaultdict(Lock)
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
@@ -767,11 +767,17 @@ class Main(KytosNApp):
     def on_interface_link_change(self, event: KytosEvent):
         """
         Handler for interface link_up and link_down events.
+        """
+        self.handle_on_interface_link_change(event)
+
+    def handle_on_interface_link_change(self, event: KytosEvent):
+        """
+        Handler to sort interface events {link_(up, down), create, deleted}
 
         To avoid multiple database updated (link flap):
         Every interface is identfied and processed in parallel.
         Once an interface event is received a time is started.
-        While time is running self.intf_events will be updated.
+        While time is running self._intf_events will be updated.
         After time has passed last received event will be processed.
         """
         iface = event.content.get("interface")
@@ -779,30 +785,23 @@ class Main(KytosNApp):
             _now = event.timestamp
             # Return out of order events
             if (
-                iface.id in self.intf_events
-                and self.intf_events[iface.id]["event"].timestamp > _now
+                iface.id in self._intf_events
+                and self._intf_events[iface.id]["event"].timestamp > _now
             ):
                 return
-            self.intf_events[iface.id].update({"event": event})
-            if self.intf_events[iface.id].get("time_lock"):
+            self._intf_events[iface.id].update({"event": event})
+            if "last_acquired" in self._intf_events[iface.id]:
                 return
-            self.intf_events[iface.id].update({"time_lock": True})
-        time.sleep(settings.TIME_INTERFACE)
+            self._intf_events[iface.id].update({"last_acquired": now()})
+        time.sleep(settings.UNI_STATE_CHANGE_DELAY)
         with self.lock_interfaces[iface.id]:
-            event = self.intf_events[iface.id]["event"]
-            self.intf_events[iface.id].update({"time_lock": False})
-            self.handle_on_interface_link_change(event)
-
-    def handle_on_interface_link_change(self, event: KytosEvent):
-        """
-        Handler to sort interface events {link_(up, down), create, deleted}
-        """
-        _, _, event_type = event.name.rpartition('.')
-        iface = event.content.get("interface")
-        if event_type in ('link_up', 'created'):
-            self.handle_interface_link_up(iface)
-        elif event_type in ('link_down', 'deleted'):
-            self.handle_interface_link_down(iface)
+            event = self._intf_events[iface.id]["event"]
+            self._intf_events[iface.id].pop('last_acquired', None)
+            _, _, event_type = event.name.rpartition('.')
+            if event_type in ('link_up', 'created'):
+                self.handle_interface_link_up(iface)
+            elif event_type in ('link_down', 'deleted'):
+                self.handle_interface_link_down(iface)
 
     def handle_interface_link_up(self, interface):
         """
