@@ -4,6 +4,7 @@ from unittest.mock import (AsyncMock, MagicMock, Mock, PropertyMock, call,
 
 import pytest
 from kytos.lib.helpers import get_controller_mock, get_test_client
+from kytos.core.helpers import now
 from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.exceptions import KytosTagError
@@ -2566,20 +2567,21 @@ class TestMain:
         self.napp._check_no_tag_duplication(evc_id, None, None)
         assert evc.check_no_tag_duplicate.call_count == 3
 
-    @patch("napps.kytos.mef_eline.main.settings")
+    @patch("napps.kytos.mef_eline.main.time")
     @patch("napps.kytos.mef_eline.main.Main.handle_interface_link_up")
     @patch("napps.kytos.mef_eline.main.Main.handle_interface_link_down")
     def test_handle_on_interface_link_change(
         self,
         mock_down,
-        mock_up, 
-        mock_settings
+        mock_up,
+        mock_time
     ):
         """Test handle_on_interface_link_change"""
-        mock_settings.UNI_STATE_CHANGE_DELAY = 0.1
+        mock_time.sleep.return_value = True
         mock_intf = Mock()
         mock_intf.id = "mock_intf"
 
+        # Created/link_up
         name = '.*.switch.interface.created'
         content = {"interface": mock_intf}
         event = KytosEvent(name=name, content=content)
@@ -2587,12 +2589,14 @@ class TestMain:
         assert mock_down.call_count == 0
         assert mock_up.call_count == 1
 
+        # Deleted/link_down
         name = '.*.switch.interface.deleted'
         event = KytosEvent(name=name, content=content)
         self.napp.handle_on_interface_link_change(event)
         assert mock_down.call_count == 1
         assert mock_up.call_count == 1
 
+        # Event delay
         self.napp._intf_events[mock_intf.id]["last_acquired"] = "mock_time"
         for _ in range(1, 6):
             self.napp.handle_on_interface_link_change(event)
@@ -2600,6 +2604,14 @@ class TestMain:
         assert mock_up.call_count == 1
 
         self.napp._intf_events[mock_intf.id].pop("last_acquired")
+        self.napp.handle_on_interface_link_change(event)
+        assert mock_down.call_count == 2
+        assert mock_up.call_count == 1
+
+        # Out of order event
+        event = KytosEvent(name=name, content=content)
+        self.napp._intf_events[mock_intf.id]["event"] = Mock(timestamp=now())
+
         self.napp.handle_on_interface_link_change(event)
         assert mock_down.call_count == 2
         assert mock_up.call_count == 1

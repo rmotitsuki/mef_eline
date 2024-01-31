@@ -65,7 +65,7 @@ class Main(KytosNApp):
         self.circuits = {}
 
         self._intf_events = defaultdict(dict)
-        self.lock_interfaces = defaultdict(Lock)
+        self._lock_interfaces = defaultdict(Lock)
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
@@ -781,7 +781,7 @@ class Main(KytosNApp):
         After time has passed last received event will be processed.
         """
         iface = event.content.get("interface")
-        with self.lock_interfaces[iface.id]:
+        with self._lock_interfaces[iface.id]:
             _now = event.timestamp
             # Return out of order events
             if (
@@ -794,7 +794,7 @@ class Main(KytosNApp):
                 return
             self._intf_events[iface.id].update({"last_acquired": now()})
         time.sleep(settings.UNI_STATE_CHANGE_DELAY)
-        with self.lock_interfaces[iface.id]:
+        with self._lock_interfaces[iface.id]:
             event = self._intf_events[iface.id]["event"]
             self._intf_events[iface.id].pop('last_acquired', None)
             _, _, event_type = event.name.rpartition('.')
