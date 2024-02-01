@@ -99,15 +99,8 @@
                         title="col.name"
                         :candidates="dpids"
                         @focus="loadDpidNames"
-                        @blur="onblur_dpid"
-                        v-if="compexists && (col.name=='uni_a' || col.name=='uni_z')">
+                        @blur="onblur_dpid">
                       </k-input-auto>
-<template v-else>
-                        <k-input v-if="col.editable" :id="col.name" :value.sync="col.value"></k-input>
-                        <span v-else>
-                          {{col.value}}
-                        </span>
-                      </template>
                     </td>
                   </template>
                 </tr>
@@ -942,10 +935,6 @@ module.exports = {
           }
         };
       });
-  },
-created() {
-// Check if the UI component k-input-auto exists
-    compexists = this.$root.$options.components['k-input-auto'] != null;
   },
   destroyed() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
