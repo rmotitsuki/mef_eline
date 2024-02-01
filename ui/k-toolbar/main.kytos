@@ -633,8 +633,8 @@ module.exports = {
   }
   .metric-dropdown {width:100%;}
   .metric-dropdown .k-dropdown {height: 20px; width:100%; display:flex;flex-wrap: wrap;}
-  .metric-dropdown .k-dropdown .k-dropdown__title {width:42%;}
-  .metric-dropdown .k-dropdown .k-dropdown__select {width:53%;}
+  .metric-dropdown .k-dropdown .k-dropdown__title {width:40%; padding: 4px 0 0 0;}
+  .metric-dropdown .k-dropdown .k-dropdown__select {width:60%;}
   .metric-field {width:100%; display:flex; }
   .metric-field label {width:60%; }
   .metric-field label ~.k-input-wrap {width:40%; }
