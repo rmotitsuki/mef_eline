@@ -15,7 +15,7 @@
                     :candidates="dpids" 
                     @focus="fetch_dpids"
                     @blur="onblur_dpid"></k-input-auto>
-            <div class="k-input mef-field-label" v-model:value="endpoint_name_a"
+            <div class="k-input mef-field-label" id="endpoint_name_a"
                     >{{endpoint_name_a}}</div> 
             <k-input id="endpoint-a-tag-type" v-model:value="tag_type_a"
                     v-if=false
@@ -35,7 +35,7 @@
                     :candidates="dpids"
                     @focus="fetch_dpids"
                     @blur="onblur_dpid"></k-input-auto>
-            <div class="k-input mef-field-label" v-model:value="endpoint_name_z"
+            <div class="k-input mef-field-label" id="endpoint_name_z"
                     >{{endpoint_name_z}}</div> 
            <k-input id="endpoint-z-tag_type" v-model:value="tag_type_z"
                     v-if=false
