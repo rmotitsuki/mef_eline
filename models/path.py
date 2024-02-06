@@ -178,6 +178,7 @@ class DynamicPathManager:
         for path in cls.get_paths(circuit, **kwargs):
             yield cls.create_path(path["hops"])
 
+    # pylint: disable=too-many-locals
     @classmethod
     def get_disjoint_paths(
         cls, circuit, unwanted_path, cutoff=settings.DISJOINT_PATH_CUTOFF
@@ -230,7 +231,7 @@ class DynamicPathManager:
         unwanted_switches.discard(circuit.uni_a.interface.switch.id)
         unwanted_switches.discard(circuit.uni_z.interface.switch.id)
 
-        unwanted_components_n = (len(unwanted_links) + len(unwanted_switches))
+        length_unwanted = (len(unwanted_links) + len(unwanted_switches))
         if not unwanted_links or not unwanted_switches:
             return None
 
@@ -239,18 +240,19 @@ class DynamicPathManager:
         for path in paths:
             head = path["hops"][:-1]
             tail = path["hops"][1:]
-            copy_switches = unwanted_switches.copy()
             shared_components = 0
             for (endpoint_a, endpoint_b) in unwanted_links:
                 if ((endpoint_a, endpoint_b) in zip(head, tail)) or (
                     (endpoint_b, endpoint_a) in zip(head, tail)
                 ):
                     shared_components += 1
+
+            copy_switches = unwanted_switches.copy()
             for component in path["hops"]:
                 if component in copy_switches:
                     shared_components += 1
                     copy_switches.remove(component)
-            path["disjointness"] = 1 - shared_components / unwanted_components_n
+            path["disjointness"] = 1 - shared_components / length_unwanted
         paths = sorted(paths, key=lambda x: (-x['disjointness'], x['cost']))
         for path in paths:
             if path["disjointness"] == 0:
