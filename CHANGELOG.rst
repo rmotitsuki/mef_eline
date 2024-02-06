@@ -28,6 +28,7 @@ Changed
 - Improved log for invalid traces by adding ``From EVC(evc_id) named 'evc_name'``
 - An inactive and enabled EVC will be redeploy if an attribute from ``attributes_requiring_redeploy`` is updated.
 - If a KytosEvent can't be put on ``buffers.app`` during ``setup()``, it'll make the NApp to fail to start
+- Disjointedness algorithm now takes into account switches, excepting the UNIs switches. Unwanted switches have the same value as the unwanted links.
 
 Deprecated
 ==========

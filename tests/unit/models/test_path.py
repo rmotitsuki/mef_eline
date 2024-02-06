@@ -506,6 +506,8 @@ class TestDynamicPathManager():
         }
         evc.uni_a.interface.id = "1"
         evc.uni_z.interface.id = "2"
+        evc.uni_a.interface.switch.id = "00:00:00:00:00:00:00:01"
+        evc.uni_z.interface.switch.id = "00:00:00:00:00:00:00:05"
 
         # Topo0
         paths1 = {
