@@ -178,7 +178,6 @@ class DynamicPathManager:
         for path in cls.get_paths(circuit, **kwargs):
             yield cls.create_path(path["hops"])
 
-    # pylint: disable=too-many-locals
     @classmethod
     def get_disjoint_paths(
         cls, circuit, unwanted_path, cutoff=settings.DISJOINT_PATH_CUTOFF
@@ -238,20 +237,10 @@ class DynamicPathManager:
         paths = cls.get_paths(circuit, max_paths=cutoff,
                               **circuit.secondary_constraints)
         for path in paths:
-            head = path["hops"][:-1]
-            tail = path["hops"][1:]
-            shared_components = 0
-            for (endpoint_a, endpoint_b) in unwanted_links:
-                if ((endpoint_a, endpoint_b) in zip(head, tail)) or (
-                    (endpoint_b, endpoint_a) in zip(head, tail)
-                ):
-                    shared_components += 1
-
-            copy_switches = unwanted_switches.copy()
-            for component in path["hops"]:
-                if component in copy_switches:
-                    shared_components += 1
-                    copy_switches.remove(component)
+            links_n, switches_n = cls.get_shared_components(
+                path, unwanted_links, unwanted_switches
+            )
+            shared_components = links_n + switches_n
             path["disjointness"] = 1 - shared_components / length_unwanted
         paths = sorted(paths, key=lambda x: (-x['disjointness'], x['cost']))
         for path in paths:
@@ -259,6 +248,30 @@ class DynamicPathManager:
                 continue
             yield cls.create_path(path["hops"])
         return None
+
+    @staticmethod
+    def get_shared_components(
+        path: Path,
+        unwanted_links: list[tuple[str, str]],
+        unwanted_switches: set[str]
+    ) -> tuple[int, int]:
+        """Return the number of shared links
+        and switches found in path."""
+        head = path["hops"][:-1]
+        tail = path["hops"][1:]
+        shared_links = 0
+        for (endpoint_a, endpoint_b) in unwanted_links:
+            if ((endpoint_a, endpoint_b) in zip(head, tail)) or (
+                (endpoint_b, endpoint_a) in zip(head, tail)
+            ):
+                shared_links += 1
+        copy_switches = unwanted_switches.copy()
+        shared_switches = 0
+        for component in path["hops"]:
+            if component in copy_switches:
+                shared_switches += 1
+                copy_switches.remove(component)
+        return shared_links, shared_switches
 
     @classmethod
     def create_path(cls, path):
