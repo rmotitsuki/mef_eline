@@ -231,7 +231,7 @@ class DynamicPathManager:
         unwanted_switches.discard(circuit.uni_z.interface.switch.id)
 
         length_unwanted = (len(unwanted_links) + len(unwanted_switches))
-        if not unwanted_links or not unwanted_switches:
+        if not unwanted_links:
             return None
 
         paths = cls.get_paths(circuit, max_paths=cutoff,

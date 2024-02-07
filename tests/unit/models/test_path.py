@@ -836,6 +836,83 @@ class TestDynamicPathManager():
             [link.id for link in expected_disjoint_path]
         )
 
+    @patch("requests.post")
+    def test_get_disjoint_paths_simple_evc(self, mock_requests_post):
+        """Test get_disjoint_paths method for simple EVCs."""
+        controller = MagicMock()
+        controller.get_interface_by_id.side_effect = id_to_interface_mock
+        DynamicPathManager.set_controller(controller)
+
+        evc = MagicMock()
+        evc.secondary_constraints = {
+            "spf_attribute": "hop",
+            "spf_max_path_cost": 20,
+            "mandatory_metrics": {
+                "ownership": "red"
+            }
+        }
+        evc.uni_a.interface.id = "1"
+        evc.uni_z.interface.id = "2"
+        evc.uni_a.interface.switch.id = "00:00:00:00:00:00:00:01"
+        evc.uni_z.interface.switch.id = "00:00:00:00:00:00:00:05"
+
+        mock_paths = {
+            "paths": [
+                {
+                    "cost": 5,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:3",
+                        "00:00:00:00:00:00:00:02:2",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:1"
+                        ]
+                },
+                {
+                    "cost": 8,
+                    "hops": [
+                        "00:00:00:00:00:00:00:01:1",
+                        "00:00:00:00:00:00:00:01",
+                        "00:00:00:00:00:00:00:01:4",
+                        "00:00:00:00:00:00:00:03:3",
+                        "00:00:00:00:00:00:00:03",
+                        "00:00:00:00:00:00:00:03:2",
+                        "00:00:00:00:00:00:00:02:3",
+                        "00:00:00:00:00:00:00:02",
+                        "00:00:00:00:00:00:00:02:1"
+                        ]
+                },
+            ]
+        }
+        current_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
+            ),
+        ]
+        expected_disjoint_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:4"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:3")
+            ),
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:02:3"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:2")
+            ),
+        ]
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_paths
+        mock_requests_post.return_value = mock_response
+        paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
+        assert len(paths) == 1
+        assert (
+            [link.id for link in paths[0]] ==
+            [link.id for link in expected_disjoint_path]
+        )
+
     def test_get_shared_components(self):
         """Test get_shared_components"""
         mock_path = {"hops": [
