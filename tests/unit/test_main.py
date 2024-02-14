@@ -1,5 +1,5 @@
 """Module to test the main napp file."""
-from unittest.mock import (AsyncMock, MagicMock, Mock, PropertyMock, call,
+from unittest.mock import (AsyncMock, MagicMock, Mock, call,
                            create_autospec, patch)
 
 import pytest
@@ -1085,23 +1085,12 @@ class TestMain:
         response = await self.api_client.post(url, json={})
         assert response.status_code == 400
 
-        # case 2: content-type not specified
-        payload = {
-            "circuit_id": "bb:bb:bb",
-            "schedule": {
-                "frequency": "1 * * * *",
-                "action": "create"
-            }
-        }
-        response = await self.api_client.post(url, json=payload)
-        assert response.status_code == 409
-
-        # case 3: not a dictionary
+        # case 2: not a dictionary
         payload = []
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 400
 
-        # case 4: missing circuit id
+        # case 3: missing circuit id
         payload = {
             "schedule": {
                 "frequency": "1 * * * *",
@@ -1111,14 +1100,14 @@ class TestMain:
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 400
 
-        # case 5: missing schedule
+        # case 4: missing schedule
         payload = {
             "circuit_id": "bb:bb:bb"
         }
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 400
 
-        # case 6: invalid circuit
+        # case 5: invalid circuit
         payload = {
             "circuit_id": "xx:xx:xx",
             "schedule": {
@@ -1129,19 +1118,7 @@ class TestMain:
         response = await self.api_client.post(url, json=payload)
         assert response.status_code == 404
 
-        # case 7: archived or deleted evc
-        evc1.archived.return_value = True
-        payload = {
-            "circuit_id": "bb:bb:bb",
-            "schedule": {
-                "frequency": "1 * * * *",
-                "action": "create"
-            }
-        }
-        response = await self.api_client.post(url, json=payload)
-        assert response.status_code == 409
-
-        # case 8: invalid json
+        # case 6: invalid json
         response = await self.api_client.post(url, json="test")
         assert response.status_code == 400
 
@@ -1225,52 +1202,6 @@ class TestMain:
         response = await self.api_client.patch(url, json=payload)
         assert response.status_code == 404
 
-    @patch("napps.kytos.mef_eline.scheduler.Scheduler.add")
-    @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
-    @patch("napps.kytos.mef_eline.main.EVC.as_dict")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
-    async def test_update_schedule_archived(
-        self,
-        validate_mock,
-        evc_as_dict_mock,
-        uni_from_dict_mock,
-        sched_add_mock,
-        event_loop
-    ):
-        """Test create a circuit schedule."""
-        self.napp.controller.loop = event_loop
-        mongo_payload_1 = {
-            "circuits": {
-                "aa:aa:aa": {
-                    "id": "aa:aa:aa",
-                    "name": "my evc1",
-                    "archived": True,
-                    "circuit_scheduler": [
-                        {
-                            "id": "1",
-                            "frequency": "* * * * *",
-                            "action": "create"
-                        }
-                    ],
-                }
-            }
-        }
-
-        validate_mock.return_value = True
-        sched_add_mock.return_value = True
-        uni_from_dict_mock.side_effect = ["uni_a", "uni_z"]
-        evc_as_dict_mock.return_value = {}
-        self.napp.mongo_controller.get_circuits.return_value = mongo_payload_1
-
-        requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
-
-        payload = {"frequency": "*/1 * * * *", "action": "create"}
-
-        # Call URL
-        response = await self.api_client.patch(url, json=payload)
-        assert response.status_code == 409
-
     @patch("apscheduler.schedulers.background.BackgroundScheduler.remove_job")
     @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
@@ -1326,46 +1257,6 @@ class TestMain:
         scheduler_remove_job_mock.assert_called_once()
         mongo_controller_upsert_mock.assert_called_once()
         assert "Schedule removed" in f"{response.json()}"
-
-    @patch("napps.kytos.mef_eline.main.Main._uni_from_dict")
-    @patch("napps.kytos.mef_eline.main.EVC.as_dict")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._validate")
-    async def test_delete_schedule_archived(self, *args):
-        """Test create a circuit schedule."""
-        (
-            validate_mock,
-            evc_as_dict_mock,
-            uni_from_dict_mock,
-        ) = args
-
-        mongo_payload_1 = {
-            "circuits": {
-                "2": {
-                    "id": "2",
-                    "name": "my evc1",
-                    "archived": True,
-                    "circuit_scheduler": [
-                        {
-                            "id": "1",
-                            "frequency": "* * * * *",
-                            "action": "create"
-                        }
-                    ],
-                }
-            }
-        }
-
-        validate_mock.return_value = True
-        uni_from_dict_mock.side_effect = ["uni_a", "uni_z"]
-        evc_as_dict_mock.return_value = {}
-        self.napp.mongo_controller.get_circuits.return_value = mongo_payload_1
-
-        requested_schedule_id = "1"
-        url = f"{self.base_endpoint}/v2/evc/schedule/{requested_schedule_id}"
-
-        # Call URL
-        response = await self.api_client.delete(url)
-        assert response.status_code == 409
 
     @patch('napps.kytos.mef_eline.main.Main._find_evc_by_schedule_id')
     async def test_delete_schedule_not_found(self, mock_find_evc_by_sched):
@@ -1537,18 +1428,6 @@ class TestMain:
         )
         assert 200 == response.status_code
         evc_deploy.assert_called_once()
-
-        await self.api_client.delete(
-            f"{self.base_endpoint}/v2/evc/{circuit_id}"
-        )
-        evc_deploy.reset_mock()
-        response = await self.api_client.patch(
-            f"{self.base_endpoint}/v2/evc/{circuit_id}",
-            json=payloads[1],
-        )
-        evc_deploy.assert_not_called()
-        assert 409 == response.status_code
-        assert "Can't update archived EVC" in response.json()["description"]
 
     @patch("napps.kytos.mef_eline.main.Main._check_no_tag_duplication")
     @patch("napps.kytos.mef_eline.models.evc.EVC._tag_lists_equal")
@@ -1941,6 +1820,7 @@ class TestMain:
             json=payload1
         )
         assert 201 == response.status_code
+        assert len(self.napp.circuits) == 1
 
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
@@ -1949,14 +1829,16 @@ class TestMain:
         )
         assert 200 == response.status_code
         assert mock_remove_tags.call_count == 1
+        assert len(self.napp.circuits) == 0
 
         response = await self.api_client.delete(
             f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         current_data = response.json()
-        expected_data = f"Circuit {circuit_id} already removed"
+        expected_data = f"circuit_id {circuit_id} not found"
         assert current_data["description"] == expected_data
         assert 404 == response.status_code
+        assert len(self.napp.circuits) == 0
 
     def test_handle_link_up(self):
         """Test handle_link_up method."""
@@ -1964,14 +1846,13 @@ class TestMain:
         evc_mock.service_level, evc_mock.creation_time = 0, 1
         evc_mock.is_enabled = MagicMock(side_effect=[True, False, True])
         evc_mock.lock = MagicMock()
-        type(evc_mock).archived = PropertyMock(
-            side_effect=[True, False, False]
-        )
+        evc_mock.archived = False
         evcs = [evc_mock, evc_mock, evc_mock]
         event = KytosEvent(name="test", content={"link": "abc"})
         self.napp.circuits = dict(zip(["1", "2", "3"], evcs))
         self.napp.handle_link_up(event)
-        evc_mock.handle_link_up.assert_called_once_with("abc")
+        assert evc_mock.handle_link_up.call_count == 2
+        evc_mock.handle_link_up.assert_called_with("abc")
 
     @patch("time.sleep", return_value=None)
     @patch("napps.kytos.mef_eline.main.settings")

@@ -364,11 +364,6 @@ class Main(KytosNApp):
             log.debug("update result %s %s", result, 404)
             raise HTTPException(404, detail=result) from KeyError
 
-        if evc.archived:
-            result = "Can't update archived EVC"
-            log.debug("update result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
-
         try:
             updated_data = self._evc_dict_with_instances(data)
             self._check_no_tag_duplication(
@@ -423,16 +418,11 @@ class Main(KytosNApp):
         circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
         try:
-            evc = self.circuits[circuit_id]
+            evc = self.circuits.pop(circuit_id)
         except KeyError:
             result = f"circuit_id {circuit_id} not found"
             log.debug("delete_circuit result %s %s", result, 404)
             raise HTTPException(404, detail=result) from KeyError
-
-        if evc.archived:
-            result = f"Circuit {circuit_id} already removed"
-            log.debug("delete_circuit result %s %s", result, 404)
-            raise HTTPException(404, detail=result)
 
         log.info("Removing %s", evc)
         with evc.lock:
@@ -604,11 +594,6 @@ class Main(KytosNApp):
             result = f"circuit_id {circuit_id} not found"
             log.debug("create_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-        # Can not modify circuits deleted and archived
-        if evc.archived:
-            result = f"Circuit {circuit_id} is archived. Update is forbidden."
-            log.debug("create_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         # new schedule from dict
         new_schedule = CircuitSchedule.from_dict(schedule_data)
@@ -659,10 +644,6 @@ class Main(KytosNApp):
             result = f"schedule_id {schedule_id} not found"
             log.debug("update_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-        if evc.archived:
-            result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("update_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -701,11 +682,6 @@ class Main(KytosNApp):
             result = f"schedule_id {schedule_id} not found"
             log.debug("delete_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-
-        if evc.archived:
-            result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("delete_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         # Remove the old schedule
         evc.circuit_scheduler.remove(found_schedule)
@@ -808,6 +784,8 @@ class Main(KytosNApp):
         Handler for interface link_up events
         """
         for evc in self.get_evcs_by_svc_level():
+            if evc.archived:
+                continue
             log.info("Event handle_interface_link_up %s", interface)
             evc.handle_interface_link_up(
                 interface
@@ -818,6 +796,8 @@ class Main(KytosNApp):
         Handler for interface link_down events
         """
         for evc in self.get_evcs_by_svc_level():
+            if evc.archived:
+                continue
             log.info("Event handle_interface_link_down %s", interface)
             evc.handle_interface_link_down(
                 interface
