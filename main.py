@@ -66,6 +66,7 @@ class Main(KytosNApp):
 
         self._intf_events = defaultdict(dict)
         self._lock_interfaces = defaultdict(Lock)
+        self._lock_circuits = Lock()
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
@@ -78,8 +79,11 @@ class Main(KytosNApp):
 
         In the future, as more ops are offloaded it should be get from the DB.
         """
-        return sorted(self.circuits.values(),
-                      key=lambda x: (-x.service_level, x.creation_time))
+        with self._lock_circuits:
+            evcs = {i: j for i, j in self.circuits.items() if j.is_enabled()}
+        my_sort = sorted(evcs.values(),
+                         key=lambda x: (-x.service_level, x.creation_time))
+        return my_sort
 
     @staticmethod
     def get_eline_controller():
@@ -784,24 +788,22 @@ class Main(KytosNApp):
         Handler for interface link_up events
         """
         for evc in self.get_evcs_by_svc_level():
-            if evc.archived:
-                continue
-            log.info("Event handle_interface_link_up %s", interface)
-            evc.handle_interface_link_up(
-                interface
-            )
+            with evc.lock:
+                log.info("Event handle_interface_link_up %s", interface)
+                evc.handle_interface_link_up(
+                    interface
+                )
 
     def handle_interface_link_down(self, interface):
         """
         Handler for interface link_down events
         """
         for evc in self.get_evcs_by_svc_level():
-            if evc.archived:
-                continue
-            log.info("Event handle_interface_link_down %s", interface)
-            evc.handle_interface_link_down(
-                interface
-            )
+            with evc.lock:
+                log.info("Event handle_interface_link_down %s", interface)
+                evc.handle_interface_link_down(
+                    interface
+                )
 
     @listen_to("kytos/topology.link_down")
     def on_link_down(self, event):

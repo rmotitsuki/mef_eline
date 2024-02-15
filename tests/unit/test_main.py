@@ -1286,6 +1286,10 @@ class TestMain:
         for i in range(2):
             assert evcs_by_level[i].creation_time == i
 
+        self.napp.circuits[1].is_enabled = lambda: False
+        evcs_by_level = self.napp.get_evcs_by_svc_level()
+        assert len(evcs_by_level) == 1
+
     async def test_get_circuit_not_found(self):
         """Test /v2/evc/<circuit_id> 404."""
         self.napp.mongo_controller.get_circuit.return_value = None
@@ -1844,7 +1848,9 @@ class TestMain:
         """Test handle_link_up method."""
         evc_mock = create_autospec(EVC)
         evc_mock.service_level, evc_mock.creation_time = 0, 1
-        evc_mock.is_enabled = MagicMock(side_effect=[True, False, True])
+        evc_mock.is_enabled = MagicMock(side_effect=[
+            True, False, True, True, True
+        ])
         evc_mock.lock = MagicMock()
         evc_mock.archived = False
         evcs = [evc_mock, evc_mock, evc_mock]
