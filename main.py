@@ -66,7 +66,6 @@ class Main(KytosNApp):
 
         self._intf_events = defaultdict(dict)
         self._lock_interfaces = defaultdict(Lock)
-        self._lock_circuits = Lock()
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
@@ -74,16 +73,19 @@ class Main(KytosNApp):
         self.load_all_evcs()
         self._topology_updated_at = None
 
-    def get_evcs_by_svc_level(self) -> list:
+    def get_evcs_by_svc_level(self, enable_filter: bool = True) -> list:
         """Get circuits sorted by desc service level and asc creation_time.
 
         In the future, as more ops are offloaded it should be get from the DB.
         """
-        with self._lock_circuits:
-            evcs = {i: j for i, j in self.circuits.items() if j.is_enabled()}
-        my_sort = sorted(evcs.values(),
-                         key=lambda x: (-x.service_level, x.creation_time))
-        return my_sort
+        if enable_filter:
+            return sorted(
+                          [circuit for circuit in self.circuits.values()
+                           if circuit.is_enabled()],
+                          key=lambda x: (-x.service_level, x.creation_time),
+            )
+        return sorted(self.circuits.values(),
+                      key=lambda x: (-x.service_level, x.creation_time))
 
     @staticmethod
     def get_eline_controller():
@@ -120,7 +122,7 @@ class Main(KytosNApp):
         """Execute consistency routine."""
         circuits_to_check = []
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
-        for circuit in self.get_evcs_by_svc_level():
+        for circuit in self.get_evcs_by_svc_level(enable_filter=False):
             stored_circuits.pop(circuit.id, None)
             if self.should_be_checked(circuit):
                 circuits_to_check.append(circuit)

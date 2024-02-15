@@ -1290,6 +1290,10 @@ class TestMain:
         evcs_by_level = self.napp.get_evcs_by_svc_level()
         assert len(evcs_by_level) == 1
 
+        self.napp.circuits[1].is_enabled = lambda: False
+        evcs_by_level = self.napp.get_evcs_by_svc_level(enable_filter=False)
+        assert len(evcs_by_level) == 2
+
     async def test_get_circuit_not_found(self):
         """Test /v2/evc/<circuit_id> 404."""
         self.napp.mongo_controller.get_circuit.return_value = None
