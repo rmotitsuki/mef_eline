@@ -6,6 +6,9 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [Unreleased]
 ************
 
+[2023.2.0] - 2024-02-16
+***********************
+
 Added
 =====
 - Added a UI button for redeploying an EVC.
