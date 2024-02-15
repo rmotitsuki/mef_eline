@@ -16,6 +16,7 @@ Added
 - Usage of special vlans ``"untagged"`` and ``"any"`` now send an event to each Interface.
 - Added ``UNI_STATE_CHANGE_DELAY`` which configures the time for ``mef_eline`` to wait on link state flaps and update EVCs with last updated event.
 - Added support for ``not_ownership`` to dynamic path constraints.
+- Added support for ``not_ownership`` on main UI interface.
 
 Changed
 =======
