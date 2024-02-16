@@ -855,7 +855,15 @@ module.exports = {
               _result_metrics['ownership'] = metric['ownership'];
             }
             if(metric['not_ownership'] !== undefined && metric['not_ownership'] !== '') {
-              _result_metrics['not_ownership'] = JSON.parse(metric['not_ownership'])
+              try{_result_metrics['not_ownership'] = JSON.parse(metric['not_ownership'])}
+              catch(e){
+                if (e instanceof SyntaxError){
+                  _result_metrics['not_ownership'] = metric['not_ownership']
+                }
+                else{
+                  throw e
+                }
+              }
             }
             if(!$.isEmptyObject(_result_metrics)) {
               _constraint_payload[_metric_type] = _result_metrics;
