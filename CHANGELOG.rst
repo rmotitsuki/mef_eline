@@ -30,6 +30,7 @@ Changed
 - An inactive and enabled EVC will be redeploy if an attribute from ``attributes_requiring_redeploy`` is updated.
 - If a KytosEvent can't be put on ``buffers.app`` during ``setup()``, it'll make the NApp to fail to start
 - Disjointedness algorithm now takes into account switches, excepting the UNIs switches. Unwanted switches have the same value as the unwanted links.
+- Archived EVCs are not longer kept in memory. They can only be found in the database.
 
 Deprecated
 ==========
