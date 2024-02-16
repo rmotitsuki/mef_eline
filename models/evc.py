@@ -1686,8 +1686,6 @@ class LinkProtection(EVCDeploy):
         """
         Handler for interface link_up events
         """
-        if self.archived:  # TODO: Remove when addressing issue #369
-            return
         if self.is_active():
             return
         interfaces = (self.uni_a.interface, self.uni_z.interface)
@@ -1718,8 +1716,6 @@ class LinkProtection(EVCDeploy):
         """
         Handler for interface link_down events
         """
-        if self.archived:
-            return
         if not self.is_active():
             return
         interfaces = (self.uni_a.interface, self.uni_z.interface)
