@@ -788,7 +788,7 @@ module.exports = {
       */
       var _this = this;
       let id = this.basics["ID"]["value"];
-
+      var parse_error = ""
       let payload = {
         name: this.basics["Name"]["value"],
         enable: this.flags["Enabled"]["value"],
@@ -859,6 +859,7 @@ module.exports = {
               catch(e){
                 if (e instanceof SyntaxError){
                   _result_metrics['not_ownership'] = metric['not_ownership']
+                  parse_error = " Detected error with " + metric['not_ownership'] + ", it could not be parsed."
                 }
                 else{
                   throw e
@@ -893,7 +894,7 @@ module.exports = {
       request.fail(function(data) {
         let notification = {
           title: 'Update EVC failed',
-          description: 'Error updating EVC ' + id +'. ' + data.responseJSON.description
+          description: 'Error updating EVC ' + id +'. ' + data.responseJSON.description + parse_error
         }
         _this.$kytos.$emit("setNotification" , notification);
       });
