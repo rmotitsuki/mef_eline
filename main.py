@@ -843,7 +843,8 @@ class Main(KytosNApp):
                     except Exception:
                         err = traceback.format_exc().replace("\n", ", ")
                         log.error(
-                            f"Ignore Failover path for {evc} due to error: {err}"
+                            "Ignore Failover path for "
+                            f"{evc} due to error: {err}"
                         )
                         evcs_normal.append(evc)
                         continue
@@ -881,8 +882,11 @@ class Main(KytosNApp):
             )
 
         for evc in evcs_with_failover:
-            emit_event(self.controller, "redeployed_link_down",
-                       content=map_evc_event_content(evc,  old_path=evc.old_path))
+            emit_event(
+                self.controller,
+                "redeployed_link_down",
+                content=map_evc_event_content(evc,  old_path=evc.old_path)
+            )
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
             )
