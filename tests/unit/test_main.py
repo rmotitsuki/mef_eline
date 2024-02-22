@@ -1897,6 +1897,7 @@ class TestMain:
             "2": ["flow1", "flow2"],
             "3": ["flow3", "flow4", "flow5", "flow6"],
         }
+        evc4_current_path = evc4.current_path
         evc5 = MagicMock(id="5", service_level=7, creation_time=1)
         evc5.is_affected_by_link.return_value = True
         evc5.is_failover_path_affected_by_link.return_value = False
@@ -1974,7 +1975,7 @@ class TestMain:
         # evc3 should be handled before evc1
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "6",
                 "name": "name",
                 "metadata": "mock",
@@ -1984,7 +1985,7 @@ class TestMain:
                 "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "3",
                 "name": "name",
                 "metadata": "mock",
@@ -1994,7 +1995,7 @@ class TestMain:
                 "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "1",
                 "name": "name",
                 "metadata": "mock",
@@ -2008,6 +2009,7 @@ class TestMain:
         event_name = "redeployed_link_down"
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
+                "old_path": evc4_current_path,
                 "evc_id": "4",
                 "name": "name",
                 "metadata": "mock",
@@ -2046,7 +2048,7 @@ class TestMain:
 
         event = KytosEvent(name="e1", content={
             "evc_id": "3",
-            "link_id": "1",
+            "link": MagicMock(),
         })
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_not_called()
