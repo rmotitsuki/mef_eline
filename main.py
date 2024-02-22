@@ -68,7 +68,6 @@ class Main(KytosNApp):
         self._lock_interfaces = defaultdict(Lock)
         self.table_group = {"epl": 0, "evpl": 0}
         self._lock = Lock()
-        self._lock_handle_link_down = Lock()
         self.execute_as_loop(settings.DEPLOY_EVCS_INTERVAL)
 
         self.load_all_evcs()
@@ -808,11 +807,10 @@ class Main(KytosNApp):
                     interface
                 )
 
-    @listen_to("kytos/topology.link_down")
+    @listen_to("kytos/topology.link_down", pool="dynamic_single")
     def on_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
-        with self._lock_handle_link_down:
-            self.handle_link_down(event)
+        self.handle_link_down(event)
 
     def handle_link_down(self, event):  # pylint: disable=too-many-branches
         """Change circuit when link is down or under_mantenance."""
