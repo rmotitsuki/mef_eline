@@ -836,7 +836,6 @@ class Main(KytosNApp):
                         evc.old_path = evc.current_path
                         evc.current_path = evc.failover_path
                         evc.failover_path = Path([])
-                        evc.sync()
                     # pylint: disable=broad-except
                     except Exception:
                         err = traceback.format_exc().replace("\n", ", ")
@@ -880,6 +879,7 @@ class Main(KytosNApp):
             )
 
         for evc in evcs_with_failover:
+            evc.sync()
             emit_event(
                 self.controller,
                 "redeployed_link_down",
