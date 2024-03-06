@@ -872,7 +872,7 @@ class EVCDeploy(EVCBase):
         log.info(f"{self} was deployed.")
         return True
 
-    def setup_failover_path(self, old_path=None):
+    def setup_failover_path(self):
         """Install flows for the failover path of this EVC.
 
         Procedures to deploy:
@@ -892,11 +892,8 @@ class EVCDeploy(EVCBase):
         if not self.is_eligible_for_failover_path():
             return False
 
-        if not old_path:
-            old_path = self.failover_path
-
         reason = ""
-        self.remove_path_flows(old_path)
+        self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
         for use_path in self.get_failover_path_candidates():
             if not use_path:
