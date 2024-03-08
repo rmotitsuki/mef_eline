@@ -2088,7 +2088,7 @@ class TestMain:
         """Test handle_cleanup_evcs_old_path method."""
         evc1 = create_autospec(EVC, id="1", old_path=["1"])
         evc2 = create_autospec(EVC, id="2", old_path=["2"])
-        evc3 = create_autospec(EVC, id="3")
+        evc3 = create_autospec(EVC, id="3", old_path=[])
 
         event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
         self.napp.handle_cleanup_evcs_old_path(event)

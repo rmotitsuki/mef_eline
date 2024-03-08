@@ -126,16 +126,7 @@ class Main(KytosNApp):
             stored_circuits.pop(circuit.id, None)
             if self.should_be_checked(circuit):
                 circuits_to_check.append(circuit)
-            # setup failover_path whenever possible
-            if getattr(circuit, "failover_path", None):
-                continue
-            affected_at = getattr(circuit, "affected_by_link_at", None)
-            if (
-                not affected_at or
-                (now() - affected_at).seconds >= settings.DEPLOY_EVCS_INTERVAL
-            ):
-                with circuit.lock:
-                    circuit.setup_failover_path()
+            circuit.try_setup_failover_path()
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
         for circuit in circuits_to_check:
             is_checked = circuits_checked.get(circuit.id)
@@ -839,7 +830,7 @@ class Main(KytosNApp):
                     # if there is no failover path, handles link down the
                     # tradditional way
                     if (
-                        not getattr(evc, 'failover_path', None) or
+                        not evc.failover_path or
                         evc.is_failover_path_affected_by_link(link)
                     ):
                         evcs_normal.append(evc)
@@ -937,6 +928,18 @@ class Main(KytosNApp):
         emit_event(self.controller, event_name,
                    content=map_evc_event_content(evc))
 
+    @listen_to("kytos/mef_eline.(redeployed_link_(up|down)|deployed)")
+    def on_evc_deployed(self, event):
+        """Handle EVC deployed|redeployed_link_down."""
+        self.handle_evc_deployed(event)
+
+    def handle_evc_deployed(self, event):
+        """Setup failover path on evc deployed."""
+        evc = self.circuits.get(event.content["evc_id"])
+        if not evc:
+            return
+        evc.try_setup_failover_path()
+
     @listen_to("kytos/mef_eline.cleanup_evcs_old_path")
     def on_cleanup_evcs_old_path(self, event):
         """Handle cleanup evcs old path."""
@@ -946,10 +949,10 @@ class Main(KytosNApp):
         """Handle cleanup evcs old path."""
         evcs = event.content.get("evcs", [])
         for evc in evcs:
-            if not hasattr(evc, 'old_path'):
+            if not evc.old_path:
                 continue
             evc.remove_path_flows(evc.old_path)
-            delattr(evc, "old_path")
+            evc.old_path = Path([])
 
     @listen_to("kytos/topology.topology_loaded")
     def on_topology_loaded(self, event):  # pylint: disable=unused-argument
