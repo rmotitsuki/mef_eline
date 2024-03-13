@@ -835,6 +835,8 @@ class TestMain:
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
         url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
+        evc1.remove_failover_flows.assert_called()
+        evc1.remove_current_flows.assert_called()
         assert response.status_code == 202, response.data
 
     async def test_redeploy_evc_disabled(self):
@@ -844,6 +846,8 @@ class TestMain:
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
         url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
+        evc1.remove_failover_flows.assert_not_called()
+        evc1.remove_current_flows.assert_not_called()
         assert response.status_code == 409, response.data
 
     async def test_redeploy_evc_deleted(self):

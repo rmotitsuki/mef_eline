@@ -559,7 +559,8 @@ class Main(KytosNApp):
             ) from KeyError
         if evc.is_enabled():
             with evc.lock:
-                evc.remove_current_flows()
+                evc.remove_failover_flows(sync=False)
+                evc.remove_current_flows(sync=True)
                 evc.deploy()
             result = {"response": f"Circuit {circuit_id} redeploy received."}
             status = 202
