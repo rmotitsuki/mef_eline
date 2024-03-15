@@ -47,6 +47,7 @@ Fixed
 - fixed race condition in ``failover_path`` when handling simultaneous Link Down events leading to inconsistencies on some EVC
 - fixed sdntrace_cp check_trace ``current_path`` comparison with the expected UNI order
 - fixed ``DynamicPathManager.get_paths`` return value when ``pathfinder`` returns a request error
+- ``failover_path`` will get removed if it exists during a redeploy
 
 [2023.1.0] - 2023-06-27
 ***********************
