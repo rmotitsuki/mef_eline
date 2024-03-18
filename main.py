@@ -73,11 +73,17 @@ class Main(KytosNApp):
         self.load_all_evcs()
         self._topology_updated_at = None
 
-    def get_evcs_by_svc_level(self) -> list:
+    def get_evcs_by_svc_level(self, enable_filter: bool = True) -> list:
         """Get circuits sorted by desc service level and asc creation_time.
 
         In the future, as more ops are offloaded it should be get from the DB.
         """
+        if enable_filter:
+            return sorted(
+                          [circuit for circuit in self.circuits.values()
+                           if circuit.is_enabled()],
+                          key=lambda x: (-x.service_level, x.creation_time),
+            )
         return sorted(self.circuits.values(),
                       key=lambda x: (-x.service_level, x.creation_time))
 
@@ -116,10 +122,11 @@ class Main(KytosNApp):
         """Execute consistency routine."""
         circuits_to_check = []
         stored_circuits = self.mongo_controller.get_circuits()['circuits']
-        for circuit in self.get_evcs_by_svc_level():
+        for circuit in self.get_evcs_by_svc_level(enable_filter=False):
             stored_circuits.pop(circuit.id, None)
             if self.should_be_checked(circuit):
                 circuits_to_check.append(circuit)
+            circuit.try_setup_failover_path()
         circuits_checked = EVCDeploy.check_list_traces(circuits_to_check)
         for circuit in circuits_to_check:
             is_checked = circuits_checked.get(circuit.id)
@@ -364,11 +371,6 @@ class Main(KytosNApp):
             log.debug("update result %s %s", result, 404)
             raise HTTPException(404, detail=result) from KeyError
 
-        if evc.archived:
-            result = "Can't update archived EVC"
-            log.debug("update result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
-
         try:
             updated_data = self._evc_dict_with_instances(data)
             self._check_no_tag_duplication(
@@ -423,16 +425,11 @@ class Main(KytosNApp):
         circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
         try:
-            evc = self.circuits[circuit_id]
+            evc = self.circuits.pop(circuit_id)
         except KeyError:
             result = f"circuit_id {circuit_id} not found"
             log.debug("delete_circuit result %s %s", result, 404)
             raise HTTPException(404, detail=result) from KeyError
-
-        if evc.archived:
-            result = f"Circuit {circuit_id} already removed"
-            log.debug("delete_circuit result %s %s", result, 404)
-            raise HTTPException(404, detail=result)
 
         log.info("Removing %s", evc)
         with evc.lock:
@@ -474,7 +471,7 @@ class Main(KytosNApp):
         data = get_json_or_400(request, self.controller.loop)
         circuit_ids = data.pop("circuit_ids")
 
-        self.mongo_controller.update_evcs(circuit_ids, data, "add")
+        self.mongo_controller.update_evcs_metadata(circuit_ids, data, "add")
 
         fail_evcs = []
         for _id in circuit_ids:
@@ -515,7 +512,9 @@ class Main(KytosNApp):
         data = get_json_or_400(request, self.controller.loop)
         key = request.path_params["key"]
         circuit_ids = data.pop("circuit_ids")
-        self.mongo_controller.update_evcs(circuit_ids, {key: ""}, "del")
+        self.mongo_controller.update_evcs_metadata(
+            circuit_ids, {key: ""}, "del"
+        )
 
         fail_evcs = []
         for _id in circuit_ids:
@@ -560,7 +559,8 @@ class Main(KytosNApp):
             ) from KeyError
         if evc.is_enabled():
             with evc.lock:
-                evc.remove_current_flows()
+                evc.remove_failover_flows(sync=False)
+                evc.remove_current_flows(sync=True)
                 evc.deploy()
             result = {"response": f"Circuit {circuit_id} redeploy received."}
             status = 202
@@ -604,11 +604,6 @@ class Main(KytosNApp):
             result = f"circuit_id {circuit_id} not found"
             log.debug("create_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-        # Can not modify circuits deleted and archived
-        if evc.archived:
-            result = f"Circuit {circuit_id} is archived. Update is forbidden."
-            log.debug("create_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         # new schedule from dict
         new_schedule = CircuitSchedule.from_dict(schedule_data)
@@ -659,10 +654,6 @@ class Main(KytosNApp):
             result = f"schedule_id {schedule_id} not found"
             log.debug("update_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-        if evc.archived:
-            result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("update_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         new_schedule = CircuitSchedule.from_dict(data)
         new_schedule.id = found_schedule.id
@@ -701,11 +692,6 @@ class Main(KytosNApp):
             result = f"schedule_id {schedule_id} not found"
             log.debug("delete_schedule result %s %s", result, 404)
             raise HTTPException(404, detail=result)
-
-        if evc.archived:
-            result = f"Circuit {evc.id} is archived. Update is forbidden."
-            log.debug("delete_schedule result %s %s", result, 409)
-            raise HTTPException(409, detail=result)
 
         # Remove the old schedule
         evc.circuit_scheduler.remove(found_schedule)
@@ -808,22 +794,24 @@ class Main(KytosNApp):
         Handler for interface link_up events
         """
         for evc in self.get_evcs_by_svc_level():
-            log.info("Event handle_interface_link_up %s", interface)
-            evc.handle_interface_link_up(
-                interface
-            )
+            with evc.lock:
+                log.info("Event handle_interface_link_up %s", interface)
+                evc.handle_interface_link_up(
+                    interface
+                )
 
     def handle_interface_link_down(self, interface):
         """
         Handler for interface link_down events
         """
+        log.info("Event handle_interface_link_down %s", interface)
         for evc in self.get_evcs_by_svc_level():
-            log.info("Event handle_interface_link_down %s", interface)
-            evc.handle_interface_link_down(
-                interface
-            )
+            with evc.lock:
+                evc.handle_interface_link_down(
+                    interface
+                )
 
-    @listen_to("kytos/topology.link_down")
+    @listen_to("kytos/topology.link_down", pool="dynamic_single")
     def on_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         self.handle_link_down(event)
@@ -837,31 +825,39 @@ class Main(KytosNApp):
         evcs_normal = []
         check_failover = []
         for evc in self.get_evcs_by_svc_level():
-            if evc.is_affected_by_link(link):
-                # if there is no failover path, handles link down the
-                # tradditional way
-                if (
-                    not getattr(evc, 'failover_path', None) or
-                    evc.is_failover_path_affected_by_link(link)
-                ):
-                    evcs_normal.append(evc)
-                    continue
-                try:
-                    dpid_flows = evc.get_failover_flows()
-                # pylint: disable=broad-except
-                except Exception:
-                    err = traceback.format_exc().replace("\n", ", ")
-                    log.error(
-                        f"Ignore Failover path for {evc} due to error: {err}"
-                    )
-                    evcs_normal.append(evc)
-                    continue
-                for dpid, flows in dpid_flows.items():
-                    switch_flows.setdefault(dpid, [])
-                    switch_flows[dpid].extend(flows)
-                evcs_with_failover.append(evc)
-            else:
-                check_failover.append(evc)
+            with evc.lock:
+                if evc.is_affected_by_link(link):
+                    evc.affected_by_link_at = event.timestamp
+                    # if there is no failover path, handles link down the
+                    # tradditional way
+                    if (
+                        not evc.failover_path or
+                        evc.is_failover_path_affected_by_link(link)
+                    ):
+                        evcs_normal.append(evc)
+                        continue
+                    try:
+                        dpid_flows = evc.get_failover_flows()
+                        evc.old_path = evc.current_path
+                        evc.current_path = evc.failover_path
+                        evc.failover_path = Path([])
+                    # pylint: disable=broad-except
+                    except Exception:
+                        err = traceback.format_exc().replace("\n", ", ")
+                        log.error(
+                            "Ignore Failover path for "
+                            f"{evc} due to error: {err}"
+                        )
+                        evcs_normal.append(evc)
+                        continue
+                    for dpid, flows in dpid_flows.items():
+                        switch_flows.setdefault(dpid, [])
+                        switch_flows[dpid].extend(flows)
+                    evcs_with_failover.append(evc)
+                elif evc.is_failover_path_affected_by_link(link):
+                    evc.old_path = evc.failover_path
+                    evc.failover_path = Path([])
+                    check_failover.append(evc)
 
         while switch_flows:
             offset = settings.BATCH_SIZE or None
@@ -882,33 +878,34 @@ class Main(KytosNApp):
                 switch_flows[dpid] = switch_flows[dpid][offset:]
             time.sleep(settings.BATCH_INTERVAL)
 
-        for evc in evcs_with_failover:
-            with evc.lock:
-                old_path = evc.current_path
-                evc.current_path = evc.failover_path
-                evc.failover_path = old_path
-                evc.sync()
-            emit_event(self.controller, "redeployed_link_down",
-                       content=map_evc_event_content(evc))
-            log.info(
-                f"{evc} redeployed with failover due to link down {link.id}"
-            )
-
         for evc in evcs_normal:
             emit_event(
                 self.controller,
                 "evc_affected_by_link_down",
-                content={"link_id": link.id} | map_evc_event_content(evc)
+                content={"link": link} | map_evc_event_content(evc)
             )
 
-        # After handling the hot path, check if new failover paths are needed.
-        # Note that EVCs affected by link down will generate a KytosEvent for
-        # deployed|redeployed, which will trigger the failover path setup.
-        # Thus, we just need to further check the check_failover list
+        evcs_to_update = []
+        for evc in evcs_with_failover:
+            evcs_to_update.append(evc.as_dict())
+            emit_event(
+                self.controller,
+                "redeployed_link_down",
+                content=map_evc_event_content(evc)
+            )
+            log.info(
+                f"{evc} redeployed with failover due to link down {link.id}"
+            )
         for evc in check_failover:
-            if evc.is_failover_path_affected_by_link(link):
-                with evc.lock:
-                    evc.setup_failover_path()
+            evcs_to_update.append(evc.as_dict())
+
+        self.mongo_controller.update_evcs(evcs_to_update)
+
+        emit_event(
+            self.controller,
+            "cleanup_evcs_old_path",
+            content={"evcs": evcs_with_failover + check_failover}
+        )
 
     @listen_to("kytos/mef_eline.evc_affected_by_link_down")
     def on_evc_affected_by_link_down(self, event):
@@ -918,14 +915,16 @@ class Main(KytosNApp):
     def handle_evc_affected_by_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         evc = self.circuits.get(event.content["evc_id"])
-        link_id = event.content['link_id']
+        link = event.content['link']
         if not evc:
             return
         with evc.lock:
+            if not evc.is_affected_by_link(link):
+                return
             result = evc.handle_link_down()
         event_name = "error_redeploy_link_down"
         if result:
-            log.info(f"{evc} redeployed due to link down {link_id}")
+            log.info(f"{evc} redeployed due to link down {link.id}")
             event_name = "redeployed_link_down"
         emit_event(self.controller, event_name,
                    content=map_evc_event_content(evc))
@@ -940,8 +939,21 @@ class Main(KytosNApp):
         evc = self.circuits.get(event.content["evc_id"])
         if not evc:
             return
-        with evc.lock:
-            evc.setup_failover_path()
+        evc.try_setup_failover_path()
+
+    @listen_to("kytos/mef_eline.cleanup_evcs_old_path")
+    def on_cleanup_evcs_old_path(self, event):
+        """Handle cleanup evcs old path."""
+        self.handle_cleanup_evcs_old_path(event)
+
+    def handle_cleanup_evcs_old_path(self, event):
+        """Handle cleanup evcs old path."""
+        evcs = event.content.get("evcs", [])
+        for evc in evcs:
+            if not evc.old_path:
+                continue
+            evc.remove_path_flows(evc.old_path)
+            evc.old_path = Path([])
 
     @listen_to("kytos/topology.topology_loaded")
     def on_topology_loaded(self, event):  # pylint: disable=unused-argument
