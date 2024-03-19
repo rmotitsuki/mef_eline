@@ -3,7 +3,7 @@
 # pylint: disable=no-self-argument,no-name-in-module
 
 from datetime import datetime
-from typing import Dict, List, Literal, Optional, Union
+from typing import Dict, Literal, Optional, Union
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -38,8 +38,8 @@ class CircuitScheduleDoc(BaseModel):
 class TAGDoc(BaseModel):
     """TAG model"""
     tag_type: str
-    value: Union[int, str, List[List[int]]]
-    mask_list: Optional[List[Union[str, int]]] = None
+    value: Union[int, str, list[list[int]]]
+    mask_list: Optional[list[Union[str, int]]] = None
 
     @field_validator('value')
     def validate_value(cls, value):
@@ -68,7 +68,7 @@ class LinkConstraints(BaseModel):
     utilization: Optional[float] = None
     delay: Optional[float] = None
     priority: Optional[int] = None
-    not_ownership: Optional[List[str]] = None
+    not_ownership: Optional[list[str]] = None
 
 
 class PathConstraints(BaseModel):
@@ -78,7 +78,7 @@ class PathConstraints(BaseModel):
     mandatory_metrics: Optional[LinkConstraints] = None
     flexible_metrics: Optional[LinkConstraints] = None
     minimum_flexible_hits: Optional[int] = None
-    undesired_links: Optional[List[str]] = None
+    undesired_links: Optional[list[str]] = None
 
 
 class EVCUpdateDoc(DocumentBaseModel):
@@ -93,17 +93,17 @@ class EVCUpdateDoc(DocumentBaseModel):
     flow_removed_at: Optional[datetime] = None
     execution_rounds: Optional[int] = None
     bandwidth: Optional[int] = None
-    primary_path: Optional[List] = None
-    backup_path: Optional[List] = None
-    primary_links: Optional[List] = None
-    backup_links: Optional[List] = None
+    primary_path: Optional[list] = None
+    backup_path: Optional[list] = None
+    primary_links: Optional[list] = None
+    backup_links: Optional[list] = None
     dynamic_backup_path: Optional[bool] = None
     primary_constraints: Optional[PathConstraints] = None
     secondary_constraints: Optional[PathConstraints] = None
     owner: Optional[str] = None
     sb_priority: Optional[int] = None
     service_level: Optional[int] = None
-    circuit_scheduler: Optional[List[CircuitScheduleDoc]] = None
+    circuit_scheduler: Optional[list[CircuitScheduleDoc]] = None
     metadata: Optional[dict] = None
     enabled: Optional[bool] = None
 
@@ -121,12 +121,12 @@ class EVCBaseDoc(DocumentBaseModel):
     flow_removed_at: Optional[datetime] = None
     execution_rounds: int = 0
     bandwidth: int = 0
-    primary_path: Optional[List] = None
-    backup_path: Optional[List] = None
-    current_path: Optional[List] = None
-    failover_path: Optional[List] = None
-    primary_links: Optional[List] = None
-    backup_links: Optional[List] = None
+    primary_path: Optional[list] = None
+    backup_path: Optional[list] = None
+    current_path: Optional[list] = None
+    failover_path: Optional[list] = None
+    primary_links: Optional[list] = None
+    backup_links: Optional[list] = None
     dynamic_backup_path: bool
     primary_constraints: Optional[PathConstraints] = None
     secondary_constraints: Optional[PathConstraints] = None
@@ -134,7 +134,7 @@ class EVCBaseDoc(DocumentBaseModel):
     owner: Optional[str] = None
     sb_priority: Optional[int] = None
     service_level: int = 0
-    circuit_scheduler: List[CircuitScheduleDoc]
+    circuit_scheduler: list[CircuitScheduleDoc]
     archived: bool = False
     metadata: Dict = {}
     active: bool
