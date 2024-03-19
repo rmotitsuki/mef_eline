@@ -2106,7 +2106,7 @@ class TestMain:
         )
 
         assert response.status_code == 400
-        assert "Failed to deserialize" in response.json()["description"]
+        assert "body contains invalid API" in response.json()["description"]
 
     async def test_add_metadata_no_body(self):
         """Test method to add metadata with no body"""
