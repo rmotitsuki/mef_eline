@@ -829,6 +829,8 @@ class TestMain:
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
         url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
+        evc1.remove_failover_flows.assert_called()
+        evc1.remove_current_flows.assert_called()
         assert response.status_code == 202, response.data
 
     async def test_redeploy_evc_disabled(self):
@@ -838,6 +840,8 @@ class TestMain:
         self.napp.circuits = {"1": evc1, "2": MagicMock()}
         url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
+        evc1.remove_failover_flows.assert_not_called()
+        evc1.remove_current_flows.assert_not_called()
         assert response.status_code == 409, response.data
 
     async def test_redeploy_evc_deleted(self):
@@ -1865,6 +1869,8 @@ class TestMain:
         evc1.failover_path = None
         evc2 = MagicMock(id="2", service_level=6, creation_time=1)
         evc2.is_affected_by_link.return_value = False
+        evc2.is_failover_path_affected_by_link.return_value = True
+        evc2.as_dict.return_value = {"id": "2"}
         evc3 = MagicMock(id="3", service_level=5, creation_time=1,
                          metadata="mock", _active="true", _enabled="true",
                          uni_a=uni, uni_z=uni)
@@ -1883,6 +1889,7 @@ class TestMain:
             "2": ["flow1", "flow2"],
             "3": ["flow3", "flow4", "flow5", "flow6"],
         }
+        evc4.as_dict.return_value = {"id": "4"}
         evc5 = MagicMock(id="5", service_level=7, creation_time=1)
         evc5.is_affected_by_link.return_value = True
         evc5.is_failover_path_affected_by_link.return_value = False
@@ -1891,6 +1898,7 @@ class TestMain:
             "4": ["flow7", "flow8"],
             "5": ["flow9", "flow10"],
         }
+        evc5.as_dict.return_value = {"id": "5"}
         evc6 = MagicMock(id="6", service_level=8, creation_time=1,
                          metadata="mock", _active="true", _enabled="true",
                          uni_a=uni, uni_z=uni)
@@ -1960,7 +1968,7 @@ class TestMain:
         # evc3 should be handled before evc1
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "6",
                 "name": "name",
                 "metadata": "mock",
@@ -1970,7 +1978,7 @@ class TestMain:
                 "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "3",
                 "name": "name",
                 "metadata": "mock",
@@ -1980,7 +1988,7 @@ class TestMain:
                 "uni_z": uni.as_dict(),
             }),
             call(self.napp.controller, event_name, content={
-                "link_id": "123",
+                "link": link,
                 "evc_id": "1",
                 "name": "name",
                 "metadata": "mock",
@@ -1990,7 +1998,9 @@ class TestMain:
                 "uni_z": uni.as_dict(),
             }),
         ])
-        evc4.sync.assert_called_once()
+        self.napp.mongo_controller.update_evcs.assert_called_with(
+            [{"id": "5"}, {"id": "4"}, {"id": "2"}]
+        )
         event_name = "redeployed_link_down"
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
@@ -2032,7 +2042,7 @@ class TestMain:
 
         event = KytosEvent(name="e1", content={
             "evc_id": "3",
-            "link_id": "1",
+            "link": MagicMock(),
         })
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_not_called()
@@ -2064,19 +2074,17 @@ class TestMain:
             }
         )
 
-    def test_handle_evc_deployed(self):
-        """Test handle_evc_deployed method."""
-        evc = create_autospec(EVC, id="1")
-        evc.lock = MagicMock()
-        self.napp.circuits = {"1": evc}
+    def test_cleanup_evcs_old_path(self):
+        """Test handle_cleanup_evcs_old_path method."""
+        evc1 = create_autospec(EVC, id="1", old_path=["1"])
+        evc2 = create_autospec(EVC, id="2", old_path=["2"])
+        evc3 = create_autospec(EVC, id="3", old_path=[])
 
-        event = KytosEvent(name="e1", content={"evc_id": "2"})
-        self.napp.handle_evc_deployed(event)
-        evc.setup_failover_path.assert_not_called()
-
-        event.content["evc_id"] = "1"
-        self.napp.handle_evc_deployed(event)
-        evc.setup_failover_path.assert_called()
+        event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
+        self.napp.handle_cleanup_evcs_old_path(event)
+        evc1.remove_path_flows.assert_called_with(["1"])
+        evc2.remove_path_flows.assert_called_with(["2"])
+        evc3.remove_path_flows.assert_not_called()
 
     async def test_add_metadata(self):
         """Test method to add metadata"""
@@ -2302,12 +2310,12 @@ class TestMain:
             json=payload
         )
         assert response.status_code == 201
-        args = self.napp.mongo_controller.update_evcs.call_args[0]
+        args = self.napp.mongo_controller.update_evcs_metadata.call_args[0]
         ids = payload.pop("circuit_ids")
         assert args[0] == ids
         assert args[1] == payload
         assert args[2] == "add"
-        calls = self.napp.mongo_controller.update_evcs.call_count
+        calls = self.napp.mongo_controller.update_evcs_metadata.call_count
         assert calls == 1
         evc_mock.extend_metadata.assert_called_with(payload)
 
@@ -2374,11 +2382,11 @@ class TestMain:
             json=payload
         )
         assert response.status_code == 200
-        args = self.napp.mongo_controller.update_evcs.call_args[0]
+        args = self.napp.mongo_controller.update_evcs_metadata.call_args[0]
         assert args[0] == payload["circuit_ids"]
         assert args[1] == {"metadata1": ""}
         assert args[2] == "del"
-        calls = self.napp.mongo_controller.update_evcs.call_count
+        calls = self.napp.mongo_controller.update_evcs_metadata.call_count
         assert calls == 1
         assert evc_mock.remove_metadata.call_count == 1
 
