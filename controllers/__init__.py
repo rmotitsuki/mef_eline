@@ -136,7 +136,7 @@ class ELineController:
                     **evc,
                     **{"_id": evc["id"]}
                 }
-            ).dict(exclude_none=True)
+            ).model_dump(exclude_none=True)
             ops.append(
                 UpdateOne(
                     {"_id": evc["id"]},
