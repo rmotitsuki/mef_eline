@@ -895,7 +895,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         expected = (False, interfaces)
         assert actual == expected
 
-    async def test_handle_interface_link(self):
+    async def test_handle_interface_link(self, monkeypatch):
         """
         Test Interface Link Up
         """
@@ -905,6 +905,9 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         interface_a.enable()
         interface_b = self.evc.uni_z.interface
         interface_b.enable()
+        emit_mock = MagicMock()
+        monkeypatch.setattr("napps.kytos.mef_eline.models.evc.emit_event",
+                            emit_mock)
 
         self.evc.activate = MagicMock()
         self.evc.deactivate = MagicMock()
@@ -921,7 +924,9 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         # Test deactivating
         interface_a.deactivate()
 
+        assert emit_mock.call_count == 0
         self.evc.handle_interface_link_down(interface_a)
+        assert emit_mock.call_count == 1
 
         self.evc.deactivate.assert_called_once()
         self.evc.sync.assert_called_once()
@@ -937,7 +942,9 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         # Test activating
         interface_a.activate()
 
+        assert emit_mock.call_count == 1
         self.evc.handle_interface_link_up(interface_a)
 
         self.evc.activate.assert_called_once()
         assert self.evc.sync.call_count == 2
+        assert emit_mock.call_count == 2
