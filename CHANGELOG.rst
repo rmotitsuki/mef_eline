@@ -6,6 +6,10 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Added
+=====
+- Added ``kytos/mef_eline.uni_active_updated`` event
+
 Changed
 =======
 - Updated python environment installation from 3.9 to 3.11
