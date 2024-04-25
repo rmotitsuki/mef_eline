@@ -294,9 +294,20 @@ module.exports = {
   mounted() {
     // Make the panel fill the screen except the left menu width
     this.$parent.$el.style.width = "calc(100% - 300px)";
+    if (JSON.parse(localStorage.getItem('mef_eline/k-info-panel/list_connections/search_cols'))) {
+      this.search_cols = JSON.parse(localStorage.getItem('mef_eline/k-info-panel/list_connections/search_cols'));
+    }
   },
   destroyed() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
+  },
+  watch: {
+    search_cols: {
+      handler: function() {
+        localStorage.setItem('mef_eline/k-info-panel/list_connections/search_cols', JSON.stringify(this.search_cols))
+      },
+      deep: true
+    }
   }
 }
 </script>
