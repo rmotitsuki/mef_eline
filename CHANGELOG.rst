@@ -3,8 +3,16 @@ Changelog
 #########
 All notable changes to the MEF_ELine NApp will be documented in this file.
 
-[Unreleased]
-************
+[UNRELEASED] - Under development
+********************************
+
+Changed
+=======
+- Updated python environment installation from 3.9 to 3.11
+- Updated test dependencies
+
+[2023.2.0] - 2024-02-16
+***********************
 
 [2023.2.0] - 2024-02-16
 ***********************
