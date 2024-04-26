@@ -936,7 +936,7 @@ module.exports = {
         };
       });
   },
-  destroyed() {
+  unmounted() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
   }
 }
