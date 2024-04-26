@@ -235,12 +235,13 @@ module.exports = {
         queue_id: "",
         dpids: [""],
         hasAutoComplete:false,
+        link_options: [],
 
         constraint_titles: {},
         constraints: {},
         form_constraints: {
           primary_constraints: {
-            undesired_links: '',
+            undesired_links: [],
             spf_attribute: '',
             spf_max_path_cost: '',
             minimum_flexible_hits: '',
@@ -260,7 +261,7 @@ module.exports = {
             },
           },
           secondary_constraints: {
-            undesired_links: '',
+            undesired_links: [],
             spf_attribute: '',
             spf_max_path_cost: '',
             minimum_flexible_hits: '',
@@ -352,7 +353,7 @@ module.exports = {
 
       this.form_constraints = {
           primary_constraints: {
-            undesired_links: '',
+            undesired_links: [],
             spf_attribute: '',
             spf_max_path_cost: '',
             minimum_flexible_hits: '',
@@ -372,7 +373,7 @@ module.exports = {
             },
           },
           secondary_constraints: {
-            undesired_links: '',
+            undesired_links: [],
             spf_attribute: '',
             spf_max_path_cost: '',
             minimum_flexible_hits: '',
@@ -428,6 +429,7 @@ module.exports = {
       this.service_level = "";
       this.sb_priority = "";
       this.queue_id = "";
+      this.link_options = [];
 
       this.init_path_constraints();
       // Clear select and dropdown components

@@ -911,7 +911,7 @@ module.exports = {
     }
     ['primary_constraints', 'secondary_constraints'].forEach( s => {
         _this.form_constraints[s] = {
-          'undesired_links': '',
+          'undesired_links': [],
           'spf_attribute': '',
           'spf_max_path_cost': '',
           'minimum_flexible_hits': '',
