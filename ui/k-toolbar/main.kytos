@@ -188,13 +188,13 @@
                   <div class="metric-dropdown">
                     <k-dropdown :options="metric_options" 
                     :title="constraint_titles['not_ownership']"
-                    :value.sync="form_constraints[constraint].is_flexible.not_ownership"
+                    v-model:value="form_constraints[constraint].is_flexible.not_ownership"
                     ref="is_flexible"></k-dropdown>
                   </div>
                   <div class="metric-field">
                     <k-input icon="arrow-right"
                     placeholder='["blue", "red"]'
-                    :value.sync="form_constraints[constraint].not_ownership"
+                    v-model:value="form_constraints[constraint].not_ownership"
                     :action="function(val){
                         try{form_constraints[constraint].metrics.not_ownership = JSON.parse(val)}
                         catch(e){
