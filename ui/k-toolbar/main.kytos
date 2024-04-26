@@ -294,11 +294,11 @@ module.exports = {
     get_queue_ids(){
       let values = Array(8).fill().map((_, i) => i)
       var queue_ids = [
-        {value: -1, description: "default", selected: true},
+        {value: "-1", description: "default", selected: true},
         {value: null, description: "none", selected: false}
       ]
       values.forEach(
-          x => queue_ids.push({value:x, description:String(x)})
+          x => queue_ids.push({value:x?.toString(), description:String(x)})
       )
       return queue_ids;
     },
@@ -323,7 +323,7 @@ module.exports = {
       let _result = [];
       $.each(this.link_options, function(key, item){
         let _item = {};
-        _item.value = item.value;
+        _item.value = item.value?.toString();
         _item.description = item.description;
         _result.push(_item);
       });
