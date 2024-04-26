@@ -6,6 +6,10 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Added
+=====
+- EVC list now utilizes ``localStorage`` to store ``search_cols`` and make them persistent throughout EVC list usage.
+
 Changed
 =======
 - Updated python environment installation from 3.9 to 3.11
