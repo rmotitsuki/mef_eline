@@ -9,14 +9,12 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 Added
 =====
 - EVC list now utilizes ``localStorage`` to store ``search_cols`` and make them persistent throughout EVC list usage.
+- Added ``kytos/mef_eline.uni_active_updated`` event
 
 Changed
 =======
 - Updated python environment installation from 3.9 to 3.11
 - Updated test dependencies
-
-[2023.2.0] - 2024-02-16
-***********************
 
 [2023.2.0] - 2024-02-16
 ***********************

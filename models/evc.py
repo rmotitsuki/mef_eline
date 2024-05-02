@@ -1720,6 +1720,8 @@ class LinkProtection(EVCDeploy):
             f"Activating EVC {self.id}. Interfaces: "
             f"{interface_dicts}."
         )
+        emit_event(self._controller, "uni_active_updated",
+                   content=map_evc_event_content(self))
         self.sync()
 
     def handle_interface_link_down(self, interface):
@@ -1750,6 +1752,8 @@ class LinkProtection(EVCDeploy):
             f"Deactivating EVC {self.id}. Interfaces: "
             f"{interface_dicts}."
         )
+        emit_event(self._controller, "uni_active_updated",
+                   content=map_evc_event_content(self))
         self.sync()
 
 

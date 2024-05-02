@@ -91,6 +91,24 @@ Event with all evcs that got loaded
     '<evc_id>': <dict>
   }
 
+kytos/mef_eline.uni_active_updated
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event published when an EVC active state changes due to a UNI going up or down
+
+.. code-block:: python3
+   
+  {
+   "evc_id": evc.id,
+   "name": evc.name,
+   "metadata": evc.metadata,
+   "active": evc._active,
+   "enabled": evc._enabled,
+   "uni_a": evc.uni_a.as_dict(),
+   "uni_z": evc.uni_z.as_dict()}
+  }
+
+
 .. TAGs
 
 .. |Stable| image:: https://img.shields.io/badge/stability-stable-green.svg
