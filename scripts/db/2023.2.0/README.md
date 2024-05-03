@@ -1,80 +1,10 @@
-## MEF-ELine's migration scripts
+## MEF-ELine's migration scripts for Kytos version 2023.2.0
 
 This folder contains MEF-ELine's related scripts.
 
-### Data migration from `storehouse` to MongoDB
+<details><summary><h3>Change ``tag_type`` from integer to string type</h3></summary>
 
-[`storehouse_to_mongo.py`](./storehouse_to_mongo.py) is a script to migrate the data entries from MEF-ELine's namespaces from `storehouse` to MongoDB.
-
-#### Pre-requisites
-
-- There's no additional Python libraries dependencies required, other than installing the existing `mef_eline`'s requirements-dev.txt file.
-- Make sure you don't have `kytosd` running with otherwise topology will start writing to MongoDB, and the application could overwrite the data you're trying to insert with this script.
-- Make sure MongoDB replica set is up and running.
-- Export MongoDB related variables that [db/client.py](../db/client.py) uses, make sure the hosts names can be resolved:
-
-```
-export MONGO_USERNAME=
-export MONGO_PASSWORD=
-export MONGO_DBNAME=napps
-export MONGO_HOST_SEEDS="mongo1:27017,mongo2:27018,mongo3:27099"
-```
-
-#### How to use
-
-- Export these two environment variables, based on where storehouse and kytos are installed, if you're running `amlight/kytos:latest` docker image they should be:
-
-```
-export STOREHOUSE_NAMESPACES_DIR=/var/tmp/kytos/storehouse/
-export PYTHONPATH=/var/lib/kytos
-```
-
-- Parametrize the environment variable `CMD` command and execute `storehouse_to_mongo.py` script (the command is passed via an env var to avoid conflicts with `kytosd`, since depending how you set the `PYTHONPATH` it can interfere)
-
-- The following `CMD` commands are available:
-
-```
-insert_evcs
-load_evcs
-```
-
-The `load_*` commands are meant to be used to double check what would actually be loaded, so it's encouraged to try out the load command to confirm the data can be loaded properly, and if they are, feel free to use any of the `insert_*` commands, which will rely internally on the load functions to the either insert or update the documents.
-
-For example, to double check what would be loaded in the EVCs from storehouse namespace `kytos.mef_eline.circuits`:
-
-```
-CMD=load_evcs python3 scripts/storehouse_to_mongo.py
-```
-
-And then, to insert (or update) the EVCs:
-
-```
-CMD=insert_evcs python3 scripts/storehouse_to_mongo.py
-```
-
-### Unset default spf_attribute value
-
-[`002_unset_spf_attribute.py`](./002_unset_spf_attribute.py) is a script to unset both `primary_constraints.spf_attribute` and `secondary_constraints.spf_attribute`. On version 2022.3, this value was explicitly set, so you can use this script to unset this value if you want that spf_attribute follows the default settings.SPF_ATTRIBUTE value.
-
-#### How to use
-
-- Here's an example trying to unset any `primary_constraints.spf_attribute` or  `secondary_constraints.spf_attribute` from all evcs:
-
-```
-priority python3 scripts/002_unset_spf_attribute.py
-```
-
-- Here's an example trying to unset any `primary_constraints.spf_attribute` or  `secondary_constraints.spf_attribute` from all EVCs 'd33539656d8b40,095e1d6f43c745':
-
-```
-EVC_IDS='d33539656d8b40,095e1d6f43c745' priority python3 scripts/002_unset_spf_attribute.py
-```
-
-- After that, `kytosd` should be restarted just so `mef_eline` EVCs can get fully reloaded in memory with the expected primary and secondary constraints, this would be the safest route.
-
-### Change ``tag_type`` from integer to string type
-
-[`003_vlan_type_string.py`](./003_vlan_type_string.py) is a script to change every ``tag_type`` instance from integer to string type. These istances are found in evcs collection from MongoDB.
+[`000_vlan_type_string.py`](./000_vlan_type_string.py) is a script to change every ``tag_type`` instance from integer to string type. These istances are found in evcs collection from MongoDB.
 
 ```
     VLAN = 1 to 'vlan'
@@ -99,18 +29,19 @@ export MONGO_HOST_SEEDS="mongo1:27017,mongo2:27018,mongo3:27099"
 The following `CMD` commands are available:
 
 ```
-CMD=aggregate_int_vlan python3 scripts/003_vlan_type_string.py
+CMD=aggregate_int_vlan python3 scripts/db/2023.2.0/000_vlan_type_string.py
 ```
 `aggregate_int_vlan` command is to see which EVC needs to be changed whether they have an outdated value type for a TAG inside their `uni_a`, `uni_z`, `current_path`, `failover_path`, `backup_path` or `primary_path`.
 
 ```
-CMD=update_database python3 scripts/003_vlan_type_string.py
+CMD=update_database python3 scripts/db/2023.2.0/000_vlan_type_string.py
 ```
 `update_database` changes the value of every outdated TAG from integer to their respective string value.
+</details>
 
 <details><summary><h3>Redeploy symmetric UNI vlans EVPLs </h3></summary>
 
-[`redeploy_evpls_same_vlans.py`](./redeploy_evpls_same_vlans.py) is a CLI script to list and redeploy symmetric (same vlan on both UNIs) EVPLs.
+[`001_redeploy_evpls_same_vlans.py`](./001_redeploy_evpls_same_vlans.py) is a CLI script to list and redeploy symmetric (same vlan on both UNIs) EVPLs.
 
 You should use this script if you want to avoid a redundant `set_vlan` instruction that used to be present in the instruction set and if you are upgrading from `2023.1.0`. This script by triggering an EVC redeploy will force that all flows get pushed and overwritten again, it'll temporarily create traffic disruption. The redeploy in this case is just to force that the flows are pushed right away instead of waiting for a network convergence that might result in the flows getting pushed again.
 
@@ -126,7 +57,7 @@ This script exposes two commands: `list` and `update`.
 - First you want to `list` to double check which symmetric EVPLs have been found. If you need to just include a subset you can use the ``--included_evcs_filter`` string passing a string of evc ids separated by comma value.
 
 ```shell
-python scripts/redeploy_evpls_same_vlans.py list --included_evcs_filter 'dc533ac942a541,eab1fedf3d654f' | jq
+python scripts/db/2023.2.0/001_redeploy_evpls_same_vlans.py list --included_evcs_filter 'dc533ac942a541,eab1fedf3d654f' | jq
 
 {
   "dc533ac942a541": {
@@ -169,7 +100,7 @@ python scripts/redeploy_evpls_same_vlans.py list --included_evcs_filter 'dc533ac
 - If you're OK with the EVPLs listed on `list`, then you can proceed to `update` to trigger a redeploy. You can also set ``--batch_size`` and ``--batch_sleep_secs`` to control respectively how many EVPLs will be redeployed concurrently and how long to wait after each batch is sent:
 
 ```
-python scripts/redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep_secs 5 --included_evcs_filter 'dc533ac942a541,eab1fedf3d654f'
+python scripts/db/2023.2.0/001_redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep_secs 5 --included_evcs_filter 'dc533ac942a541,eab1fedf3d654f'
 
 2023-11-01 16:29:45,980 - INFO - It'll redeploy 2 EVPL(s) using batch_size 10 and batch_sleep 5
 2023-11-01 16:29:46,123 - INFO - Redeployed evc_id dc533ac942a541
@@ -179,7 +110,7 @@ python scripts/redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep
 - If you want to redeploy all symmetric EVPLs batching 10 EVCs concurrently and waiting for 5 seconds per batch:
 
 ```
-python scripts/redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep_secs 5
+python scripts/db/2023.2.0/001_redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep_secs 5
 
 
 2023-11-01 16:23:11,081 - INFO - It'll redeploy 100 EVPL(s) using batch_size 10 and batch_sleep 5
@@ -207,7 +138,4 @@ python scripts/redeploy_evpls_same_vlans.py update --batch_size 10 --batch_sleep
 2023-11-01 16:23:17,555 - INFO - Sleeping for 5...
 
 ```
-</details>
-
-
 </details>
