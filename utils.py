@@ -10,6 +10,7 @@ from napps.kytos.mef_eline.exceptions import DisabledSwitch
 def map_evc_event_content(evc, **kwargs):
     """Returns a set of values from evc to be used for content"""
     return kwargs | {"evc_id": evc.id,
+                     "id": evc.id,
                      "name": evc.name,
                      "metadata": evc.metadata,
                      "active": evc._active,

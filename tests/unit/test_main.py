@@ -1969,6 +1969,7 @@ class TestMain:
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
                 "link": link,
+                "id": "6",
                 "evc_id": "6",
                 "name": "name",
                 "metadata": "mock",
@@ -1980,6 +1981,7 @@ class TestMain:
             call(self.napp.controller, event_name, content={
                 "link": link,
                 "evc_id": "3",
+                "id": "3",
                 "name": "name",
                 "metadata": "mock",
                 "active": "true",
@@ -1990,6 +1992,7 @@ class TestMain:
             call(self.napp.controller, event_name, content={
                 "link": link,
                 "evc_id": "1",
+                "id": "1",
                 "name": "name",
                 "metadata": "mock",
                 "active": "true",
@@ -2005,6 +2008,7 @@ class TestMain:
         emit_event_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
                 "evc_id": "4",
+                "id": "4",
                 "name": "name",
                 "metadata": "mock",
                 "active": "true",
@@ -2050,6 +2054,7 @@ class TestMain:
         self.napp.handle_evc_affected_by_link_down(event)
         emit_event_mock.assert_called_with(
             self.napp.controller, "redeployed_link_down", content={
+                "id": "1",
                 "evc_id": "1",
                 "name": "name_mocked",
                 "metadata": "data_mocked",
@@ -2065,6 +2070,7 @@ class TestMain:
         emit_event_mock.assert_called_with(
             self.napp.controller, "error_redeploy_link_down", content={
                 "evc_id": "2",
+                "id": "2",
                 "name": "mocked_name",
                 "metadata": "mocked_data",
                 "active": "false",
