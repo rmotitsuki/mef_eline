@@ -824,6 +824,9 @@ class Main(KytosNApp):
         evcs_with_failover = []
         evcs_normal = []
         check_failover = []
+
+        failover_evc_flows = {}
+
         for evc in self.get_evcs_by_svc_level():
             with evc.lock:
                 if evc.is_affected_by_link(link):
@@ -853,11 +856,20 @@ class Main(KytosNApp):
                     for dpid, flows in dpid_flows.items():
                         switch_flows.setdefault(dpid, [])
                         switch_flows[dpid].extend(flows)
+                    content = map_evc_event_content(
+                        evc,
+                        flows={k: v.copy() for k, v in switch_flows.items()}
+                    )
+                    failover_evc_flows[evc.id] = content
                     evcs_with_failover.append(evc)
                 elif evc.is_failover_path_affected_by_link(link):
                     evc.old_path = evc.failover_path
                     evc.failover_path = Path([])
                     check_failover.append(evc)
+
+        if failover_evc_flows:
+            emit_event(self.controller, "failover_link_down",
+                       content=failover_evc_flows)
 
         while switch_flows:
             offset = settings.BATCH_SIZE or None
@@ -888,11 +900,6 @@ class Main(KytosNApp):
         evcs_to_update = []
         for evc in evcs_with_failover:
             evcs_to_update.append(evc.as_dict())
-            emit_event(
-                self.controller,
-                "redeployed_link_down",
-                content=map_evc_event_content(evc)
-            )
             log.info(
                 f"{evc} redeployed with failover due to link down {link.id}"
             )
