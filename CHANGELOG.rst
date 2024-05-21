@@ -10,6 +10,7 @@ Added
 =====
 - EVC list now utilizes ``localStorage`` to store ``search_cols`` and make them persistent throughout EVC list usage.
 - Added ``kytos/mef_eline.uni_active_updated`` event
+- Included "id" on EVC mapped content to normalize it with the other models
 
 Changed
 =======

@@ -99,6 +99,7 @@ Event published when an EVC active state changes due to a UNI going up or down
 .. code-block:: python3
    
   {
+   "id", evc.id,
    "evc_id": evc.id,
    "name": evc.name,
    "metadata": evc.metadata,
