@@ -16,7 +16,7 @@ from napps.kytos.mef_eline.exceptions import InvalidPath  # NOQA pycodestyle
 from napps.kytos.mef_eline.models import (  # NOQA pycodestyle
     DynamicPathManager, Path)
 from napps.kytos.mef_eline.tests.helpers import (  # NOQA pycodestyle
-    MockResponse, get_link_mocked, get_mocked_requests, id_to_interface_mock)
+    MockResponse, get_link_mocked, id_to_interface_mock)
 
 
 class TestPath():
@@ -54,9 +54,7 @@ class TestPath():
         current_path = Path()
         assert current_path.status == EntityStatus.DISABLED
 
-    @patch("requests.get", side_effect=get_mocked_requests)
-    def test_status_case_2(self, requests_mocked):
-        # pylint: disable=unused-argument
+    def test_status_case_2(self):
         """Test if link status is DOWN."""
         link1 = get_link_mocked()
         link2 = get_link_mocked()
@@ -84,65 +82,56 @@ class TestPath():
             200,
         )
 
-    @patch("requests.get", side_effect=_mocked_requests_get_status_case_4)
-    def test_status_case_4(self, requests_mocked):
-        # pylint: disable=unused-argument
+    def test_status_case_4(self):
         """Test if link status is UP."""
-        link1 = get_link_mocked()
-        link2 = get_link_mocked()
+        link1 = get_link_mocked(status=EntityStatus.UP)
+        link2 = get_link_mocked(status=EntityStatus.UP)
         link1.id = "def"
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
         assert current_path.status == EntityStatus.UP
 
-    # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_5(self):
-        return MockResponse(
-            {
-                "links": {
-                    "abc": {"active": True, "enabled": True},
-                    "def": {"active": False, "enabled": False},
-                }
-            },
-            200,
-        )
-
-    @patch("requests.get", side_effect=_mocked_requests_get_status_case_5)
-    def test_status_case_5(self, requests_mocked):
-        # pylint: disable=unused-argument
+    def test_status_case_5(self):
         """Test if link status is UP."""
-        link1 = get_link_mocked()
-        link2 = get_link_mocked()
+        link1 = get_link_mocked(status=EntityStatus.UP)
+        link2 = get_link_mocked(status=EntityStatus.DISABLED)
         link1.id = "def"
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
         assert current_path.status == EntityStatus.DISABLED
 
-    # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_6(self):
-        return MockResponse(
-            {
-                "links": {
-                    "abc": {"active": False, "enabled": False},
-                    "def": {"active": False, "enabled": True},
-                }
-            },
-            200,
-        )
-
-    @patch("requests.get", side_effect=_mocked_requests_get_status_case_6)
-    def test_status_case_6(self, requests_mocked):
-        # pylint: disable=unused-argument
+    def test_status_case_6(self):
         """Test if link status is UP."""
-        link1 = get_link_mocked()
-        link2 = get_link_mocked()
+        link1 = get_link_mocked(status=EntityStatus.DISABLED)
+        link2 = get_link_mocked(status=EntityStatus.UP)
         link1.id = "def"
         link2.id = "abc"
         links = [link1, link2]
         current_path = Path(links)
         assert current_path.status == EntityStatus.DISABLED
+
+    def test_status_case_7(self):
+        """Test if link status is DOWN if has one link down."""
+        link1 = get_link_mocked(status=EntityStatus.UP)
+        link2 = get_link_mocked(status=EntityStatus.DOWN)
+        link1.id = "def"
+        link2.id = "abc"
+        links = [link1, link2]
+        current_path = Path(links)
+        assert current_path.status == EntityStatus.DOWN
+
+    def test_status_case_8(self):
+        """Test if status is DOWN if has one endpoint link is mismatched."""
+        link1 = get_link_mocked(status=EntityStatus.UP)
+        link1.endpoint_a.link = None
+        link2 = get_link_mocked(status=EntityStatus.UP)
+        link1.id = "def"
+        link2.id = "abc"
+        links = [link1, link2]
+        current_path = Path(links)
+        assert current_path.status == EntityStatus.DOWN
 
     def test_compare_same_paths(self):
         """Test compare paths with same links."""
