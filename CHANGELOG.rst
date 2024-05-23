@@ -16,6 +16,7 @@ Changed
 =======
 - Updated python environment installation from 3.9 to 3.11
 - Updated test dependencies
+- Optimized ``Path.status`` not to depend on a HTTP request
 
 [2023.2.0] - 2024-02-16
 ***********************
