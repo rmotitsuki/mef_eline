@@ -27,6 +27,19 @@ def emit_event(controller, name, context="kytos/mef_eline", content=None,
     controller.buffers.app.put(event, timeout=timeout)
 
 
+def merge_flow_dicts(
+    dst: dict[str, list[dict]], *srcs: list[dict[str, list[dict]]]
+) -> dict[str, list[dict]]:
+    """Merge srcs dict flows into dst."""
+    for src in srcs:
+        for k, v in src.items():
+            if k not in dst:
+                dst[k] = v
+            else:
+                dst[k].extend(v)
+    return dst
+
+
 async def aemit_event(controller, name, content):
     """Send an asynchronous event"""
     event = KytosEvent(name=name, content=content)

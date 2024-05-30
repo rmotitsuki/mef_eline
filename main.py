@@ -824,8 +824,7 @@ class Main(KytosNApp):
         evcs_with_failover = []
         evcs_normal = []
         check_failover = []
-
-        failover_evc_flows = {}
+        failover_event_contents = {}
 
         for evc in self.get_evcs_by_svc_level():
             with evc.lock:
@@ -856,20 +855,19 @@ class Main(KytosNApp):
                     for dpid, flows in dpid_flows.items():
                         switch_flows.setdefault(dpid, [])
                         switch_flows[dpid].extend(flows)
-                    content = map_evc_event_content(
+                    evcs_with_failover.append(evc)
+                    failover_event_contents[evc.id] = map_evc_event_content(
                         evc,
                         flows={k: v.copy() for k, v in switch_flows.items()}
                     )
-                    failover_evc_flows[evc.id] = content
-                    evcs_with_failover.append(evc)
                 elif evc.is_failover_path_affected_by_link(link):
                     evc.old_path = evc.failover_path
                     evc.failover_path = Path([])
                     check_failover.append(evc)
 
-        if failover_evc_flows:
+        if failover_event_contents:
             emit_event(self.controller, "failover_link_down",
-                       content=failover_evc_flows)
+                       content=failover_event_contents)
 
         while switch_flows:
             offset = settings.BATCH_SIZE or None
@@ -956,11 +954,17 @@ class Main(KytosNApp):
     def handle_cleanup_evcs_old_path(self, event):
         """Handle cleanup evcs old path."""
         evcs = event.content.get("evcs", [])
+        event_contents: dict[str, list[dict]] = {}
         for evc in evcs:
             if not evc.old_path:
                 continue
-            evc.remove_path_flows(evc.old_path)
+            removed_flows = evc.remove_path_flows(evc.old_path)
+            content = map_evc_event_content(evc, removed_flows=removed_flows)
+            event_contents[evc.id] = content
             evc.old_path = Path([])
+        if event_contents:
+            emit_event(self.controller, "failover_old_path",
+                       content=event_contents)
 
     @listen_to("kytos/topology.topology_loaded")
     def on_topology_loaded(self, event):  # pylint: disable=unused-argument
