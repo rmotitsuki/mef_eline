@@ -123,6 +123,7 @@ module.exports = {
         "component": 'kytos-mef_eline-k-info-panel-show_circuit',
         "content": {'id':id},
         "icon": "gear",
+        "maximized": true,
         "title": "Circuit Details",
         "subtitle": "by kytos/mef_eline"
       }
@@ -392,7 +393,7 @@ module.exports = {
   width: 12px;
 }
 
-.k-info-panel-max {
-  width: calc(100% - 305px);
+.k-info-panel-max:has(.mef_container) {
+  width: calc(100% - 305px) !important; /* overrides the width of the parent panel if it loads the mef_eline container */
 }
 </style>

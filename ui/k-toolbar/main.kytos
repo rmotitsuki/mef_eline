@@ -411,6 +411,7 @@ module.exports = {
             component: 'kytos-mef_eline-k-info-panel-list_connections',
             content: {},
             icon: "desktop",
+            maximized: true,
             title: "View Connections",
             subtitle: "by kytos/mef_eline"
         };
