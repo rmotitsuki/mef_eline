@@ -907,9 +907,9 @@ class EVCDeploy(EVCBase):
         if not self.is_eligible_for_failover_path():
             return False
 
-        out_removed_flows, out_new_flows = {}, {}
+        out_new_flows: dict[str, list[dict]] = {}
         reason = ""
-        out_new_flows = self.remove_path_flows(self.failover_path)
+        out_removed_flows = self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
 
         for use_path in self.get_failover_path_candidates():
