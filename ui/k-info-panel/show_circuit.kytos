@@ -235,7 +235,7 @@
           </div>
         </template>
       </div>
-      <div class="mef-back-button">
+      <div class="mef-bottom-buttons">
         <k-button tooltip="List installed EVCs" title="< Back to list" @click="showInfoPanel">
         </k-button>
         <k-button tooltip="Redeploy EVC" title="Redeploy EVC" @click="redeployEvc">
