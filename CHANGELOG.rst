@@ -18,6 +18,10 @@ Changed
 - Updated test dependencies
 - Optimized ``Path.status`` not to depend on a HTTP request
 
+Fixed
+=====
+- Only redeploy when handling ``kytos/topology.link_up`` if a dynamic EVC isn't active
+
 [2023.2.0] - 2024-02-16
 ***********************
 
