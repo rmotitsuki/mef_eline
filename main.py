@@ -959,7 +959,11 @@ class Main(KytosNApp):
             if not evc.old_path:
                 continue
             removed_flows = evc.remove_path_flows(evc.old_path)
-            content = map_evc_event_content(evc, removed_flows=removed_flows)
+            content = map_evc_event_content(
+                evc,
+                removed_flows=removed_flows,
+                current_path=evc.current_path.as_dict(),
+            )
             event_contents[evc.id] = content
             evc.old_path = Path([])
         if event_contents:

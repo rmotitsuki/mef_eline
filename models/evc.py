@@ -949,6 +949,7 @@ class EVCDeploy(EVCBase):
                     flows=out_new_flows,
                     removed_flows=out_removed_flows,
                     error_reason=reason,
+                    current_path=self.current_path.as_dict(),
                 )
             }
             emit_event(self._controller, "failover_deployed", content=content)
