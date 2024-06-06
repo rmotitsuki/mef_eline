@@ -832,6 +832,20 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         assert self.evc.deploy_to_backup_path.call_count == 2
         assert self.evc.deploy_to_path.call_count == 5
 
+    async def test_handle_link_up_case_7(self):
+        """Test handle_link_up method."""
+        return_false_mock = MagicMock(return_value=False)
+        self.evc.is_using_primary_path = return_false_mock
+        self.evc.primary_path.is_affected_by_link = return_false_mock
+        self.evc.is_using_dynamic_path = return_false_mock
+        self.evc.backup_path.is_affected_by_link = return_false_mock
+        self.evc.dynamic_backup_path = True
+        self.evc.activate()
+        assert self.evc.is_active()
+        self.evc.deploy_to_path = MagicMock(return_value=True)
+        assert not self.evc.handle_link_up(MagicMock())
+        assert self.evc.deploy_to_path.call_count == 0
+
     async def test_get_interface_from_switch(self):
         """Test get_interface_from_switch"""
         interface = id_to_interface_mock('00:01:1')
