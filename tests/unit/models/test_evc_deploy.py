@@ -330,7 +330,10 @@ class TestEVC():
         send_flow_mods_mock.assert_not_called()
 
         # pylint: disable=protected-access
-        evc._install_uni_flows(evc.primary_links)
+        uni_flows = evc._install_uni_flows(evc.primary_links)
+        assert uni_flows
+        assert list(uni_flows.keys()) == [evc.uni_a.interface.switch.id,
+                                          evc.uni_z.interface.switch.id]
 
         expected_flow_mod_a = [
             {
@@ -496,7 +499,10 @@ class TestEVC():
         evc = TestEVC.create_evc_inter_switch()
 
         # pylint: disable=protected-access
-        evc._install_nni_flows(evc.primary_links)
+        nni_flows = evc._install_nni_flows(evc.primary_links)
+        assert nni_flows
+        dpid = evc.primary_links[0].endpoint_b.switch.id
+        assert list(nni_flows.keys()) == [dpid]
 
         in_vlan = evc.primary_links[0].get_metadata("s_vlan").value
         out_vlan = evc.primary_links[-1].get_metadata("s_vlan").value
@@ -709,6 +715,7 @@ class TestEVC():
         assert remove_current_flows.call_count == 2
         assert deployed is False
 
+    @patch("napps.kytos.mef_eline.models.evc.emit_event")
     @patch("napps.kytos.mef_eline.models.evc.EVC.get_failover_path_candidates")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
@@ -722,6 +729,7 @@ class TestEVC():
             install_uni_flows_mock,
             install_nni_flows_mock,
             get_failover_path_candidates_mock,
+            emit_event_mock,
         ) = args
 
         # case1: early return intra switch
@@ -751,6 +759,8 @@ class TestEVC():
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
         assert sync_mock.call_count == 1
+        assert emit_event_mock.call_count == 1
+        assert emit_event_mock.call_args[0][1] == "failover_deployed"
 
         # case 4: failed to setup failover_path - No Tag available
         evc2.failover_path = []
@@ -1363,7 +1373,12 @@ class TestEVC():
             },
         ]
 
-        evc.remove_path_flows(evc.primary_links)
+        dpid_flows = evc.remove_path_flows(evc.primary_links)
+        assert dpid_flows
+        assert len(dpid_flows) == 3
+        assert sum(len(flows) for flows in dpid_flows.values()) == len(
+            expected_flows_1
+        ) + len(expected_flows_2) + len(expected_flows_3)
         send_flow_mods_mock.assert_has_calls([
             call(1, expected_flows_1, 'delete', force=True),
             call(2, expected_flows_2, 'delete', force=True),

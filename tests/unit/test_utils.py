@@ -8,11 +8,12 @@ from napps.kytos.mef_eline.exceptions import DisabledSwitch
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace,
-                                         get_vlan_tags_and_masks, map_dl_vlan)
+                                         get_vlan_tags_and_masks, map_dl_vlan,
+                                         merge_flow_dicts)
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
-class TestUtils():
+class TestUtils:
     """Test utility functions."""
 
     @pytest.mark.parametrize(
@@ -140,3 +141,25 @@ class TestUtils():
         # There is no disabled component
         uni_z.interface.status = EntityStatus.UP
         check_disabled_component(uni_a, uni_z)
+
+    @pytest.mark.parametrize(
+        "src1,src2,src3,expected",
+        [
+            (
+                {"dpida": [10, 11, 12]},
+                {"dpida": [11, 20, 21]},
+                {"dpidb": [30, 31, 32]},
+                {"dpida": [10, 11, 12, 11, 20, 21], "dpidb": [30, 31, 32]},
+            ),
+            (
+                {"dpida": [10, 11, 12]},
+                {"dpida": [11, 20, 21], "dpidb": [40, 41, 42]},
+                {"dpidb": [30, 31, 32]},
+                {"dpida": [10, 11, 12, 11, 20, 21],
+                 "dpidb": [40, 41, 42, 30, 31, 32]},
+            ),
+        ]
+    )
+    def test_merge_flow_dicts(self, src1, src2, src3, expected) -> None:
+        """test merge flow dicts."""
+        assert merge_flow_dicts({}, src1, src2, src3) == expected

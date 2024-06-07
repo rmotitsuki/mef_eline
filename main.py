@@ -816,7 +816,9 @@ class Main(KytosNApp):
         """Change circuit when link is down or under_mantenance."""
         self.handle_link_down(event)
 
-    def handle_link_down(self, event):  # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-locals
+    def handle_link_down(self, event):
         """Change circuit when link is down or under_mantenance."""
         link = event.content["link"]
         log.info("Event handle_link_down %s", link)
