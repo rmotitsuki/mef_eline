@@ -109,6 +109,73 @@ Event published when an EVC active state changes due to a UNI going up or down
    "uni_z": evc.uni_z.as_dict()}
   }
 
+kytos/mef_eline.failover_deployed
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event published when an EVC failover_path gets deployed. ``flows`` are the new deployed flows, and ``removed_flows`` are the removed ones.
+
+.. code-block:: python3
+   
+  {
+   evc.id: {
+     "id", evc.id,
+     "evc_id": evc.id,
+     "name": evc.name,
+     "metadata": evc.metadata,
+     "active": evc._active,
+     "enabled": evc._enabled,
+     "uni_a": evc.uni_a.as_dict(),
+     "uni_z": evc.uni_z.as_dict(),
+     "flows": [],
+     "removed_flows": [],
+     "error_reason": string,
+     "current_path": evc.current_path.as_dict(),
+   }
+  }
+
+kytos/mef_eline.failover_link_down
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event published when an EVC failover_path switches over. ``flows`` are the new deployed flows.
+
+.. code-block:: python3
+   
+  {
+   evc.id: {
+     "id", evc.id,
+     "evc_id": evc.id,
+     "name": evc.name,
+     "metadata": evc.metadata,
+     "active": evc._active,
+     "enabled": evc._enabled,
+     "uni_a": evc.uni_a.as_dict(),
+     "uni_z": evc.uni_z.as_dict(),
+     "flows": [],
+   }
+  }
+
+kytos/mef_eline.failover_old_path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event published when an EVC failover related old path gets removed (cleaned up). ``removed_flows`` are the removed flows.
+
+.. code-block:: python3
+   
+  {
+   evc.id: {
+     "id", evc.id,
+     "evc_id": evc.id,
+     "name": evc.name,
+     "metadata": evc.metadata,
+     "active": evc._active,
+     "enabled": evc._enabled,
+     "uni_a": evc.uni_a.as_dict(),
+     "uni_z": evc.uni_z.as_dict(),
+     "removed_flows": [],
+     "current_path": evc.current_path.as_dict(),
+   }
+  }
+
 
 .. TAGs
 
