@@ -18,6 +18,7 @@ Changed
 - Updated python environment installation from 3.9 to 3.11
 - Updated test dependencies
 - Optimized ``Path.status`` not to depend on a HTTP request
+- Upgraded UI framework to Vue3 
 
 Fixed
 =====

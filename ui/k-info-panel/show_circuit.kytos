@@ -3,17 +3,17 @@
       <div class="mef-buttons">
         <div class="mef-buttons-left">
           <div class="mef-back-button">
-            <k-button tooltip="List installed EVCs" title="< Back to list" :on_click="showInfoPanel">
+            <k-button tooltip="List installed EVCs" title="< Back to list" @click="showInfoPanel">
             </k-button>
           </div>
         </div>
         <div class="mef-buttons-right">
           <div class="mef-save-button">
-            <k-button tooltip="Save EVC" title="Save EVC" :on_click="saveEvc">
+            <k-button tooltip="Save EVC" title="Save EVC" @click="saveEvc">
             </k-button>
           </div>
           <div class="mef-delete-button">
-            <k-button tooltip="Delete EVC" title="Delete EVC" :on_click="showModalDeleteEvc">
+            <k-button tooltip="Delete EVC" title="Delete EVC" @click="showModalDeleteEvc">
             </k-button>
           </div>
         </div>
@@ -25,7 +25,7 @@
               <tr>
                 <th>{{cindex}}</th>
                 <td>
-                  <k-input v-if="column.editable" :id="column.name" :value.sync="column.value"></k-input>
+                  <k-input v-if="column.editable" :id="column.name" v-model:value="column.value"></k-input>
                   <span v-else>
                     {{column.value}}
                   </span>
@@ -61,12 +61,12 @@
               <tr>
                 <th>{{cindex}}</th>
                 <td>
-                  <k-input v-if="column.editable" :id="column.name" :value.sync="column.value"></k-input>
+                  <k-input v-if="column.editable" :id="column.name" v-model:value="column.value"></k-input>
                   <span v-else-if="column.editable === false">
                     {{column.value}}
                   </span>
                   <k-dropdown v-else-if="column.name === 'queue_id'" :options="queue_options(column)"
-                   :value.sync="column.value">
+                   v-model:value="column.value">
                   </k-dropdown>
                 </td>
               </tr>
@@ -95,19 +95,12 @@
                   <template v-for="col in data">
                     <td>
                       <k-input-auto
-                        :value.sync="col.value"
+                        v-model:value="col.value"
                         title="col.name"
                         :candidates="dpids"
                         @focus="loadDpidNames"
-                        @blur="onblur_dpid"
-                        v-if="compexists && (col.name=='uni_a' || col.name=='uni_z')">
+                        @blur="onblur_dpid">
                       </k-input-auto>
-                      <template v-else>
-                        <k-input v-if="col.editable" :id="col.name" :value.sync="col.value"></k-input>
-                        <span v-else>
-                          {{col.value}}
-                        </span>
-                      </template>
                     </td>
                   </template>
                 </tr>
@@ -153,7 +146,7 @@
                     <tr>
                     <td>
                       <k-select :options="get_link_options()"
-                      :value.sync=p_constraint.undesired_links>
+                      v-model:value=p_constraint.undesired_links>
                       </k-select>
                     </td>
                     </tr>
@@ -166,13 +159,13 @@
                         <th>{{constraint_labels['spf_attribute']}}</th>
                         <td> 
                           <k-dropdown :options="get_spf_attribute_options(p_constraint_index)" 
-                           :value.sync=p_constraint.spf_attribute></k-dropdown>
+                           v-model:value=p_constraint.spf_attribute></k-dropdown>
                         </td>
                       </tr>
                       <tr>
                         <th>{{constraint_labels['spf_max_path_cost']}}</th>
                         <td>
-                          <k-input :value.sync=p_constraint.spf_max_path_cost></k-input>
+                          <k-input v-model:value=p_constraint.spf_max_path_cost></k-input>
                         </td>
                       </tr>
                       <tr>
@@ -182,7 +175,7 @@
                           </span>
                         </th>
                         <td>
-                          <k-input :value.sync=p_constraint.minimum_flexible_hits></k-input>
+                          <k-input v-model:value=p_constraint.minimum_flexible_hits></k-input>
                         </td>
                       </tr>
                     </table>
@@ -201,7 +194,7 @@
                                 <tr>
                                   <th>{{constraint_labels["flexible_metrics."+metric_index]}}</th>
                                   <td style="padding:0 5px;">
-                                    <k-input :value.sync="p_constraint.mandatory_metrics[metric_index]"></k-input>
+                                    <k-input v-model:value="p_constraint.mandatory_metrics[metric_index]"></k-input>
                                   </td>
                                 </tr>
                               </template>
@@ -226,7 +219,7 @@
                               <tr>
                                 <th>{{constraint_labels["flexible_metrics."+metric_index]}}</th>
                                 <td style="padding:0 5px;">
-                                  <k-input :value.sync="p_constraint.flexible_metrics[metric_index]"></k-input>
+                                  <k-input v-model:value="p_constraint.flexible_metrics[metric_index]"></k-input>
                                 </td>
                               </tr>
                             </template>
@@ -242,12 +235,11 @@
           </div>
         </template>
       </div>
-
       <div class="mef-bottom-buttons">
-          <k-button tooltip="List installed EVCs" title="< Back to list" :on_click="showInfoPanel">
-          </k-button>
-          <k-button tooltip="Redeploy EVC" title="Redeploy EVC" :on_click="redeployEvc">
-          </k-button>
+        <k-button tooltip="List installed EVCs" title="< Back to list" @click="showInfoPanel">
+        </k-button>
+        <k-button tooltip="Redeploy EVC" title="Redeploy EVC" @click="redeployEvc">
+        </k-button>
       </div>
       <template v-if="showDelModal">
         <div class="modal-mask">
@@ -264,9 +256,9 @@
               </div>
               <div class="modal-footer">
                 <slot name="footer">
-                  <k-button tooltip="Cancel" title="Cancel" :on_click="modalClose">
+                  <k-button tooltip="Cancel" title="Cancel" @click="modalClose">
                   </k-button>
-                  <k-button id="modalOK" tooltip="Delete" title="Delete" :on_click="modalOK">
+                  <k-button id="modalOK" tooltip="Delete" title="Delete" @click="modalOK">
                   </k-button>
                 </slot>
               </div>
@@ -362,10 +354,11 @@ module.exports = {
           component: 'kytos-mef_eline-k-info-panel-list_connections',
           content: {},
           icon: "desktop",
+          maximized: true,
           title: "View Connections",
           subtitle: "by kytos/mef_eline"
       }
-      this.$kytos.$emit("showInfoPanel", listConnections);
+      this.$kytos.eventBus.$emit("showInfoPanel", listConnections);
     },
     showModalDeleteEvc: function() {
       /**
@@ -416,7 +409,7 @@ module.exports = {
             title: 'Error loading EVC.',
             description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
     deleteEVC: function() {
@@ -439,7 +432,7 @@ module.exports = {
             title: 'Error deleting EVC.',
             description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
     load_topology(){
@@ -640,7 +633,7 @@ module.exports = {
           title: 'Error loading EVC names.',
           description: "Request failed: " + textStatus
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
 
@@ -888,7 +881,7 @@ module.exports = {
           title: 'EVC id: ' + data[id].id + ' | name: ' + data[id].name + ' updated.',
           description: ''
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
         _this.loadEVC(_this.content.id);
       });
       request.fail(function(data) {
@@ -896,7 +889,7 @@ module.exports = {
           title: 'Update EVC failed',
           description: 'Error updating EVC ' + id +'. ' + data.responseJSON.description + parse_error
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
   },
@@ -919,7 +912,7 @@ module.exports = {
     }
     ['primary_constraints', 'secondary_constraints'].forEach( s => {
         _this.form_constraints[s] = {
-          'undesired_links': '',
+          'undesired_links': [],
           'spf_attribute': '',
           'spf_max_path_cost': '',
           'minimum_flexible_hits': '',
@@ -944,11 +937,7 @@ module.exports = {
         };
       });
   },
-  created() {
-    // Check if the UI component k-input-auto exists
-    compexists = this.$root.$options.components['k-input-auto'] != null;
-  },
-  destroyed() {
+  unmounted() {
     $('.k-info-panel').removeClass('mef-k-info-panel');
   }
 }
