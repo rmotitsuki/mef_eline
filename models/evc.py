@@ -26,7 +26,8 @@ from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace, emit_event,
                                          make_uni_list, map_dl_vlan,
-                                         map_evc_event_content)
+                                         map_evc_event_content,
+                                         merge_flow_dicts)
 
 from .path import DynamicPathManager, Path
 
@@ -739,12 +740,14 @@ class EVCDeploy(EVCBase):
         if sync:
             self.sync()
 
-    def remove_path_flows(self, path=None, force=True):
-        """Remove all flows from path."""
-        if not path:
-            return
+    def remove_path_flows(
+        self, path=None, force=True
+    ) -> dict[str, list[dict]]:
+        """Remove all flows from path, and return the removed flows."""
+        dpid_flows_match: dict[str, list[dict]] = {}
 
-        dpid_flows_match = {}
+        if not path:
+            return dpid_flows_match
 
         try:
             nni_flows = self._prepare_nni_flows(path)
@@ -792,6 +795,8 @@ class EVCDeploy(EVCBase):
             path.make_vlans_available(self._controller)
         except KytosTagError as err:
             log.error(f"Error when removing path flows: {err}")
+
+        return dpid_flows_match
 
     @staticmethod
     def links_zipped(path=None):
@@ -902,9 +907,11 @@ class EVCDeploy(EVCBase):
         if not self.is_eligible_for_failover_path():
             return False
 
+        out_new_flows: dict[str, list[dict]] = {}
         reason = ""
-        self.remove_path_flows(self.failover_path)
+        out_removed_flows = self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
+
         for use_path in self.get_failover_path_candidates():
             if not use_path:
                 continue
@@ -919,18 +926,33 @@ class EVCDeploy(EVCBase):
 
         try:
             if use_path:
-                self._install_nni_flows(use_path)
-                self._install_uni_flows(use_path, skip_in=True)
+                _nni_flows = self._install_nni_flows(use_path)
+                out_new_flows = merge_flow_dicts(out_new_flows, _nni_flows)
+                _uni_flows = self._install_uni_flows(use_path, skip_in=True)
+                out_new_flows = merge_flow_dicts(out_new_flows, _uni_flows)
         except FlowModException as err:
             reason = "Error deploying failover path"
             log.error(
                 f"{reason} for {self}. FlowManager error: {err}"
             )
-            self.remove_path_flows(use_path)
+            _rmed_flows = self.remove_path_flows(use_path)
+            out_new_flows = merge_flow_dicts(out_new_flows, _rmed_flows)
             use_path = Path([])
 
         self.failover_path = use_path
         self.sync()
+
+        if out_new_flows or out_removed_flows:
+            content = {
+                self.id: map_evc_event_content(
+                    self,
+                    flows=out_new_flows,
+                    removed_flows=out_removed_flows,
+                    error_reason=reason,
+                    current_path=self.current_path.as_dict(),
+                )
+            }
+            emit_event(self._controller, "failover_deployed", content=content)
 
         if not use_path:
             log.warning(
@@ -1064,10 +1086,14 @@ class EVCDeploy(EVCBase):
             nni_flows[in_endpoint.switch.id] = flows
         return nni_flows
 
-    def _install_nni_flows(self, path=None):
+    def _install_nni_flows(
+        self, path=None
+    ) -> dict[str, list[dict]]:
         """Install NNI flows."""
-        for dpid, flows in self._prepare_nni_flows(path).items():
+        nni_flows = self._prepare_nni_flows(path)
+        for dpid, flows in nni_flows.items():
             self._send_flow_mods(dpid, flows)
+        return nni_flows
 
     @staticmethod
     def _get_value_from_uni_tag(uni: UNI):
@@ -1184,12 +1210,16 @@ class EVCDeploy(EVCBase):
 
         return uni_flows
 
-    def _install_uni_flows(self, path=None, skip_in=False, skip_out=False):
+    def _install_uni_flows(
+        self, path=None, skip_in=False, skip_out=False
+    ) -> dict[str, list[dict]]:
         """Install UNI flows."""
         uni_flows = self._prepare_uni_flows(path, skip_in, skip_out)
 
         for (dpid, flows) in uni_flows.items():
             self._send_flow_mods(dpid, flows)
+
+        return uni_flows
 
     @staticmethod
     def _send_flow_mods(dpid, flow_mods, command='flows', force=False):

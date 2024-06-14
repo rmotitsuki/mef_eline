@@ -2004,19 +2004,8 @@ class TestMain:
         self.napp.mongo_controller.update_evcs.assert_called_with(
             [{"id": "5"}, {"id": "4"}, {"id": "2"}]
         )
-        event_name = "redeployed_link_down"
-        emit_event_mock.assert_has_calls([
-            call(self.napp.controller, event_name, content={
-                "evc_id": "4",
-                "id": "4",
-                "name": "name",
-                "metadata": "mock",
-                "active": "true",
-                "enabled": "true",
-                "uni_a": uni.as_dict(),
-                "uni_z": uni.as_dict(),
-            }),
-        ])
+        event_name = "failover_link_down"
+        assert emit_event_mock.call_args_list[0][0][1] == event_name
 
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_evc_affected_by_link_down(self, emit_event_mock):
@@ -2080,17 +2069,33 @@ class TestMain:
             }
         )
 
-    def test_cleanup_evcs_old_path(self):
+    def test_cleanup_evcs_old_path(self, monkeypatch):
         """Test handle_cleanup_evcs_old_path method."""
-        evc1 = create_autospec(EVC, id="1", old_path=["1"])
-        evc2 = create_autospec(EVC, id="2", old_path=["2"])
-        evc3 = create_autospec(EVC, id="3", old_path=[])
+        current_path, map_evc_content, emit_event = [
+            MagicMock(), MagicMock(), MagicMock()
+        ]
+        monkeypatch.setattr(
+            "napps.kytos.mef_eline.main.map_evc_event_content",
+            map_evc_content
+        )
+        monkeypatch.setattr(
+            "napps.kytos.mef_eline.main.emit_event",
+            emit_event
+        )
+        evc1 = create_autospec(EVC, id="1", old_path=["1"],
+                               current_path=current_path)
+        evc2 = create_autospec(EVC, id="2", old_path=["2"],
+                               current_path=current_path)
+        evc3 = create_autospec(EVC, id="3", old_path=[], current_path=[])
 
         event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
         self.napp.handle_cleanup_evcs_old_path(event)
         evc1.remove_path_flows.assert_called_with(["1"])
         evc2.remove_path_flows.assert_called_with(["2"])
         evc3.remove_path_flows.assert_not_called()
+        assert emit_event.call_count == 1
+        assert emit_event.call_args[0][1] == "failover_old_path"
+        assert len(emit_event.call_args[1]["content"]) == 2
 
     async def test_add_metadata(self):
         """Test method to add metadata"""
