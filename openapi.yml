@@ -699,9 +699,6 @@ components:
           $ref: '#/components/schemas/Endpoint'
         name:
           type: string
-        request_time:
-          type: string
-          format: date-time
         start_date:
           type: string
           format: date-time
@@ -715,12 +712,6 @@ components:
           description: "QoS Egress Queue ID. Value -1 can be use to set this field to default."
           minimum: -1
           maximum: 7
-        flow_removed_at:
-          type: string
-          format: date-time
-        execution_rounds:
-          type: integer
-          format: int32
         bandwidth:
           type: integer
           format: int64
@@ -767,7 +758,7 @@ components:
             $ref: '#/components/schemas/CircuitSchedule'
         metadata:
           type: object
-        enable:
+        enabled:
           type: boolean
 
     Tag: # Can be referenced via '#/components/schemas/Tag'

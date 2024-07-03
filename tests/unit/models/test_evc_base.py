@@ -45,17 +45,29 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
         ]
         assert EVC.attributes_requiring_redeploy == expected
 
-    def test_expeted_read_only_attributes(self) -> None:
-        """Test expected read_only_attributes."""
+    def test_expected_updatable_attributes(self) -> None:
+        """Test expected updatable_attributes."""
         expected = [
-            "creation_time",
-            "active",
-            "current_path",
-            "failover_path",
-            "_id",
-            "archived",
+            "uni_a",
+            "uni_z",
+            "name",
+            "start_date",
+            "end_date",
+            "queue_id",
+            "bandwidth",
+            "primary_path",
+            "backup_path",
+            "dynamic_backup_path",
+            "primary_constraints",
+            "secondary_constraints",
+            "owner",
+            "sb_priority",
+            "service_level",
+            "circuit_scheduler",
+            "metadata",
+            "enabled"
         ]
-        assert EVC.read_only_attributes == expected
+        assert EVC.updatable_attributes == set(expected)
 
     def test_without_uni_a(self):
         """Test if the EVC raises and error with UNI A is required."""
@@ -120,7 +132,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
         with pytest.raises(ValueError) as handle_error:
             evc.update(xyz="abc")
         assert (
-            'The attribute "xyz" is invalid.'
+            "xyz can't be updated."
             in str(handle_error)
         )
 
@@ -135,7 +147,7 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
             "uni_a": get_uni_mocked(is_valid=True),
             "uni_z": get_uni_mocked(is_valid=True),
         }
-        update_dict = {"enable": False}
+        update_dict = {"enabled": False}
         evc = EVC(**attributes)
         evc.update(**update_dict)
         assert evc.is_enabled() is False

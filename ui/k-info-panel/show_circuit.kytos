@@ -784,7 +784,7 @@ module.exports = {
       var parse_error = ""
       let payload = {
         name: this.basics["Name"]["value"],
-        enable: this.flags["Enabled"]["value"],
+        enabled: this.flags["Enabled"]["value"],
         dynamic_backup_path: this.flags["Dynamic backup path"]["value"],                
         sb_priority: parseInt(this.others["Southbound priority"]["value"]) || null,
         bandwidth: parseInt(this.others["Bandwidth"]["value"]) || 0,
