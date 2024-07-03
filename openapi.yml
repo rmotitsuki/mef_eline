@@ -707,8 +707,12 @@ components:
               items:
                 anyOf:
                   - type: array
+                    minItems: 1
+                    items:
+                      anyOf:
+                        - type: integer
                   - type: integer
-              example: [[1, 500], 2096, [3001]]
+          example: [[1, 500], 2096, [3001]]
 
     CircuitSchedule: # Can be referenced via '#/components/schemas/CircuitSchedule'
       type: object

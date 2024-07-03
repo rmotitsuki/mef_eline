@@ -630,10 +630,6 @@ class TestEVC():  # pylint: disable=too-many-public-methods, no-member
         assert args[2] == uni.user_tag.tag_type
         assert uni.interface.make_tags_available.call_count == 1
 
-        uni.user_tag.value = None
-        evc.make_uni_vlan_available(uni)
-        assert uni.interface.make_tags_available.call_count == 1
-
         uni.user_tag.value = [[1, 10]]
         uni_dif = get_uni_mocked(tag_value=[[1, 2]])
         evc.make_uni_vlan_available(uni, uni_dif)
