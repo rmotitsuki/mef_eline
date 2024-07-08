@@ -1361,8 +1361,8 @@ class TestMain:
                 "sb_priority": 3
             },
             {
-                # It works only with 'enable' and not with 'enabled'
-                "enable": True
+                # It works only with 'enabled' and not with 'enable'
+                "enabled": True
             },
             {
                 "sb_priority": 100

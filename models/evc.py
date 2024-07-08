@@ -35,14 +35,6 @@ from .path import DynamicPathManager, Path
 class EVCBase(GenericEntity):
     """Class to represent a circuit."""
 
-    read_only_attributes = [
-        "creation_time",
-        "active",
-        "current_path",
-        "failover_path",
-        "_id",
-        "archived",
-    ]
     attributes_requiring_redeploy = [
         "primary_path",
         "backup_path",
@@ -55,6 +47,27 @@ class EVCBase(GenericEntity):
         "uni_z",
     ]
     required_attributes = ["name", "uni_a", "uni_z"]
+
+    updatable_attributes = {
+        "uni_a",
+        "uni_z",
+        "name",
+        "start_date",
+        "end_date",
+        "queue_id",
+        "bandwidth",
+        "primary_path",
+        "backup_path",
+        "dynamic_backup_path",
+        "primary_constraints",
+        "secondary_constraints",
+        "owner",
+        "sb_priority",
+        "service_level",
+        "circuit_scheduler",
+        "metadata",
+        "enabled"
+    }
 
     def __init__(self, controller, **kwargs):
         """Create an EVC instance with the provided parameters.
@@ -234,10 +247,8 @@ class EVCBase(GenericEntity):
             uni_z=uni_z,
         )
         for attribute, value in kwargs.items():
-            if attribute in self.read_only_attributes:
+            if attribute not in self.updatable_attributes:
                 raise ValueError(f"{attribute} can't be updated.")
-            if not hasattr(self, attribute):
-                raise ValueError(f'The attribute "{attribute}" is invalid.')
             if attribute in ("primary_path", "backup_path"):
                 try:
                     value.is_valid(
@@ -248,7 +259,7 @@ class EVCBase(GenericEntity):
                         f"{attribute} is not a " f"valid path: {exception}"
                     )
         for attribute, value in kwargs.items():
-            if attribute in ("enable", "enabled"):
+            if attribute == "enabled":
                 if value:
                     self.enable()
                 else:
@@ -421,9 +432,6 @@ class EVCBase(GenericEntity):
         if keys:
             selected = {}
             for key in keys:
-                if key == "enable":
-                    selected["enabled"] = evc_dict["enabled"]
-                    continue
                 selected[key] = evc_dict[key]
             selected["id"] = evc_dict["id"]
             return selected

@@ -19,6 +19,7 @@ Changed
 - Updated test dependencies
 - Optimized ``Path.status`` not to depend on a HTTP request
 - Upgraded UI framework to Vue3 
+- ``enable`` is not longer accepted when patching/updating an EVC, using ``enabled`` instead.
 
 Fixed
 =====
