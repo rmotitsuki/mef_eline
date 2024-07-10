@@ -425,7 +425,7 @@ class Main(KytosNApp):
         circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
         try:
-            evc = self.circuits.pop(circuit_id)
+            evc = self.circuits[circuit_id]
         except KeyError:
             result = f"circuit_id {circuit_id} not found"
             log.debug("delete_circuit result %s %s", result, 404)
@@ -441,6 +441,7 @@ class Main(KytosNApp):
             evc.archive()
             evc.remove_uni_tags()
             evc.sync()
+        self.circuits.pop(circuit_id)
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
         status = 200
