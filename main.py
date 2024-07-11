@@ -424,24 +424,25 @@ class Main(KytosNApp):
         """
         circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
-        try:
-            evc = self.circuits[circuit_id]
-        except KeyError:
-            result = f"circuit_id {circuit_id} not found"
-            log.debug("delete_circuit result %s %s", result, 404)
-            raise HTTPException(404, detail=result) from KeyError
+        with self._lock:
+            try:
+                evc = self.circuits.pop(circuit_id)
+            except KeyError:
+                result = f"circuit_id {circuit_id} not found"
+                log.debug("delete_circuit result %s %s", result, 404)
+                raise HTTPException(404, detail=result) from KeyError
 
-        log.info("Removing %s", evc)
-        with evc.lock:
-            evc.remove_current_flows()
-            evc.remove_failover_flows(sync=False)
-            evc.deactivate()
-            evc.disable()
-            self.sched.remove(evc)
-            evc.archive()
-            evc.remove_uni_tags()
-            evc.sync()
-        self.circuits.pop(circuit_id)
+            log.info("Removing %s", evc)
+            with evc.lock:
+                evc.remove_current_flows()
+                evc.remove_failover_flows(sync=False)
+                evc.deactivate()
+                evc.disable()
+                self.sched.remove(evc)
+                evc.archive()
+                evc.remove_uni_tags()
+                evc.sync()
+
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
         status = 200
