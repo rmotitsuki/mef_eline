@@ -142,9 +142,6 @@ class Main(KytosNApp):
                     log.info(f"{circuit} enabled but inactive - redeploy")
                     with circuit.lock:
                         circuit.deploy()
-        for circuit_id in stored_circuits:
-            log.info(f"EVC found in mongodb but unloaded {circuit_id}")
-            self._load_evc(stored_circuits[circuit_id])
 
     def shutdown(self):
         """Execute when your napp is unloaded.
@@ -424,16 +421,16 @@ class Main(KytosNApp):
         """
         circuit_id = request.path_params["circuit_id"]
         log.debug("delete_circuit /v2/evc/%s", circuit_id)
-        with self._lock:
-            try:
-                evc = self.circuits.pop(circuit_id)
-            except KeyError:
-                result = f"circuit_id {circuit_id} not found"
-                log.debug("delete_circuit result %s %s", result, 404)
-                raise HTTPException(404, detail=result) from KeyError
+        try:
+            evc = self.circuits.pop(circuit_id)
+        except KeyError:
+            result = f"circuit_id {circuit_id} not found"
+            log.debug("delete_circuit result %s %s", result, 404)
+            raise HTTPException(404, detail=result) from KeyError
+        log.info("Removing %s", evc)
 
-            log.info("Removing %s", evc)
-            with evc.lock:
+        with evc.lock:
+            if not evc.archived:
                 evc.remove_current_flows()
                 evc.remove_failover_flows(sync=False)
                 evc.deactivate()

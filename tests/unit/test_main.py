@@ -106,12 +106,11 @@ class TestMain:
         mock_log.info.assert_not_called()
 
     @patch('napps.kytos.mef_eline.main.settings')
-    @patch('napps.kytos.mef_eline.main.Main._load_evc')
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.check_list_traces")
     def test_execute_consistency(self, mock_check_list_traces, *args):
         """Test execute_consistency."""
-        (mongo_controller_upsert_mock, mock_load_evc, mock_settings) = args
+        (mongo_controller_upsert_mock, mock_settings) = args
 
         stored_circuits = {'1': {'name': 'circuit_1'},
                            '2': {'name': 'circuit_2'},
@@ -148,7 +147,6 @@ class TestMain:
         assert evc1.activate.call_count == 1
         assert evc1.sync.call_count == 1
         assert evc2.deploy.call_count == 1
-        mock_load_evc.assert_called_with(stored_circuits['3'])
 
     @patch('napps.kytos.mef_eline.main.settings')
     @patch('napps.kytos.mef_eline.main.Main._load_evc')
@@ -1776,8 +1774,8 @@ class TestMain:
         sched_add_mock,
         evc_deploy_mock,
         remove_current_flows_mock,
-        mock_remove_tags,
         mock_use_uni,
+        mock_remove_tags,
         mock_tags_equal,
         mock_check_duplicate
     ):
@@ -1787,7 +1785,6 @@ class TestMain:
         mongo_controller_upsert_mock.return_value = True
         sched_add_mock.return_value = True
         evc_deploy_mock.return_value = True
-        remove_current_flows_mock.return_value = True
         mock_use_uni.return_value = True
         mock_tags_equal.return_value = True
         mock_check_duplicate.return_value = True
@@ -1819,14 +1816,16 @@ class TestMain:
         )
         assert 201 == response.status_code
         assert len(self.napp.circuits) == 1
-
         current_data = response.json()
         circuit_id = current_data["circuit_id"]
+        self.napp.circuits[circuit_id].archive()
+
         response = await self.api_client.delete(
             f"{self.base_endpoint}/v2/evc/{circuit_id}"
         )
         assert 200 == response.status_code
-        assert mock_remove_tags.call_count == 1
+        assert mock_remove_tags.call_count == 0
+        assert remove_current_flows_mock.call_count == 0
         assert len(self.napp.circuits) == 0
 
         response = await self.api_client.delete(
