@@ -142,9 +142,6 @@ class Main(KytosNApp):
                     log.info(f"{circuit} enabled but inactive - redeploy")
                     with circuit.lock:
                         circuit.deploy()
-        for circuit_id in stored_circuits:
-            log.info(f"EVC found in mongodb but unloaded {circuit_id}")
-            self._load_evc(stored_circuits[circuit_id])
 
     def shutdown(self):
         """Execute when your napp is unloaded.
@@ -430,24 +427,28 @@ class Main(KytosNApp):
             result = f"circuit_id {circuit_id} not found"
             log.debug("delete_circuit result %s %s", result, 404)
             raise HTTPException(404, detail=result) from KeyError
-
         log.info("Removing %s", evc)
+
         with evc.lock:
-            evc.remove_current_flows()
-            evc.remove_failover_flows(sync=False)
-            evc.deactivate()
-            evc.disable()
-            self.sched.remove(evc)
-            evc.archive()
-            evc.remove_uni_tags()
-            evc.sync()
+            if not evc.archived:
+                evc.remove_current_flows()
+                evc.remove_failover_flows(sync=False)
+                evc.deactivate()
+                evc.disable()
+                self.sched.remove(evc)
+                evc.archive()
+                evc.remove_uni_tags()
+                evc.sync()
+                emit_event(
+                    self.controller, "deleted",
+                    content=map_evc_event_content(evc)
+                )
+
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
         status = 200
-
         log.debug("delete_circuit result %s %s", result, status)
-        emit_event(self.controller, "deleted",
-                   content=map_evc_event_content(evc))
+
         return JSONResponse(result, status_code=status)
 
     @rest("/v2/evc/{circuit_id}/metadata", methods=["GET"])
