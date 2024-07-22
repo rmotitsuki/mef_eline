@@ -439,8 +439,10 @@ class Main(KytosNApp):
                 evc.archive()
                 evc.remove_uni_tags()
                 evc.sync()
-                emit_event(self.controller, "deleted",
-                   content=map_evc_event_content(evc))
+                emit_event(
+                    self.controller, "deleted",
+                    content=map_evc_event_content(evc)
+                )
 
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
