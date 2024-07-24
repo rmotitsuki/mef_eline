@@ -872,7 +872,9 @@ class EVCDeploy(EVCBase):
                 msg = f"{self} was not deployed. No available path was found."
                 if tag_errors:
                     msg = self.add_tag_errors(msg, tag_errors)
-                log.warning(msg)
+                    log.error(msg)
+                else:
+                    log.warning(msg)
                 return False
         except FlowModException as err:
             log.error(
@@ -966,7 +968,9 @@ class EVCDeploy(EVCBase):
             msg = f"Failover path for {self} was not deployed: {reason}."
             if tag_errors:
                 msg = self.add_tag_errors(msg, tag_errors)
-            log.warning(msg)
+                log.error(msg)
+            else:
+                log.warning(msg)
             return False
         log.info(f"Failover path for {self} was deployed.")
         return True
