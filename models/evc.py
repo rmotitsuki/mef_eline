@@ -842,10 +842,12 @@ class EVCDeploy(EVCBase):
         """
         self.remove_current_flows()
         use_path = path
+        tag_errors = []
         if self.should_deploy(use_path):
             try:
                 use_path.choose_vlans(self._controller)
-            except KytosNoTagAvailableError:
+            except KytosNoTagAvailableError as e:
+                tag_errors.append(str(e))
                 use_path = None
         else:
             for use_path in self.discover_new_paths():
@@ -854,8 +856,8 @@ class EVCDeploy(EVCBase):
                 try:
                     use_path.choose_vlans(self._controller)
                     break
-                except KytosNoTagAvailableError:
-                    pass
+                except KytosNoTagAvailableError as e:
+                    tag_errors.append(str(e))
             else:
                 use_path = None
 
@@ -867,9 +869,10 @@ class EVCDeploy(EVCBase):
                 use_path = Path()
                 self._install_direct_uni_flows()
             else:
-                log.warning(
-                    f"{self} was not deployed. No available path was found."
-                )
+                msg = f"{self} was not deployed. No available path was found."
+                if tag_errors:
+                    msg = self.add_tag_errors(msg, tag_errors)
+                log.warning(msg)
                 return False
         except FlowModException as err:
             log.error(
@@ -913,6 +916,7 @@ class EVCDeploy(EVCBase):
 
         out_new_flows: dict[str, list[dict]] = {}
         reason = ""
+        tag_errors = []
         out_removed_flows = self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
 
@@ -922,8 +926,8 @@ class EVCDeploy(EVCBase):
             try:
                 use_path.choose_vlans(self._controller)
                 break
-            except KytosNoTagAvailableError:
-                pass
+            except KytosNoTagAvailableError as e:
+                tag_errors.append(str(e))
         else:
             use_path = Path([])
             reason = "No available path was found"
@@ -959,12 +963,29 @@ class EVCDeploy(EVCBase):
             emit_event(self._controller, "failover_deployed", content=content)
 
         if not use_path:
-            log.warning(
-                f"Failover path for {self} was not deployed: {reason}"
-            )
+            msg = f"Failover path for {self} was not deployed: {reason}."
+            if tag_errors:
+                msg = self.add_tag_errors(msg, tag_errors)
+            log.warning(msg)
             return False
         log.info(f"Failover path for {self} was deployed.")
         return True
+
+    @staticmethod
+    def add_tag_errors(msg: str, tag_errors: list):
+        """Add to msg the tag errors ecountered when chossing path."""
+        path = ['path', 'paths']
+        was = ['was', 'were']
+        message = ['message', 'messages']
+
+        # Choose either singular(0) or plural(1) words
+        n = 1
+        if len(tag_errors) == 1:
+            n = 0
+
+        msg += f" {len(tag_errors)} {path[n]} {was[n]} rejected"
+        msg += f" with {message[n]}: {tag_errors}"
+        return msg
 
     def get_failover_flows(self):
         """Return the flows needed to make the failover path active, i.e. the
