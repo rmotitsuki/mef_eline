@@ -633,13 +633,13 @@ class TestEVC():
 
         # NoTagAvailable on static path
         should_deploy_mock.return_value = True
-        choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
+        choose_vlans_mock.side_effect = KytosNoTagAvailableError(MagicMock())
         assert evc.deploy_to_path(evc.primary_links) is False
 
         # NoTagAvailable on dynamic path
         should_deploy_mock.return_value = False
         discover_new_paths_mock.return_value = [Path(['a', 'b'])]
-        choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
+        choose_vlans_mock.side_effect = KytosNoTagAvailableError(MagicMock())
         assert evc.deploy_to_path(evc.primary_links) is False
 
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -751,10 +751,11 @@ class TestEVC():
         path_mock = MagicMock()
         path_mock.__iter__.return_value = ["link3"]
         get_failover_path_candidates_mock.return_value = [None, path_mock]
+        mock_choose = path_mock.choose_vlans
 
         assert evc2.setup_failover_path() is True
         remove_path_flows_mock.assert_called_with(["link1", "link2"])
-        path_mock.choose_vlans.assert_called()
+        mock_choose.assert_called()
         install_nni_flows_mock.assert_called_with(path_mock)
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
@@ -764,7 +765,7 @@ class TestEVC():
 
         # case 4: failed to setup failover_path - No Tag available
         evc2.failover_path = []
-        path_mock.choose_vlans.side_effect = KytosNoTagAvailableError("error")
+        mock_choose.side_effect = KytosNoTagAvailableError(MagicMock())
         sync_mock.call_count = 0
 
         assert evc2.setup_failover_path() is False
@@ -773,7 +774,7 @@ class TestEVC():
 
         # case 5: failed to setup failover_path - FlowMod exception
         evc2.failover_path = []
-        path_mock.choose_vlans.side_effect = None
+        mock_choose.side_effect = None
         install_nni_flows_mock.side_effect = FlowModException("error")
         sync_mock.call_count = 0
 
@@ -2165,3 +2166,17 @@ class TestEVC():
         mock_check_range.side_effect = [True, False, True]
         check = EVC.check_range(circuit, traces)
         assert check is False
+
+    def test_add_tag_errors(self):
+        """Test add_tag_errors"""
+        msg = "No available path was found."
+        tag_errors = []
+        tag_errors.append('Mocked error 1')
+        actual = self.evc_deploy.add_tag_errors(msg, tag_errors)
+        assert actual == ('No available path was found. 1 path was rejected'
+                          f' with message: {tag_errors}')
+
+        tag_errors.append('Mocked error 2')
+        actual = self.evc_deploy.add_tag_errors(msg, tag_errors)
+        assert actual == ('No available path was found. 2 paths were'
+                          f' rejected with messages: {tag_errors}')

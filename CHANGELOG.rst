@@ -26,6 +26,7 @@ Fixed
 =====
 - Only redeploy when handling ``kytos/topology.link_up`` if a dynamic EVC isn't active
 - Fixed possible EVCs duplication when constant delete requests are sent.
+- Improved log when path was not deployed due to TAG availability. Also, in this case, the log was change to error instead of warning.
 
 [2023.2.0] - 2024-02-16
 ***********************
