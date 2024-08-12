@@ -22,6 +22,10 @@ Changed
 - Upgraded UI framework to Vue3 
 - ``enable`` is not longer accepted when patching/updating an EVC, using ``enabled`` instead.
 
+Removed
+=======
+- Removed client side batching with ``BATCH_INTERVAL`` and ``BATCH_SIZE``, now replaced with pacing in ``flow_manager``
+
 Fixed
 =====
 - Only redeploy when handling ``kytos/topology.link_up`` if a dynamic EVC isn't active
