@@ -12,28 +12,18 @@ boltons==21.0.0
     # via
     #   face
     #   glom
-certifi==2024.2.2
-    # via requests
-charset-normalizer==3.3.2
-    # via requests
 face==20.1.1
     # via glom
 glom==20.11.0
     # via -r requirements/run.in
-idna==3.6
-    # via requests
 pytz==2021.3
     # via
     #   apscheduler
     #   tzlocal
-requests==2.31.0
-    # via -r requirements/run.in
 six==1.16.0
     # via apscheduler
 tzlocal==2.1
     # via apscheduler
-urllib3==1.26.18
-    # via requests
 
 # The following packages are considered to be unsafe in a requirements file:
 # setuptools

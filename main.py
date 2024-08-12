@@ -24,14 +24,16 @@ from kytos.core.rest_api import (HTTPException, JSONResponse, Request,
 from kytos.core.tag_ranges import get_tag_ranges
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import (DisabledSwitch,
-                                              DuplicatedNoTagUNI, InvalidPath,
-                                              EVCPathNotDeleted)
+                                              DuplicatedNoTagUNI,
+                                              EVCPathNotDeleted, InvalidPath)
 from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
                                           Path)
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.utils import (aemit_event, check_disabled_component,
                                          emit_event, get_vlan_tags_and_masks,
-                                         map_evc_event_content, merge_flow_dicts)
+                                         map_evc_event_content,
+                                         merge_flow_dicts,
+                                         send_flow_mods_event)
 
 
 # pylint: disable=too-many-public-methods
@@ -115,7 +117,6 @@ class Main(KytosNApp):
                 # if a inter-switch EVC does not have current_path, it does not
                 # make sense to run sdntrace on it
                 and (circuit.is_intra_switch() or circuit.current_path)
-                and not circuit.error_status
                 ):
             return True
         return False
@@ -123,9 +124,7 @@ class Main(KytosNApp):
     def execute_consistency(self):
         """Execute consistency routine."""
         circuits_to_check = []
-        stored_circuits = self.mongo_controller.get_circuits()['circuits']
         for circuit in self.get_evcs_by_svc_level(enable_filter=False):
-            stored_circuits.pop(circuit.id, None)
             if self.should_be_checked(circuit):
                 circuits_to_check.append(circuit)
             circuit.try_setup_failover_path()
@@ -398,14 +397,14 @@ class Main(KytosNApp):
                         evc.remove()
                     except EVCPathNotDeleted as err:
                         log.error(f"{evc} did not deleted flows: {err}")
-                        raise HTTPException(400, detail=str(err))
+                        raise HTTPException(400, detail=str(err)) from err
             elif redeploy is not None:  # redeploy if active
                 with evc.lock:
                     try:
                         evc.remove()
                     except EVCPathNotDeleted as err:
                         log.error(f"{evc} did not deleted flows: {err}")
-                        raise HTTPException(400, detail=str(err))
+                        raise HTTPException(400, detail=str(err)) from err
                     redeployed = evc.deploy()
         else:
             if enable is True:  # enable if inactive
@@ -417,7 +416,7 @@ class Main(KytosNApp):
                         evc.remove()
                     except EVCPathNotDeleted as err:
                         log.error(f"{evc} did not deleted flows: {err}")
-                        raise HTTPException(400, detail=str(err))
+                        raise HTTPException(400, detail=str(err)) from err
                     redeployed = evc.deploy()
         result = {evc.id: evc.as_dict(), 'redeployed': redeployed}
         status = 200
@@ -449,14 +448,16 @@ class Main(KytosNApp):
                 evc.deactivate()
                 evc.disable()
                 self.sched.remove(evc)
+                path_name = 'current_path'
                 try:
                     evc.remove_current_flows(sync=False)
+                    path_name = 'failover_path'
                     evc.remove_failover_flows(sync=False)
                 except EVCPathNotDeleted as err:
                     log.error(f"{evc} did not deleted flows: {err}")
-                    evc.error_hapenned()
+                    evc.deactivate_set_error(path_name, 'delete')
                     evc.sync()
-                    raise HTTPException(400, detail=str(err))
+                    raise HTTPException(400, detail=str(err)) from err
                 evc.archive()
                 evc.remove_uni_tags()
                 evc.sync()
@@ -466,6 +467,8 @@ class Main(KytosNApp):
                         self.controller, "deleted",
                         content=map_evc_event_content(evc)
                     )
+            else:
+                self.circuits.pop(circuit_id, None)
 
         log.info("EVC removed. %s", evc)
         result = {"response": f"Circuit {circuit_id} removed"}
@@ -585,21 +588,25 @@ class Main(KytosNApp):
         error_msg = ""
         if evc.is_enabled():
             with evc.lock:
+                path_name = 'current_path'
                 try:
                     evc.remove_current_flows(sync=False)
+                    path_name = 'failover_path'
                     evc.remove_failover_flows(sync=False)
                 except EVCPathNotDeleted as err:
                     error_msg = f"Error deleting: {err}"
                     log.error(f"{evc} " + error_msg)
-                    evc.error_hapenned()
+                    evc.deactivate_set_error(path_name, 'delete')
                     evc.sync()
-                    raise HTTPException(400, detail=str(err))
+                    raise HTTPException(400, detail=str(err)) from err
                 deployed = evc.deploy()
         if deployed:
             result = {"response": f"Circuit {circuit_id} redeploy received."}
             status = 202
         else:
-            result = {"response": f"Circuit {circuit_id} is disabled." + error_msg}
+            result = {
+                "response": f"Circuit {circuit_id} is disabled." + error_msg
+            }
             status = 409
 
         return JSONResponse(result, status_code=status)
@@ -876,7 +883,7 @@ class Main(KytosNApp):
                         continue
                     try:
                         dpid_flows = evc.get_failover_flows()
-                        evc.old_paths.append = evc.current_path
+                        evc.old_path = evc.current_path
                         evc.current_path = evc.failover_path
                         evc.failover_path = Path([])
                     # pylint: disable=broad-except
@@ -897,32 +904,14 @@ class Main(KytosNApp):
                         flows={k: v.copy() for k, v in switch_flows.items()}
                     )
                 elif evc.is_failover_path_affected_by_link(link):
-                    evc.old_paths.append = evc.failover_path
+                    evc.old_path = evc.failover_path
                     evc.failover_path = Path([])
                     check_failover.append(evc)
 
         if failover_event_contents:
             emit_event(self.controller, "failover_link_down",
                        content=failover_event_contents)
-
-        while switch_flows:
-            offset = settings.BATCH_SIZE or None
-            switches = list(switch_flows.keys())
-            for dpid in switches:
-                emit_event(
-                    self.controller,
-                    context="kytos.flow_manager",
-                    name="flows.install",
-                    content={
-                        "dpid": dpid,
-                        "flow_dict": {"flows": switch_flows[dpid][:offset]},
-                    }
-                )
-                if offset is None or offset >= len(switch_flows[dpid]):
-                    del switch_flows[dpid]
-                    continue
-                switch_flows[dpid] = switch_flows[dpid][offset:]
-            time.sleep(settings.BATCH_INTERVAL)
+        send_flow_mods_event(self.controller, switch_flows, 'install')
 
         for evc in evcs_normal:
             emit_event(
@@ -982,7 +971,7 @@ class Main(KytosNApp):
             return
         evc.try_setup_failover_path()
 
-    @listen_to("kytos/mef_eline.cleanup_evcs_old_path", pool="dynamic_single")
+    @listen_to("kytos/mef_eline.cleanup_evcs_old_path")
     def on_cleanup_evcs_old_path(self, event):
         """Handle cleanup evcs old path."""
         self.handle_cleanup_evcs_old_path(event)
@@ -991,20 +980,25 @@ class Main(KytosNApp):
         """Handle cleanup evcs old path."""
         evcs = event.content.get("evcs", [])
         event_contents: dict[str, dict] = defaultdict(list)
-        retry_clean = []
+        total_flows = {}
         for evc in evcs:
-            if not evc.old_paths:
+            if not evc.old_path:
                 continue
-            removed_flows = {}
-            for path in evc.old_paths.copy():
+            with evc.lock:
+                removed_flows = {}
                 try:
-                    recent_flows = evc.remove_path_flows(path)
-                    removed_flows = merge_flow_dicts(removed_flows, recent_flows)
-                except EVCPathNotDeleted:
-                    retry_clean.append(evc)
-                    break
-                evc.old_paths.pop(0)
+                    nni_flows = evc._prepare_nni_flows(evc.old_path)
+                    uni_flows = evc._prepare_uni_flows(
+                        evc.old_path, skip_in=True
+                    )
+                    removed_flows = merge_flow_dicts(nni_flows, uni_flows)
+                # pylint: disable=broad-except
+                except Exception:
+                    err = traceback.format_exc().replace("\n", ", ")
+                    log.error(f"Fail to remove {evc} old_path: {err}")
+                    continue
             if removed_flows:
+                total_flows = merge_flow_dicts(removed_flows, total_flows)
                 content = map_evc_event_content(
                     evc,
                     removed_flows=removed_flows,
@@ -1012,14 +1006,9 @@ class Main(KytosNApp):
                 )
                 event_contents[evc.id] = content
         if event_contents:
+            send_flow_mods_event(self.controller, total_flows, 'delete')
             emit_event(self.controller, "failover_old_path",
                        content=event_contents)
-        if retry_clean:
-            emit_event(
-                self.controller,
-                "cleanup_evcs_old_path",
-                content={"evcs": retry_clean}
-            )
 
     @listen_to("kytos/topology.topology_loaded")
     def on_topology_loaded(self, event):  # pylint: disable=unused-argument
@@ -1065,13 +1054,15 @@ class Main(KytosNApp):
         evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
             with evc.lock:
+                path_name = 'current_path'
                 try:
                     evc.remove_current_flows()
+                    path_name = 'failover_path'
                     evc.remove_failover_flows()
                 except EVCPathNotDeleted as err:
-                    evc.error_hapenned()
+                    evc.deactivate_set_error(path_name, 'delete')
                     evc.sync()
-                    raise HTTPException(400, detail=str(err))
+                    raise HTTPException(400, detail=str(err)) from err
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.

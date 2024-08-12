@@ -1,9 +1,11 @@
 """Utility functions."""
+import time
 from typing import Union
 
 from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.interface import UNI, Interface, TAGRange
+from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import DisabledSwitch
 
 
@@ -159,3 +161,28 @@ def make_uni_list(list_circuits: list) -> list:
                 (circuit.uni_z.interface, tag_z)
             )
     return uni_list
+
+
+def send_flow_mods_event(controller, flow_dict, action):
+    """Send flow mods to be deleted or install to flow_manager
+     through an event"""
+    while flow_dict:
+        offset = settings.BATCH_SIZE or None
+        switches = list(flow_dict.keys())
+        for dpid in switches:
+            emit_event(
+                controller,
+                context="kytos.flow_manager",
+                name=f"flows.{action}",
+                content={
+                    "dpid": dpid,
+                    "flow_dict": {"flows": flow_dict[dpid][:offset]},
+                }
+            )
+
+            print(f"ID -> {dpid}")
+            if offset is None or offset >= len(flow_dict[dpid]):
+                del flow_dict[dpid]
+                continue
+            flow_dict[dpid] = flow_dict[dpid][offset:]
+        time.sleep(settings.BATCH_INTERVAL)

@@ -58,6 +58,8 @@ paths:
                 properties:
                   circuit_id: # the unique circuit id
                     type: string
+                  deployed:
+                    type: boolean
         '400':
           description: Request do not have a valid JSON or same necessary
             interface does not yet exists.

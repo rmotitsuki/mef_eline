@@ -139,7 +139,7 @@ class EVCBaseDoc(DocumentBaseModel):
     metadata: Dict = {}
     active: bool
     enabled: bool
-    error_status: bool = False
+    error_status: dict = {}
 
     @staticmethod
     def projection() -> Dict:

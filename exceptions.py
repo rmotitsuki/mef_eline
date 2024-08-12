@@ -17,6 +17,10 @@ class FlowModException(MEFELineException):
     """Exception for FlowMod errors."""
 
 
+class PathFinderException(MEFELineException):
+    """Exception related to pathfinder request."""
+
+
 class InvalidPath(MEFELineException):
     """Exception for invalid path."""
 

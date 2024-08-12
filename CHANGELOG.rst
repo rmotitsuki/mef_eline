@@ -13,6 +13,9 @@ Added
 - Included "id" on EVC mapped content to normalize it with the other models
 - Introduced ``failover_old_path``, ``failover_deployed``, and ``failover_link_down`` events, which will be primarily consumed by ``telemetry_int`` NApp
 - UI checkbox to request that In-band Network Telemetry (INT) gets enabled
+- New field in EVC document ``error_status`` which is a dictionary with content indicating if an error happened installing or deleting ``current_path`` or ``failover_path``.
+- Added ``{"deployed": false}`` to request response for EVC creation. Indicates if the created EVC has been able to deployed.
+- Added ``{'redeployed': false}`` to request response for ``PATCH v2/evc/{{circuit_id}}``. It indicates if the modified EVC has been redeployed.
 
 Changed
 =======
@@ -21,6 +24,7 @@ Changed
 - Optimized ``Path.status`` not to depend on a HTTP request
 - Upgraded UI framework to Vue3 
 - ``enable`` is not longer accepted when patching/updating an EVC, using ``enabled`` instead.
+- Changed EVC deletion behavior when an error happens when deleting paths. The EVC is not deleted but disabled, deactivated and ``error_status`` is populated.
 
 Fixed
 =====
@@ -28,6 +32,11 @@ Fixed
 - Fixed possible EVCs duplication when constant delete requests are sent.
 - Improved log when path was not deployed due to TAG availability. Also, in this case, the log was change to error instead of warning.
 - Fixed ``node_name`` not showing in the EVC list on the web interface.
+
+Deprecated
+==========
+- Deleted method from EVC class ``deploy_to()`` which was outdated and not used.
+- Deleted unused method from Path class ``get_best_path()``.
 
 [2023.2.0] - 2024-02-16
 ***********************

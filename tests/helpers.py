@@ -117,13 +117,13 @@ def get_uni_mocked(**kwargs):
 
 class MockResponse:
     """
-    Mock a requests response object.
+    Mock a httpx response object.
 
     Just define a function and add the patch decorator to the test.
     Example:
     def mocked_requests_get(*args, **kwargs):
         return MockResponse({}, 200)
-    @patch('requests.get', side_effect=mocked_requests_get)
+    @patch('httpx.get', side_effect=mocked_requests_get)
 
     """
 

@@ -8,7 +8,6 @@ from napps.kytos.mef_eline.models import EVC, Path  # NOQA pycodestyle
 from napps.kytos.mef_eline.tests.helpers import (
     get_link_mocked,
     get_uni_mocked,
-    get_mocked_requests,
     id_to_interface_mock
 )  # NOQA pycodestyle
 
@@ -123,94 +122,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         assert evc.is_using_primary_path()
 
     @patch("napps.kytos.mef_eline.models.evc.log")
-    async def test_deploy_to_case_1(self, log_mocked):
-        """Test if the path is equal to current_path."""
-        primary_path = [
-            get_link_mocked(
-                endpoint_a_port=10, endpoint_b_port=9, metadata={"s_vlan": 5}
-            ),
-            get_link_mocked(
-                endpoint_a_port=12, endpoint_b_port=11, metadata={"s_vlan": 6}
-            ),
-        ]
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_3",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True),
-            "primary_path": primary_path,
-        }
-        evc = EVC(**attributes)
-        evc.current_path = evc.primary_path
-
-        expected_deployed = evc.deploy_to("primary_path", evc.primary_path)
-        expected_msg = "primary_path is equal to current_path."
-        log_mocked.debug.assert_called_with(expected_msg)
-        assert expected_deployed
-
-    # pylint: disable=too-many-arguments
-    @patch("requests.post")
-    @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
-    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
-    @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.UP)
-    async def test_deploy_to_case_2(
-        self,
-        install_uni_flows_mocked,
-        install_nni_flows_mocked,
-        deploy_mocked,
-        _,
-        requests_mock,
-    ):
-        """Test deploy with all links up."""
-        deploy_mocked.return_value = True
-        response = MagicMock()
-        response.status_code = 201
-        requests_mock.return_value = response
-
-        primary_path = [
-            get_link_mocked(status=EntityStatus.UP),
-            get_link_mocked(status=EntityStatus.UP),
-        ]
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_4",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True),
-            "primary_path": primary_path,
-            "enabled": True,
-        }
-        evc = EVC(**attributes)
-
-        deployed = evc.deploy_to("primary_path", evc.primary_path)
-        install_uni_flows_mocked.assert_called_with(evc.primary_path)
-        install_nni_flows_mocked.assert_called_with(evc.primary_path)
-        assert deployed
-
-    @patch("requests.get", side_effect=get_mocked_requests)
-    async def test_deploy_to_case_3(self, requests_mocked):
-        # pylint: disable=unused-argument
-        """Test deploy with one link down."""
-        link1 = get_link_mocked()
-        link2 = get_link_mocked()
-        link1.id = "abc"
-        link2.id = "def"
-        primary_path = [link1, link2]
-        attributes = {
-            "controller": get_controller_mock(),
-            "name": "circuit_5",
-            "uni_a": get_uni_mocked(is_valid=True),
-            "uni_z": get_uni_mocked(is_valid=True),
-            "primary_path": primary_path,
-            "enabled": True,
-        }
-        evc = EVC(**attributes)
-
-        deployed = evc.deploy_to("primary_path", evc.primary_path)
-        assert deployed is False
-
-    @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
     @patch(DEPLOY_TO_BACKUP_PATH)
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
@@ -297,6 +208,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         msg = f"{evc} deployed after link down."
         log_mocked.debug.assert_called_once_with(msg)
 
+    # pylint: disable=too-many-arguments
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -429,14 +341,11 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         log_mocked.debug.assert_called_with(msg)
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
-    @patch("napps.kytos.mef_eline.models.evc.LinkProtection.deploy_to")
     async def test_handle_link_up_case_1(
         self,
         deploy_to_mocked,
-        deploy_mocked
     ):
         """Test if handle link up do nothing when is using primary path."""
-        deploy_mocked.return_value = True
         deploy_to_mocked.return_value = True
         primary_path = [
             get_link_mocked(
@@ -481,7 +390,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         evc.current_path = evc.primary_path
         deploy_to_mocked.reset_mock()
         current_handle_link_up = evc.handle_link_up(backup_path[0])
-        assert deploy_mocked.call_count == 0
         assert deploy_to_mocked.call_count == 0
         assert current_handle_link_up
 
@@ -546,7 +454,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch(GET_BEST_PATH)
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.UP)
@@ -554,7 +461,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         self,
         _install_uni_flows_mocked,
         _install_nni_flows_mocked,
-        get_best_path_mocked,
         deploy_to_path_mocked,
         deploy_mocked,
     ):
@@ -606,14 +512,12 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         deploy_to_path_mocked.reset_mock()
         current_handle_link_up = evc.handle_link_up(backup_path[0])
 
-        assert get_best_path_mocked.call_count == 0
         assert deploy_mocked.call_count == 0
         assert deploy_to_path_mocked.call_count == 1
         deploy_to_path_mocked.assert_called_once_with(evc.backup_path)
         assert current_handle_link_up
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch(GET_BEST_PATH)
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.DOWN)
@@ -622,7 +526,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         (
             _install_uni_flows_mocked,
             _install_nni_flows_mocked,
-            get_best_path_mocked,
             deploy_to_path_mocked,
         ) = args
 
@@ -657,11 +560,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
             ),
         ]
 
-        # Setup best_path mock
-        best_path = Path()
-        best_path.append(primary_path[0])
-        get_best_path_mocked.return_value = best_path
-
         attributes = {
             "controller": get_controller_mock(),
             "name": "circuit_12",
@@ -679,7 +577,6 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         deploy_to_path_mocked.reset_mock()
         current_handle_link_up = evc.handle_link_up(backup_path[0])
 
-        assert get_best_path_mocked.call_count == 0
         assert deploy_to_path_mocked.call_count == 1
         deploy_to_path_mocked.assert_called_once_with()
         assert current_handle_link_up
