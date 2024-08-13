@@ -582,6 +582,7 @@ class TestEVC():
 
         response = MagicMock()
         response.status_code = 201
+        response.is_server_error = False
         httpx_mock.return_value = response
 
         should_deploy_mock.return_value = True
@@ -2275,3 +2276,19 @@ class TestEVC():
         send_mock.side_effect = FlowModException
         with pytest.raises(EVCPathNotInstalled):
             self.evc_deploy._install_direct_uni_flows()
+
+    def test_deactivate_set_error(self):
+        """Test deactivate_set_error"""
+        self.evc_deploy.is_intra_switch = MagicMock(return_value=False)
+        path = 'current_path'
+        err = 'mock_error'
+        self.evc_deploy.deactivate_set_error(path, err)
+        assert path in self.evc_deploy.error_status
+        assert self.evc_deploy.error_status[path] == err
+
+        self.evc_deploy.error_status = {}
+        self.evc_deploy.is_intra_switch.return_value = True
+        intra_path = 'intra_switch_path'
+        self.evc_deploy.deactivate_set_error(path, err)
+        assert intra_path in self.evc_deploy.error_status
+        assert self.evc_deploy.error_status[intra_path] == err

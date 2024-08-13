@@ -726,7 +726,7 @@ class EVCDeploy(EVCBase):
          current path if exists."""
         switches = set()
 
-        if not self.current_path:
+        if not self.current_path and not self.is_intra_switch():
             return
         current_path = self.current_path
         for link in current_path:
@@ -834,13 +834,17 @@ class EVCDeploy(EVCBase):
     def deactivate_set_error(self, name_path: str, action: str) -> None:
         """Error ocurred and this EVC is malformed."""
         self.deactivate()
+        if name_path == 'current_path' and self.is_intra_switch():
+            name_path = 'intra_switch_path'
         self.error_status[name_path] = action
 
     def clean_errors(self, name_path: str) -> None:
         """No errors in this EVC. Probably it was redeployed."""
+        if name_path == 'current_path' and self.is_intra_switch():
+            name_path = 'intra_switch_path'
         self.error_status.pop(name_path, None)
 
-    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
     def deploy_to_path(self, path=None):
         """Install the flows for this circuit.
 

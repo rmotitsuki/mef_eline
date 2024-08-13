@@ -13,7 +13,7 @@ Added
 - Included "id" on EVC mapped content to normalize it with the other models
 - Introduced ``failover_old_path``, ``failover_deployed``, and ``failover_link_down`` events, which will be primarily consumed by ``telemetry_int`` NApp
 - UI checkbox to request that In-band Network Telemetry (INT) gets enabled
-- New field in EVC document ``error_status`` which is a dictionary with content explaining an error that happened when installing or deleting ``current_path`` or ``failover_path``.
+- New field in EVC document ``error_status`` which is a dictionary with content explaining an error that happened when installing or deleting ``current_path`` or ``failover_path`` or ``intra_switch_path``.
 - Added ``{"deployed": false}`` to request response for EVC creation. It indicates if the created EVC has been able to deployed.
 - Added ``{'redeployed': false}`` to request response for ``PATCH v2/evc/{{circuit_id}}``. It indicates if the modified EVC has been redeployed.
 
