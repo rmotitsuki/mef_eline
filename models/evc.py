@@ -666,7 +666,9 @@ class EVCDeploy(EVCBase):
             path_name = 'failover_path'
             self.remove_failover_flows(sync=False)
         except EVCPathNotDeleted as err:
-            self.deactivate_set_error(path_name, 'delete')
+            self.deactivate_set_error(
+                path_name, f'Error while deleting path: {err}'
+            )
             self.sync()
             raise err
         self.disable()
@@ -719,16 +721,14 @@ class EVCDeploy(EVCBase):
         if sync:
             self.sync()
 
-    def remove_current_flows(self, current_path=None, force=True,
-                             sync=True):
+    def remove_current_flows(self, force=True, sync=True):
         """Remove all flows from current path or path intended for
          current path if exists."""
         switches = set()
 
-        if not current_path:
-            if not self.current_path:
-                return
-            current_path = self.current_path
+        if not self.current_path:
+            return
+        current_path = self.current_path
         for link in current_path:
             switches.add(link.endpoint_a.switch)
             switches.add(link.endpoint_b.switch)
@@ -841,7 +841,7 @@ class EVCDeploy(EVCBase):
         self.error_status.pop(name_path, None)
 
     # pylint: disable=too-many-branches
-    def deploy_to_path(self, path=Path([])):
+    def deploy_to_path(self, path=None):
         """Install the flows for this circuit.
 
         Procedures to deploy:
@@ -861,11 +861,13 @@ class EVCDeploy(EVCBase):
             self.remove_current_flows()
         except EVCPathNotDeleted as err:
             log.error(f"Error preparing current_path for {self}: {err}")
-            self.deactivate_set_error('current_path', 'delete')
+            self.deactivate_set_error(
+                'current_path', f'Error while removing previous path, {err}'
+            )
             self.sync()
             return False
 
-        use_path = path
+        use_path = path or Path([])
         tag_errors = []
         if self.should_deploy(use_path):
             try:
@@ -907,7 +909,9 @@ class EVCDeploy(EVCBase):
 
             # Save the path to be deleted later.
             self.current_path = use_path
-            self.deactivate_set_error('current_path', 'install')
+            self.deactivate_set_error(
+                'current_path', f'Error while installing path: {err}'
+            )
             self.sync()
             return False
         self.activate()
@@ -958,7 +962,9 @@ class EVCDeploy(EVCBase):
         except EVCPathNotDeleted as err:
             reason = "Error preparing failover_path"
             log.error(f"Error preparing failover_path for {self}: {err}")
-            self.deactivate_set_error('failover_path', 'delete')
+            self.deactivate_set_error(
+                'failover_path', f'Error while removing previous path: {err}'
+            )
             self.sync()
             emit_event(self._controller, "failover_deployed", content={
                 self.id: map_evc_event_content(
@@ -1005,7 +1011,9 @@ class EVCDeploy(EVCBase):
 
             # Needs to be properly deleted later.
             self.failover_path = use_path
-            self.deactivate_set_error('failover_path', 'install')
+            self.deactivate_set_error(
+                'failover_path', f'Error while installing path: {err}'
+            )
             self.sync()
             return False
 
@@ -1777,7 +1785,9 @@ class LinkProtection(EVCDeploy):
                 self.remove_current_flows(sync=False)
             except EVCPathNotDeleted as err:
                 log.error(f"Error deleting current_path for {self}: {err}")
-                self.deactivate_set_error('current_path', 'delete')
+                self.deactivate_set_error(
+                    'current_path', f'Error while removing path: {err}'
+                )
                 self.sync()
                 return False
             self.deactivate()

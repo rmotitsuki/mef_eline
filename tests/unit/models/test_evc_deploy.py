@@ -41,8 +41,9 @@ class TestEVC():
         }
         self.evc_deploy = EVCDeploy(**attributes)
 
-    def test_primary_links_zipped(self):
+    def test_primary_links_zipped_empty(self):
         """Test primary links zipped method."""
+        assert not self.evc_deploy.links_zipped(None)
 
     @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -546,6 +547,15 @@ class TestEVC():
         dpid = evc.primary_links[0].endpoint_b.switch.id
         send_flow_mods_mock.assert_called_once_with(dpid, expected_flow_mods)
 
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    def test_install_nni_flows_error(self, prepare_nni_mock, send_flow_mock):
+        """Test _install_nni_flows with error"""
+        prepare_nni_mock.return_value = {'1': 1}
+        send_flow_mock.side_effect = FlowModException('err')
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_nni_flows()
+
     @patch("httpx.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -722,7 +732,7 @@ class TestEVC():
         assert log_mock.error.call_count == 1
         assert sync_mock.call_count == 1
         assert remove_current_flows.call_count == 1
-        assert evc.error_status['current_path'] == 'install'
+        assert evc.error_status['current_path']
         assert deployed is False
 
     @patch("napps.kytos.mef_eline.models.evc.emit_event")
@@ -755,8 +765,16 @@ class TestEVC():
         assert evc2.setup_failover_path() is False
         assert sync_mock.call_count == 0
 
-        # case3: success failover_path setup
+        # case3: error deleting previous failover_path
         evc2.is_eligible_for_failover_path = MagicMock(return_value=True)
+        remove_path_flows_mock.side_effect = EVCPathNotDeleted('err')
+        assert evc2.setup_failover_path() is False
+        assert evc2.error_status['failover_path']
+        assert emit_event_mock.call_count == 1
+        assert sync_mock.call_count == 1
+
+        # case3: success failover_path setup
+        remove_path_flows_mock.side_effect = None
         evc2.failover_path = ["link1", "link2"]
         path_mock = MagicMock()
         path_mock.__iter__.return_value = ["link3"]
@@ -769,8 +787,8 @@ class TestEVC():
         install_nni_flows_mock.assert_called_with(path_mock)
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
-        assert sync_mock.call_count == 1
-        assert emit_event_mock.call_count == 1
+        assert sync_mock.call_count == 2
+        assert emit_event_mock.call_count == 2
         assert emit_event_mock.call_args[0][1] == "failover_deployed"
         assert not evc2.error_status
 
@@ -794,7 +812,7 @@ class TestEVC():
         assert len(list(evc2.failover_path)) == 1
         assert sync_mock.call_count == 1
         remove_path_flows_mock.assert_called_with([])
-        assert evc2.error_status['failover_path'] == 'install'
+        assert evc2.error_status['failover_path']
 
     @patch("napps.kytos.mef_eline.models.evc.EVC.deploy_to_path")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
@@ -936,6 +954,19 @@ class TestEVC():
         assert self.evc_deploy.deploy() is False
         assert emit_event_mock.call_count == 2
 
+    @patch("napps.kytos.mef_eline.models.evc.EVCBase.sync")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.clean_errors")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
+    def test_deploy_to_path_error(
+        self, remove_current_mock, clean_mock, sync_mock
+    ):
+        """Test deploy_to_path"""
+        remove_current_mock.side_effect = EVCPathNotDeleted('err')
+        result = self.evc_deploy.deploy_to_path()
+        assert result is False
+        assert sync_mock.call_count == 1
+        assert clean_mock.call_count == 1
+
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.sync")
     @patch("napps.kytos.mef_eline.models.evc.emit_event")
@@ -947,6 +978,21 @@ class TestEVC():
         sync_mock.assert_called()
         emit_event_mock.assert_called()
         assert self.evc_deploy.is_enabled() is False
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deactivate_set_error")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_failover_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.remove_current_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.sync")
+    def test_remove_error(self, *args):
+        """Test remove with error"""
+        (sync_mock, remove_current_mock,
+         remove_failover_mock, de_err_mock) = args
+        remove_failover_mock.side_effect = EVCPathNotDeleted('err')
+        with pytest.raises(EVCPathNotDeleted):
+            self.evc_deploy.remove()
+        assert remove_current_mock.call_count == 1
+        assert de_err_mock.call_args[0][0] == 'failover_path'
+        assert sync_mock.call_count == 1
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
@@ -1000,9 +1046,14 @@ class TestEVC():
         evc = EVC(**attributes)
 
         evc.current_path = evc.primary_links
+        send_flow_mods_mocked.side_effect = FlowModException('err')
+        send_flow_mods_mocked.return_value = True
+        with pytest.raises(EVCPathNotDeleted):
+            evc.remove_current_flows()
+        send_flow_mods_mocked.side_effect = None
         evc.remove_current_flows()
 
-        assert send_flow_mods_mocked.call_count == 5
+        assert send_flow_mods_mocked.call_count == 6
         assert evc.is_active() is False
         flows = [
             {"cookie": evc.get_cookie(), "cookie_mask": 18446744073709551615}
@@ -1068,9 +1119,16 @@ class TestEVC():
         }
 
         evc = EVC(**attributes)
+
+        send_flow_mods_mocked.side_effect = [
+            FlowModException('err'), None
+        ]
+        with pytest.raises(EVCPathNotDeleted):
+            evc.remove_failover_flows(exclude_uni_switches=True, sync=True)
+
         evc.remove_failover_flows(exclude_uni_switches=True, sync=True)
 
-        assert send_flow_mods_mocked.call_count == 1
+        assert send_flow_mods_mocked.call_count == 2
         flows = [
             {"cookie": evc.get_cookie(),
              "cookie_mask": int(0xffffffffffffffff)}
@@ -2191,3 +2249,29 @@ class TestEVC():
         actual = self.evc_deploy.add_tag_errors(msg, tag_errors)
         assert actual == ('No available path was found. 2 paths were'
                           f' rejected with messages: {tag_errors}')
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.setup_failover_path")
+    def test_try_setup_failover_path(self, setup_failover_mock):
+        """Test try_setup_failover_path"""
+        self.evc_deploy.failover_path = True
+        self.evc_deploy.current_path = False
+        self.evc_deploy.error_status = {'current_path': 'delete'}
+        self.evc_deploy.try_setup_failover_path()
+        assert setup_failover_mock.call_count == 0
+
+        self.evc_deploy.failover_path = False
+        self.evc_deploy.current_path = True
+        self.evc_deploy.error_status = {}
+        self.evc_deploy.try_setup_failover_path()
+        assert setup_failover_mock.call_count == 1
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch(
+        "napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_direct_uni_flows"
+    )
+    def test_install_direct_uni_flows_error(self, prepare_mock, send_mock):
+        """Test _install_direct_uni_flows with errors"""
+        prepare_mock.return_value = True, True
+        send_mock.side_effect = FlowModException
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_direct_uni_flows()

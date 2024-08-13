@@ -10,7 +10,7 @@ from kytos.core.common import EntityStatus
 from kytos.core.events import KytosEvent
 from kytos.core.exceptions import KytosTagError
 from kytos.core.interface import TAGRange, UNI, Interface
-from napps.kytos.mef_eline.exceptions import InvalidPath
+from napps.kytos.mef_eline.exceptions import InvalidPath, EVCPathNotDeleted
 from napps.kytos.mef_eline.models import EVC
 from napps.kytos.mef_eline.tests.helpers import get_uni_mocked
 
@@ -850,6 +850,20 @@ class TestMain:
         url = f"{self.base_endpoint}/v2/evc/3/redeploy"
         response = await self.api_client.patch(url)
         assert response.status_code == 404, response.data
+
+    @patch("napps.kytos.mef_eline.main.log")
+    async def test_redeploy_evc_delete_error(self, mock_log):
+        """Test endpoint to redeploy an EVC with deletion error"""
+        evc1 = MagicMock()
+        evc1.is_enable.return_value = True
+        evc1.remove_failover_flows.side_effect = EVCPathNotDeleted('err')
+        self.napp.circuits = {"1": evc1, "2": MagicMock()}
+        url = f"{self.base_endpoint}/v2/evc/1/redeploy"
+        response = await self.api_client.patch(url)
+        assert response.status_code == 409, response.text
+        assert "Error deleting:" in response.json()['response']
+        assert mock_log.error.call_count == 1
+        assert evc1.deactivate_set_error.call_count == 1
 
     async def test_list_schedules__no_data_stored(self):
         """Test if list circuits return all circuits stored."""
@@ -1746,6 +1760,45 @@ class TestMain:
         assert 415 == response.status_code
         assert "application/json" in current_data["description"]
 
+    @patch("napps.kytos.mef_eline.main.log")
+    @patch("napps.kytos.mef_eline.main.Main._evc_dict_with_instances")
+    @patch("napps.kytos.mef_eline.main.Main._check_no_tag_duplication")
+    async def test_update_evc_error_deleting(self, _, __, mock_log):
+        """Test update with deletion error"""
+        self.napp.controller.loop = asyncio.get_running_loop()
+        evc = MagicMock()
+        evc.id = '1'
+        evc.as_dict.return_value = {'evc': 'mock'}
+
+        evc.is_active.return_value = True
+        evc.update.return_value = False, True  # enable, redeploy
+        evc.remove.side_effect = EVCPathNotDeleted('err')
+        self.napp.circuits['1'] = evc
+        response = await self.api_client.patch(
+            f"{self.base_endpoint}/v2/evc/1", json={"name": "my evc1"}
+        )
+        assert response.status_code == 400
+        assert mock_log.error.call_count == 1
+
+        evc.update.return_value = True, True
+        self.napp.circuits['1'] = evc
+        response = await self.api_client.patch(
+            f"{self.base_endpoint}/v2/evc/1", json={"name": "my evc1"}
+        )
+        assert response.status_code == 400
+        assert mock_log.error.call_count == 2
+
+        evc.update.return_value = False, True
+        evc.is_active.return_value = False
+        evc.is_enabled.return_value = True
+        self.napp.circuits['1'] = evc
+        response = await self.api_client.patch(
+            f"{self.base_endpoint}/v2/evc/1", json={"name": "my evc1"}
+        )
+        assert response.status_code == 400
+        assert mock_log.error.call_count == 3
+        assert evc.deploy.call_count == 0
+
     async def test_delete_no_evc(self):
         """Test delete when EVC does not exist."""
         url = f"{self.base_endpoint}/v2/evc/123"
@@ -1838,6 +1891,55 @@ class TestMain:
         assert 404 == response.status_code
         assert len(self.napp.circuits) == 0
 
+    @patch("napps.kytos.mef_eline.main.emit_event")
+    async def test_delete_circuit(self, emit_event_mock):
+        """Test delete_circuit"""
+        evc = MagicMock()
+        evc.archived = False
+        circuit_id = '1'
+        self.napp.circuits[circuit_id] = evc
+        response = await self.api_client.delete(
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
+        )
+        assert 200 == response.status_code
+        assert evc.deactivate.call_count == 1
+        assert evc.disable.call_count == 1
+        evc.remove_current_flows.assert_called_once_with(
+            sync=False
+        )
+        evc.remove_failover_flows.assert_called_once_with(
+            sync=False
+        )
+        assert evc.archive.call_count == 1
+        assert evc.remove_uni_tags.call_count == 1
+        assert evc.sync.call_count == 1
+        assert not self.napp.circuits
+        assert emit_event_mock.call_count == 1
+
+    @patch("napps.kytos.mef_eline.main.log")
+    @patch("napps.kytos.mef_eline.main.emit_event")
+    async def test_delete_circuit_error(self, emit_event_mock, mock_log):
+        """Test delete_circuit with deletion error"""
+        evc = MagicMock()
+        evc.archived = False
+        evc.remove_failover_flows.side_effect = EVCPathNotDeleted('err')
+        circuit_id = '1'
+        self.napp.circuits[circuit_id] = evc
+        response = await self.api_client.delete(
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
+        )
+        assert 400 == response.status_code
+        assert circuit_id in self.napp.circuits
+        assert evc.deactivate.call_count == 1
+        assert evc.disable.call_count == 1
+        assert evc.remove_current_flows.call_count == 1
+        assert mock_log.error.call_count == 1
+        assert evc.deactivate_set_error.call_args[0][0] == 'failover_path'
+        assert evc.sync.call_count == 1
+        assert evc.archive.call_count == 0
+        assert evc.remove_uni_tags.call_count == 0
+        assert emit_event_mock.call_count == 0
+
     def test_handle_link_up(self):
         """Test handle_link_up method."""
         evc_mock = create_autospec(EVC)
@@ -1855,11 +1957,10 @@ class TestMain:
         evc_mock.handle_link_up.assert_called_with("abc")
 
     @patch("time.sleep", return_value=None)
-    @patch("napps.kytos.mef_eline.utils.settings")
     @patch("napps.kytos.mef_eline.utils.emit_event")
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_link_down(
-        self, emit_main_mock, emit_utils_mock, settings_mock, _
+        self, emit_main_mock, emit_utils_mock, _
     ):
         """Test handle_link_down method."""
         uni = create_autospec(UNI)
@@ -1914,7 +2015,6 @@ class TestMain:
         event = KytosEvent(name="test", content={"link": link})
         self.napp.circuits = {"1": evc1, "2": evc2, "3": evc3, "4": evc4,
                               "5": evc5, "6": evc6}
-        settings_mock.BATCH_SIZE = 2
         self.napp.handle_link_down(event)
 
         assert evc5.service_level > evc4.service_level
@@ -1953,18 +2053,11 @@ class TestMain:
                 name="flows.install",
                 content={
                     "dpid": "3",
-                    "flow_dict": {"flows": ["flow3", "flow4"]},
+                    "flow_dict": {
+                        "flows": ["flow3", "flow4", "flow5", "flow6"]
+                    },
                 }
-            ),
-            call(
-                self.napp.controller,
-                context="kytos.flow_manager",
-                name="flows.install",
-                content={
-                    "dpid": "3",
-                    "flow_dict": {"flows": ["flow5", "flow6"]},
-                }
-            ),
+            )
         ])
         event_name = "evc_affected_by_link_down"
         assert evc3.service_level > evc1.service_level
@@ -2279,6 +2372,20 @@ class TestMain:
         self.napp.circuits = {"00000000000011": evc}
         self.napp.handle_flow_mod_error(event)
         evc.remove_current_flows.assert_called_once()
+
+    def test_handle_flow_mod_error_exception(self):
+        """Test handle_flow_mod_error with exception"""
+        flow = MagicMock()
+        flow.cookie = 0xaa00000000000011
+        event = MagicMock()
+        event.content = {'flow': flow, 'error_command': 'add'}
+        evc = MagicMock()
+        evc.remove_failover_flows.side_effect = EVCPathNotDeleted('err')
+        self.napp.circuits = {"00000000000011": evc}
+        self.napp.handle_flow_mod_error(event)
+        evc.remove_current_flows.assert_called_once()
+        assert evc.deactivate_set_error.call_args[0][0] == 'failover_path'
+        assert evc.sync.call_count == 1
 
     @patch("kytos.core.Controller.get_interface_by_id")
     def test_uni_from_dict(self, _get_interface_by_id_mock):

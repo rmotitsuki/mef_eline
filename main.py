@@ -396,14 +396,18 @@ class Main(KytosNApp):
                     try:
                         evc.remove()
                     except EVCPathNotDeleted as err:
-                        log.error(f"{evc} did not deleted flows: {err}")
+                        msg = (f"{evc} updated but error happened"
+                               f" when deleting flows: {err}")
+                        log.error(msg)
                         raise HTTPException(400, detail=str(err)) from err
             elif redeploy is not None:  # redeploy if active
                 with evc.lock:
                     try:
                         evc.remove()
                     except EVCPathNotDeleted as err:
-                        log.error(f"{evc} did not deleted flows: {err}")
+                        msg = (f"{evc} updated but error happened"
+                               f" when deleting flows: {err}")
+                        log.error(msg)
                         raise HTTPException(400, detail=str(err)) from err
                     redeployed = evc.deploy()
         else:
@@ -415,8 +419,10 @@ class Main(KytosNApp):
                     try:
                         evc.remove()
                     except EVCPathNotDeleted as err:
-                        log.error(f"{evc} did not deleted flows: {err}")
-                        raise HTTPException(400, detail=str(err)) from err
+                        msg = (f"{evc} updated but error happened"
+                               f" when deleting flows: {err}")
+                        log.error(msg)
+                        raise HTTPException(400, detail=str(msg)) from err
                     redeployed = evc.deploy()
         result = {evc.id: evc.as_dict(), 'redeployed': redeployed}
         status = 200
@@ -455,7 +461,9 @@ class Main(KytosNApp):
                     evc.remove_failover_flows(sync=False)
                 except EVCPathNotDeleted as err:
                     log.error(f"{evc} did not deleted flows: {err}")
-                    evc.deactivate_set_error(path_name, 'delete')
+                    evc.deactivate_set_error(
+                        path_name, f'Error while removing path: {err}'
+                    )
                     evc.sync()
                     raise HTTPException(400, detail=str(err)) from err
                 evc.archive()
@@ -519,7 +527,7 @@ class Main(KytosNApp):
         circuit_id = request.path_params["circuit_id"]
         metadata = get_json_or_400(request, self.controller.loop)
         if not isinstance(metadata, dict):
-            raise HTTPException(400, "Invalid metadata value: {metadata}")
+            raise HTTPException(400, f"Invalid metadata value: {metadata}")
         try:
             evc = self.circuits[circuit_id]
         except KeyError as error:
@@ -596,10 +604,12 @@ class Main(KytosNApp):
                 except EVCPathNotDeleted as err:
                     error_msg = f"Error deleting: {err}"
                     log.error(f"{evc} " + error_msg)
-                    evc.deactivate_set_error(path_name, 'delete')
+                    evc.deactivate_set_error(
+                        path_name, f'Error while removing path: {err}'
+                    )
                     evc.sync()
-                    raise HTTPException(400, detail=str(err)) from err
-                deployed = evc.deploy()
+                if not error_msg:
+                    deployed = evc.deploy()
         if deployed:
             result = {"response": f"Circuit {circuit_id} redeploy received."}
             status = 202
@@ -1060,9 +1070,10 @@ class Main(KytosNApp):
                     path_name = 'failover_path'
                     evc.remove_failover_flows()
                 except EVCPathNotDeleted as err:
-                    evc.deactivate_set_error(path_name, 'delete')
+                    evc.deactivate_set_error(
+                        path_name, f'Error removing path: {err}'
+                    )
                     evc.sync()
-                    raise HTTPException(400, detail=str(err)) from err
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.
