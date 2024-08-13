@@ -26,6 +26,10 @@ Changed
 - ``enable`` is not longer accepted when patching/updating an EVC, using ``enabled`` instead.
 - Changed EVC deletion behavior when an error happens when deleting paths. The EVC is not deleted but disabled, deactivated and ``error_status`` is populated.
 
+Removed
+=======
+- Removed client side batching with ``BATCH_INTERVAL`` and ``BATCH_SIZE``, now replaced with pacing in ``flow_manager``
+
 Fixed
 =====
 - Only redeploy when handling ``kytos/topology.link_up`` if a dynamic EVC isn't active
