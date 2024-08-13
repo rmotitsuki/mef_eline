@@ -924,8 +924,7 @@ class EVCDeploy(EVCBase):
         """Try setup failover_path whenever possible."""
         if (
                 self.failover_path or not self.current_path
-                or (self.current_path
-                    and self.error_status.get('current_path'))
+                or not self.is_active()
                 ):
             return
         if (now() - self.affected_by_link_at).seconds >= wait:

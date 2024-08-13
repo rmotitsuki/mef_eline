@@ -2255,13 +2255,13 @@ class TestEVC():
         """Test try_setup_failover_path"""
         self.evc_deploy.failover_path = True
         self.evc_deploy.current_path = False
-        self.evc_deploy.error_status = {'current_path': 'delete'}
+        self.evc_deploy.is_active = MagicMock(return_value=False)
         self.evc_deploy.try_setup_failover_path()
         assert setup_failover_mock.call_count == 0
 
         self.evc_deploy.failover_path = False
         self.evc_deploy.current_path = True
-        self.evc_deploy.error_status = {}
+        self.evc_deploy.is_active = MagicMock(return_value=True)
         self.evc_deploy.try_setup_failover_path()
         assert setup_failover_mock.call_count == 1
 
