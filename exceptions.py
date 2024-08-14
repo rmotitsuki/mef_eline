@@ -29,10 +29,6 @@ class DisabledSwitch(MEFELineException):
     """Exception for disabled switch in path"""
 
 
-class EVCPathNotDeleted(MEFELineException):
-    """Exception raised when a path was not deleted properly."""
-
-
 class EVCPathNotInstalled(MEFELineException):
     """Exception raised when a path was not installed properly."""
 

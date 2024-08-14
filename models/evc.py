@@ -23,7 +23,6 @@ from kytos.core.retry import before_sleep
 from kytos.core.tag_ranges import range_difference
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import (DuplicatedNoTagUNI,
-                                              EVCPathNotDeleted,
                                               EVCPathNotInstalled,
                                               FlowModException, InvalidPath)
 from napps.kytos.mef_eline.utils import (check_disabled_component,
@@ -153,7 +152,6 @@ class EVCBase(GenericEntity):
         self.flow_removed_at = get_time(kwargs.get("flow_removed_at")) or None
         self.updated_at = get_time(kwargs.get("updated_at")) or now()
         self.execution_rounds = kwargs.get("execution_rounds", 0)
-        self.error_status = kwargs.get("error_status", {})
         self.current_links_cache = set()
         self.primary_links_cache = set()
         self.backup_links_cache = set()
@@ -433,7 +431,6 @@ class EVCBase(GenericEntity):
         evc_dict["secondary_constraints"] = self.secondary_constraints
         evc_dict["flow_removed_at"] = self.flow_removed_at
         evc_dict["updated_at"] = self.updated_at
-        evc_dict["error_status"] = self.error_status
 
         if keys:
             selected = {}
@@ -660,17 +657,8 @@ class EVCDeploy(EVCBase):
 
     def remove(self):
         """Remove EVC path and disable it."""
-        path_name = 'current_path'
-        try:
-            self.remove_current_flows(sync=False)
-            path_name = 'failover_path'
-            self.remove_failover_flows(sync=False)
-        except EVCPathNotDeleted as err:
-            self.deactivate_set_error(
-                path_name, f'Error while deleting path: {err}'
-            )
-            self.sync()
-            raise err
+        self.remove_current_flows(sync=False)
+        self.remove_failover_flows(sync=False)
         self.disable()
         self.sync()
         emit_event(self._controller, "undeployed",
@@ -712,7 +700,8 @@ class EVCDeploy(EVCBase):
                     force=force,
                 )
             except FlowModException as err:
-                raise EVCPathNotDeleted(f"In {switch.id}: {err}") from err
+                log.error(f"Error deleting path in {switch.id}, {err}")
+                break
         try:
             self.failover_path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -743,7 +732,8 @@ class EVCDeploy(EVCBase):
             try:
                 self._send_flow_mods(switch.id, [match], 'delete', force=force)
             except FlowModException as err:
-                raise EVCPathNotDeleted(f"In {switch.id}, {err}") from err
+                log.error(f"Error deleting current_path in {switch.id}, {err}")
+                break
         try:
             current_path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -800,7 +790,8 @@ class EVCDeploy(EVCBase):
             try:
                 self._send_flow_mods(dpid, flows, 'delete', force=force)
             except FlowModException as err:
-                raise EVCPathNotDeleted(f"In {dpid}, {err}") from err
+                log.error(f"Error deleting path in {dpid}, {err}")
+                break
         try:
             path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -831,19 +822,6 @@ class EVCDeploy(EVCBase):
 
         return False
 
-    def deactivate_set_error(self, name_path: str, action: str) -> None:
-        """Error ocurred and this EVC is malformed."""
-        self.deactivate()
-        if name_path == 'current_path' and self.is_intra_switch():
-            name_path = 'intra_switch_path'
-        self.error_status[name_path] = action
-
-    def clean_errors(self, name_path: str) -> None:
-        """No errors in this EVC. Probably it was redeployed."""
-        if name_path == 'current_path' and self.is_intra_switch():
-            name_path = 'intra_switch_path'
-        self.error_status.pop(name_path, None)
-
     # pylint: disable=too-many-branches, too-many-statements
     def deploy_to_path(self, path=None):
         """Install the flows for this circuit.
@@ -860,17 +838,7 @@ class EVCDeploy(EVCBase):
         7. Update links caches(primary, current, backup)
 
         """
-        self.clean_errors('current_path')
-        try:
-            self.remove_current_flows()
-        except EVCPathNotDeleted as err:
-            log.error(f"Error preparing current_path for {self}: {err}")
-            self.deactivate_set_error(
-                'current_path', f'Error while removing previous path, {err}'
-            )
-            self.sync()
-            return False
-
+        self.remove_current_flows(sync=False)
         use_path = path or Path([])
         tag_errors = []
         if self.should_deploy(use_path):
@@ -908,15 +876,9 @@ class EVCDeploy(EVCBase):
                 return False
         except EVCPathNotInstalled as err:
             log.error(
-                f"Error deploying {self} when calling flow_manager: {err}"
+                f"Error deploying EVC {self} when calling flow_manager: {err}"
             )
-
-            # Save the path to be deleted later.
-            self.current_path = use_path
-            self.deactivate_set_error(
-                'current_path', f'Error while installing path: {err}'
-            )
-            self.sync()
+            self.remove_current_flows(use_path, sync=True)
             return False
         self.activate()
         self.current_path = use_path
@@ -955,30 +917,11 @@ class EVCDeploy(EVCBase):
         # For not only setup failover path for totally dynamic EVCs
         if not self.is_eligible_for_failover_path():
             return False
-        self.clean_errors('failover_path')
+
         out_new_flows: dict[str, list[dict]] = {}
         reason = ""
         tag_errors = []
-        out_removed_flows = {}
-        try:
-            out_removed_flows = self.remove_path_flows(self.failover_path)
-        except EVCPathNotDeleted as err:
-            reason = "Error preparing failover_path"
-            log.error(f"Error preparing failover_path for {self}: {err}")
-            self.deactivate_set_error(
-                'failover_path', f'Error while removing previous path: {err}'
-            )
-            self.sync()
-            emit_event(self._controller, "failover_deployed", content={
-                self.id: map_evc_event_content(
-                    self,
-                    flows=out_new_flows,
-                    removed_flows=out_removed_flows,
-                    error_reason=reason,
-                    current_path=self.current_path.as_dict(),
-                )
-            })
-            return False
+        out_removed_flows = self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
 
         for use_path in self.get_failover_path_candidates():
@@ -1000,25 +943,15 @@ class EVCDeploy(EVCBase):
                 _uni_flows = self._install_uni_flows(use_path, skip_in=True)
                 out_new_flows = merge_flow_dicts(out_new_flows, _uni_flows)
         except EVCPathNotInstalled as err:
-            reason = "Error deploying failover_path"
-            log.error(f"{reason} for {self}. {err}")
-            emit_event(self._controller, "failover_deployed", content={
-                self.id: map_evc_event_content(
-                    self,
-                    flows=out_new_flows,
-                    removed_flows=out_removed_flows,
-                    error_reason=reason,
-                    current_path=self.current_path.as_dict(),
-                )
-            })
-
-            # Needs to be properly deleted later.
-            self.failover_path = use_path
-            self.deactivate_set_error(
-                'failover_path', f'Error while installing path: {err}'
+            reason = "Error deploying failover path"
+            log.error(
+                f"{reason} for {self}. FlowManager error: {err}"
             )
-            self.sync()
-            return False
+            _rmed_flows = self.remove_path_flows(use_path)
+            out_removed_flows = merge_flow_dicts(
+                out_removed_flows, _rmed_flows
+            )
+            use_path = Path([])
 
         self.failover_path = use_path
         self.sync()
@@ -1350,7 +1283,7 @@ class EVCDeploy(EVCBase):
 
         data = {"flows": flow_mods, "force": force}
         try:
-            res = httpx.post(endpoint, json=data, timeout=10)
+            res = httpx.post(endpoint, json=data, timeout=30)
         except httpx.RequestError as err:
             raise FlowModException(str(err)) from err
         if res.is_server_error or res.status_code >= 400:
@@ -1784,15 +1717,7 @@ class LinkProtection(EVCDeploy):
         if success:
             log.debug(f"{self} deployed after link down.")
         else:
-            try:
-                self.remove_current_flows(sync=False)
-            except EVCPathNotDeleted as err:
-                log.error(f"Error deleting current_path for {self}: {err}")
-                self.deactivate_set_error(
-                    'current_path', f'Error while removing path: {err}'
-                )
-                self.sync()
-                return False
+            self.remove_current_flows(sync=False)
             self.deactivate()
             self.sync()
             log.debug(f"Failed to re-deploy {self} after link down.")

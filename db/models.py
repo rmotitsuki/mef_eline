@@ -139,7 +139,6 @@ class EVCBaseDoc(DocumentBaseModel):
     metadata: Dict = {}
     active: bool
     enabled: bool
-    error_status: dict = {}
 
     @staticmethod
     def projection() -> Dict:
@@ -164,7 +163,6 @@ class EVCBaseDoc(DocumentBaseModel):
             "metadata": 1,
             "active": 1,
             "enabled": 1,
-            "error_status": 1,
             "execution_rounds": {"$ifNull": ["$execution_rounds", 0]},
             "owner": {"$ifNull": ["$owner", None]},
             "queue_id": {"$ifNull": ["$queue_id", None]},
