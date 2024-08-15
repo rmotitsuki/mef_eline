@@ -1950,6 +1950,7 @@ class TestMain:
                 content={
                     "dpid": "4",
                     "flow_dict": {"flows": ["flow7", "flow8"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1959,6 +1960,7 @@ class TestMain:
                 content={
                     "dpid": "5",
                     "flow_dict": {"flows": ["flow9", "flow10"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1968,6 +1970,7 @@ class TestMain:
                 content={
                     "dpid": "2",
                     "flow_dict": {"flows": ["flow1", "flow2"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1979,6 +1982,7 @@ class TestMain:
                     "flow_dict": {
                         "flows": ["flow3", "flow4", "flow5", "flow6"]
                     },
+                    'force': True,
                 }
             )
         ])

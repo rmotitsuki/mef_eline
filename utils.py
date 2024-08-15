@@ -161,7 +161,9 @@ def make_uni_list(list_circuits: list) -> list:
     return uni_list
 
 
-def send_flow_mods_event(controller, flow_dict: dict[str, list], action: str):
+def send_flow_mods_event(
+    controller, flow_dict: dict[str, list], action: str, force=True
+):
     """Send flow mods to be deleted or install to flow_manager
      through an event"""
     for dpid, flows in flow_dict.items():
@@ -172,5 +174,6 @@ def send_flow_mods_event(controller, flow_dict: dict[str, list], action: str):
             content={
                 "dpid": dpid,
                 "flow_dict": {"flows": flows},
-            }
+                "force": force,
+            },
         )
