@@ -16,6 +16,8 @@ Added
 - Included "id" on EVC mapped content to normalize it with the other models
 - Introduced ``failover_old_path``, ``failover_deployed``, and ``failover_link_down`` events, which will be primarily consumed by ``telemetry_int`` NApp
 - UI checkbox to request that In-band Network Telemetry (INT) gets enabled
+- Added ``{"deployed": false}`` to request response for EVC creation. It indicates if the created EVC has been able to deployed.
+- Added ``{'redeployed': false}`` to request response for ``PATCH v2/evc/{{circuit_id}}``. It indicates if the modified EVC has been redeployed.
 
 Changed
 =======
@@ -24,10 +26,21 @@ Changed
 - Upgraded UI framework to Vue3 
 - ``enable`` is not longer accepted when patching/updating an EVC, using ``enabled`` instead.
 
+Removed
+=======
+- Removed client side batching with ``BATCH_INTERVAL`` and ``BATCH_SIZE``, now replaced with pacing in ``flow_manager``
+
 Fixed
 =====
 - Only redeploy when handling ``kytos/topology.link_up`` if a dynamic EVC isn't active
 - Fixed possible EVCs duplication when constant delete requests are sent.
+- Improved log when path was not deployed due to TAG availability. Also, in this case, the log was change to error instead of warning.
+- Fixed ``node_name`` not showing in the EVC list and EVC details on the web interface.
+
+Deprecated
+==========
+- Deleted method from EVC class ``deploy_to()`` which was outdated and not used.
+- Deleted unused method from Path class ``get_best_path()``.
 
 [2023.2.0] - 2024-02-16
 ***********************

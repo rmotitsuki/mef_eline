@@ -9,12 +9,13 @@ from kytos.core.common import EntityStatus
 from kytos.core.exceptions import KytosNoTagAvailableError
 from kytos.core.interface import Interface
 from kytos.core.switch import Switch
-from requests.exceptions import Timeout
+from httpx import TimeoutException
 # pylint: disable=wrong-import-position
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.exceptions import FlowModException  # NOQA
+from napps.kytos.mef_eline.exceptions import (FlowModException,   # NOQA
+                                              EVCPathNotInstalled)
 from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
 from napps.kytos.mef_eline.settings import (ANY_SB_PRIORITY,  # NOQA
                                             EPL_SB_PRIORITY, EVPL_SB_PRIORITY,
@@ -39,8 +40,9 @@ class TestEVC():
         }
         self.evc_deploy = EVCDeploy(**attributes)
 
-    def test_primary_links_zipped(self):
+    def test_primary_links_zipped_empty(self):
         """Test primary links zipped method."""
+        assert not self.evc_deploy.links_zipped(None)
 
     @staticmethod
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -106,53 +108,56 @@ class TestEVC():
         evc = EVC(**attributes)
         assert evc.should_deploy(attributes["primary_links"]) is False
 
-    @patch("napps.kytos.mef_eline.models.evc.requests")
-    def test_send_flow_mods_case1(self, requests_mock):
+    @patch("napps.kytos.mef_eline.models.evc.httpx")
+    def test_send_flow_mods_case1(self, httpx_mock):
         """Test if you are sending flow_mods."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
 
         response = MagicMock()
         response.status_code = 201
-        requests_mock.post.return_value = response
+        response.is_server_error = False
+        httpx_mock.post.return_value = response
 
         # pylint: disable=protected-access
         EVC._send_flow_mods(switch.id, flow_mods)
 
         expected_endpoint = f"{MANAGER_URL}/flows/{switch.id}"
         expected_data = {"flows": flow_mods, "force": False}
-        assert requests_mock.post.call_count == 1
-        requests_mock.post.assert_called_once_with(
-            expected_endpoint, json=expected_data
+        assert httpx_mock.post.call_count == 1
+        httpx_mock.post.assert_called_once_with(
+            expected_endpoint, json=expected_data, timeout=30
         )
 
-    @patch("napps.kytos.mef_eline.models.evc.requests")
-    def test_send_flow_mods_case2(self, requests_mock):
+    @patch("napps.kytos.mef_eline.models.evc.httpx")
+    def test_send_flow_mods_case2(self, httpx_mock):
         """Test if you are sending flow_mods."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
         response = MagicMock()
         response.status_code = 201
-        requests_mock.post.return_value = response
+        response.is_server_error = False
+        httpx_mock.post.return_value = response
 
         # pylint: disable=protected-access
         EVC._send_flow_mods(switch.id, flow_mods, command='delete', force=True)
 
         expected_endpoint = f"{MANAGER_URL}/delete/{switch.id}"
         expected_data = {"flows": flow_mods, "force": True}
-        assert requests_mock.post.call_count == 1
-        requests_mock.post.assert_called_once_with(
-            expected_endpoint, json=expected_data
+        assert httpx_mock.post.call_count == 1
+        httpx_mock.post.assert_called_once_with(
+            expected_endpoint, json=expected_data, timeout=30
         )
 
-    @patch("napps.kytos.mef_eline.models.evc.requests")
-    def test_send_flow_mods_error(self, requests_mock):
+    @patch("time.sleep")
+    @patch("napps.kytos.mef_eline.models.evc.httpx")
+    def test_send_flow_mods_error(self, httpx_mock, _):
         """Test flow_manager call fails."""
         flow_mods = {"id": 20}
         switch = Mock(spec=Switch, id=1)
         response = MagicMock()
         response.status_code = 415
-        requests_mock.post.return_value = response
+        httpx_mock.post.return_value = response
 
         # pylint: disable=protected-access
         with pytest.raises(FlowModException):
@@ -162,6 +167,7 @@ class TestEVC():
                 command='delete',
                 force=True
             )
+        assert httpx_mock.post.call_count == 3
 
     def test_prepare_flow_mod(self):
         """Test prepare flow_mod method."""
@@ -540,7 +546,16 @@ class TestEVC():
         dpid = evc.primary_links[0].endpoint_b.switch.id
         send_flow_mods_mock.assert_called_once_with(dpid, expected_flow_mods)
 
-    @patch("requests.post")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    def test_install_nni_flows_error(self, prepare_nni_mock, send_flow_mock):
+        """Test _install_nni_flows with error"""
+        prepare_nni_mock.return_value = {'1': 1}
+        send_flow_mock.side_effect = FlowModException('err')
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_nni_flows()
+
+    @patch("httpx.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
@@ -561,12 +576,13 @@ class TestEVC():
             chose_vlans_mock,
             log_mock,
             _,
-            requests_mock,
+            httpx_mock,
         ) = args
 
         response = MagicMock()
         response.status_code = 201
-        requests_mock.return_value = response
+        response.is_server_error = False
+        httpx_mock.return_value = response
 
         should_deploy_mock.return_value = True
         evc = self.create_evc_inter_switch()
@@ -588,7 +604,7 @@ class TestEVC():
         assert log_mock.info.call_count == 2
         log_mock.info.assert_called_with(f"{evc} was deployed.")
 
-    @patch("requests.post")
+    @patch("httpx.post")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
@@ -609,12 +625,12 @@ class TestEVC():
             choose_vlans_mock,
             discover_new_paths_mock,
             log_mock,
-            requests_mock,
+            httpx_mock,
         ) = args
 
         response = MagicMock()
         response.status_code = 201
-        requests_mock.return_value = response
+        httpx_mock.return_value = response
 
         evc = self.create_evc_inter_switch()
         should_deploy_mock.return_value = False
@@ -628,18 +644,18 @@ class TestEVC():
         assert install_nni_flows.call_count == 0
         assert choose_vlans_mock.call_count == 0
         assert log_mock.info.call_count == 0
-        assert sync_mock.call_count == 1
+        assert sync_mock.call_count == 0
         assert deployed is False
 
         # NoTagAvailable on static path
         should_deploy_mock.return_value = True
-        choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
+        choose_vlans_mock.side_effect = KytosNoTagAvailableError(MagicMock())
         assert evc.deploy_to_path(evc.primary_links) is False
 
         # NoTagAvailable on dynamic path
         should_deploy_mock.return_value = False
         discover_new_paths_mock.return_value = [Path(['a', 'b'])]
-        choose_vlans_mock.side_effect = KytosNoTagAvailableError("error")
+        choose_vlans_mock.side_effect = KytosNoTagAvailableError(MagicMock())
         assert evc.deploy_to_path(evc.primary_links) is False
 
     @patch("napps.kytos.mef_eline.models.evc.log")
@@ -665,7 +681,7 @@ class TestEVC():
             log_mock,
         ) = args
 
-        install_nni_flows.side_effect = FlowModException
+        install_nni_flows.side_effect = EVCPathNotInstalled
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(
             interface_port=2,
@@ -751,10 +767,11 @@ class TestEVC():
         path_mock = MagicMock()
         path_mock.__iter__.return_value = ["link3"]
         get_failover_path_candidates_mock.return_value = [None, path_mock]
+        mock_choose = path_mock.choose_vlans
 
         assert evc2.setup_failover_path() is True
         remove_path_flows_mock.assert_called_with(["link1", "link2"])
-        path_mock.choose_vlans.assert_called()
+        mock_choose.assert_called()
         install_nni_flows_mock.assert_called_with(path_mock)
         install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
@@ -764,7 +781,7 @@ class TestEVC():
 
         # case 4: failed to setup failover_path - No Tag available
         evc2.failover_path = []
-        path_mock.choose_vlans.side_effect = KytosNoTagAvailableError("error")
+        mock_choose.side_effect = KytosNoTagAvailableError(MagicMock())
         sync_mock.call_count = 0
 
         assert evc2.setup_failover_path() is False
@@ -773,8 +790,8 @@ class TestEVC():
 
         # case 5: failed to setup failover_path - FlowMod exception
         evc2.failover_path = []
-        path_mock.choose_vlans.side_effect = None
-        install_nni_flows_mock.side_effect = FlowModException("error")
+        mock_choose.side_effect = None
+        install_nni_flows_mock.side_effect = EVCPathNotInstalled("error")
         sync_mock.call_count = 0
 
         assert evc2.setup_failover_path() is False
@@ -813,7 +830,7 @@ class TestEVC():
         deploy_to_path_mocked.assert_called_once_with()
         assert deployed is True
 
-    @patch("requests.post")
+    @patch("httpx.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
@@ -834,12 +851,12 @@ class TestEVC():
             chose_vlans_mock,
             log_mock,
             _,
-            requests_mock,
+            httpx_mock,
         ) = args
 
         response = MagicMock()
         response.status_code = 201
-        requests_mock.return_value = response
+        httpx_mock.return_value = response
 
         should_deploy_mock.return_value = False
         uni_a = get_uni_mocked(
@@ -1338,7 +1355,7 @@ class TestEVC():
         (
             make_vlans_available_mock,
             send_flow_mods_mock,
-            log_mock,
+            log_mock
         ) = args
 
         evc = self.create_evc_inter_switch()
@@ -1389,7 +1406,7 @@ class TestEVC():
         evc.remove_path_flows(evc.primary_links)
         log_mock.error.assert_called()
 
-    @patch("requests.put")
+    @patch("httpx.put")
     def test_run_bulk_sdntraces(self, put_mock):
         """Test run_bulk_sdntraces method for bulk request."""
         evc = self.create_evc_inter_switch()
@@ -1420,12 +1437,12 @@ class TestEVC():
         result = EVCDeploy.run_bulk_sdntraces(arg_tuple)
         assert result == {"result": []}
 
-        put_mock.side_effect = Timeout
+        put_mock.side_effect = TimeoutException('Timeout')
         response.status_code = 200
         result = EVCDeploy.run_bulk_sdntraces(arg_tuple)
         assert result == {"result": []}
 
-    @patch("requests.put")
+    @patch("httpx.put")
     def test_run_bulk_sdntraces_special_vlan(self, put_mock):
         """Test run_bulk_sdntraces method for bulk request."""
         evc = self.create_evc_inter_switch()
@@ -2165,3 +2182,43 @@ class TestEVC():
         mock_check_range.side_effect = [True, False, True]
         check = EVC.check_range(circuit, traces)
         assert check is False
+
+    def test_add_tag_errors(self):
+        """Test add_tag_errors"""
+        msg = "No available path was found."
+        tag_errors = []
+        tag_errors.append('Mocked error 1')
+        actual = self.evc_deploy.add_tag_errors(msg, tag_errors)
+        assert actual == ('No available path was found. 1 path was rejected'
+                          f' with message: {tag_errors}')
+
+        tag_errors.append('Mocked error 2')
+        actual = self.evc_deploy.add_tag_errors(msg, tag_errors)
+        assert actual == ('No available path was found. 2 paths were'
+                          f' rejected with messages: {tag_errors}')
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.setup_failover_path")
+    def test_try_setup_failover_path(self, setup_failover_mock):
+        """Test try_setup_failover_path"""
+        self.evc_deploy.failover_path = True
+        self.evc_deploy.current_path = False
+        self.evc_deploy.is_active = MagicMock(return_value=False)
+        self.evc_deploy.try_setup_failover_path()
+        assert setup_failover_mock.call_count == 0
+
+        self.evc_deploy.failover_path = False
+        self.evc_deploy.current_path = True
+        self.evc_deploy.is_active = MagicMock(return_value=True)
+        self.evc_deploy.try_setup_failover_path()
+        assert setup_failover_mock.call_count == 1
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch(
+        "napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_direct_uni_flows"
+    )
+    def test_install_direct_uni_flows_error(self, prepare_mock, send_mock):
+        """Test _install_direct_uni_flows with errors"""
+        prepare_mock.return_value = True, True
+        send_mock.side_effect = FlowModException
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_direct_uni_flows()

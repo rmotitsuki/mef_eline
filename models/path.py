@@ -1,12 +1,15 @@
 """Classes related to paths"""
-import requests
+import httpx
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_combine, wait_fixed, wait_random)
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
 from kytos.core.interface import TAG
 from kytos.core.link import Link
+from kytos.core.retry import before_sleep
 from napps.kytos.mef_eline import settings
-from napps.kytos.mef_eline.exceptions import InvalidPath
+from napps.kytos.mef_eline.exceptions import InvalidPath, PathFinderException
 
 
 class Path(list, GenericEntity):
@@ -122,6 +125,13 @@ class DynamicPathManager:
         cls.controller = controller
 
     @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_combine(wait_fixed(3), wait_random(min=0, max=5)),
+        retry=retry_if_exception_type(PathFinderException),
+        before_sleep=before_sleep,
+        reraise=True
+    )
     def get_paths(circuit, max_paths=2, **kwargs) -> list[dict]:
         """Get a valid path for the circuit from the Pathfinder."""
         endpoint = settings.PATHFINDER_URL
@@ -133,17 +143,13 @@ class DynamicPathManager:
             "spf_attribute": spf_attribute
         }
         request_data.update(kwargs)
-        api_reply = requests.post(endpoint, json=request_data)
+        try:
+            api_reply = httpx.post(endpoint, json=request_data, timeout=10)
+        except httpx.TimeoutException as err:
+            raise PathFinderException(str(err)) from err
 
-        if api_reply.status_code != getattr(requests.codes, "ok"):
-            log.error(
-                "Failed to get paths at %s. Returned %s. Payload %s. EVC %s",
-                endpoint,
-                api_reply.text,
-                request_data,
-                circuit,
-            )
-            return []
+        if api_reply.status_code >= 400:
+            raise PathFinderException(api_reply.text)
         reply_data = api_reply.json()
         return reply_data.get("paths", [])
 
@@ -153,18 +159,17 @@ class DynamicPathManager:
         return [endpoint for endpoint in path if len(endpoint) > 23]
 
     @classmethod
-    def get_best_path(cls, circuit):
-        """Return the best path available for a circuit, if exists."""
-        paths = cls.get_paths(circuit)
-        if paths:
-            return cls.create_path(cls.get_paths(circuit)[0]["hops"])
-        return None
-
-    @classmethod
     def get_best_paths(cls, circuit, **kwargs):
         """Return the best paths available for a circuit, if they exist."""
-        for path in cls.get_paths(circuit, **kwargs):
-            yield cls.create_path(path["hops"])
+        try:
+            for path in cls.get_paths(circuit, **kwargs):
+                yield cls.create_path(path["hops"])
+        except PathFinderException as err:
+            log.error(
+                f"{circuit} failed to get paths from pathfinder. Error {err}"
+            )
+            return
+            yield
 
     @classmethod
     def get_disjoint_paths(

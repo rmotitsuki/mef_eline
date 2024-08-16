@@ -30,7 +30,9 @@ from napps.kytos.mef_eline.models import (EVC, DynamicPathManager, EVCDeploy,
 from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.utils import (aemit_event, check_disabled_component,
                                          emit_event, get_vlan_tags_and_masks,
-                                         map_evc_event_content)
+                                         map_evc_event_content,
+                                         merge_flow_dicts,
+                                         send_flow_mods_event)
 
 
 # pylint: disable=too-many-public-methods
@@ -121,9 +123,7 @@ class Main(KytosNApp):
     def execute_consistency(self):
         """Execute consistency routine."""
         circuits_to_check = []
-        stored_circuits = self.mongo_controller.get_circuits()['circuits']
         for circuit in self.get_evcs_by_svc_level(enable_filter=False):
-            stored_circuits.pop(circuit.id, None)
             if self.should_be_checked(circuit):
                 circuits_to_check.append(circuit)
             circuit.try_setup_failover_path()
@@ -314,12 +314,13 @@ class Main(KytosNApp):
         self.sched.add(evc)
 
         # Circuit has no schedule, deploy now
+        deployed = False
         if not evc.circuit_scheduler:
             with evc.lock:
-                evc.deploy()
+                deployed = evc.deploy()
 
         # Notify users
-        result = {"circuit_id": evc.id}
+        result = {"circuit_id": evc.id, "deployed": deployed}
         status = 201
         log.debug("create_circuit result %s %s", result, status)
         emit_event(self.controller, name="created",
@@ -387,7 +388,7 @@ class Main(KytosNApp):
                     409,
                     detail=f"Path is not valid: {exception}"
                 ) from exception
-
+        redeployed = False
         if evc.is_active():
             if enable is False:  # disable if active
                 with evc.lock:
@@ -395,16 +396,16 @@ class Main(KytosNApp):
             elif redeploy is not None:  # redeploy if active
                 with evc.lock:
                     evc.remove()
-                    evc.deploy()
+                    redeployed = evc.deploy()
         else:
             if enable is True:  # enable if inactive
                 with evc.lock:
-                    evc.deploy()
+                    redeployed = evc.deploy()
             elif evc.is_enabled() and redeploy:
                 with evc.lock:
                     evc.remove()
-                    evc.deploy()
-        result = {evc.id: evc.as_dict()}
+                    redeployed = evc.deploy()
+        result = {evc.id: evc.as_dict(), 'redeployed': redeployed}
         status = 200
 
         log.debug("update result %s %s", result, status)
@@ -431,11 +432,11 @@ class Main(KytosNApp):
 
         with evc.lock:
             if not evc.archived:
-                evc.remove_current_flows()
-                evc.remove_failover_flows(sync=False)
                 evc.deactivate()
                 evc.disable()
                 self.sched.remove(evc)
+                evc.remove_current_flows(sync=False)
+                evc.remove_failover_flows(sync=False)
                 evc.archive()
                 evc.remove_uni_tags()
                 evc.sync()
@@ -493,7 +494,7 @@ class Main(KytosNApp):
         circuit_id = request.path_params["circuit_id"]
         metadata = get_json_or_400(request, self.controller.loop)
         if not isinstance(metadata, dict):
-            raise HTTPException(400, "Invalid metadata value: {metadata}")
+            raise HTTPException(400, f"Invalid metadata value: {metadata}")
         try:
             evc = self.circuits[circuit_id]
         except KeyError as error:
@@ -558,15 +559,19 @@ class Main(KytosNApp):
                 404,
                 detail=f"circuit_id {circuit_id} not found"
             ) from KeyError
+        deployed = False
         if evc.is_enabled():
             with evc.lock:
-                evc.remove_failover_flows(sync=False)
-                evc.remove_current_flows(sync=True)
-                evc.deploy()
+                evc.remove_current_flows(sync=False)
+                evc.remove_failover_flows(sync=True)
+                deployed = evc.deploy()
+        if deployed:
             result = {"response": f"Circuit {circuit_id} redeploy received."}
             status = 202
         else:
-            result = {"response": f"Circuit {circuit_id} is disabled."}
+            result = {
+                "response": f"Circuit {circuit_id} is disabled."
+            }
             status = 409
 
         return JSONResponse(result, status_code=status)
@@ -794,9 +799,9 @@ class Main(KytosNApp):
         """
         Handler for interface link_up events
         """
+        log.info("Event handle_interface_link_up %s", interface)
         for evc in self.get_evcs_by_svc_level():
             with evc.lock:
-                log.info("Event handle_interface_link_up %s", interface)
                 evc.handle_interface_link_up(
                     interface
                 )
@@ -871,25 +876,7 @@ class Main(KytosNApp):
         if failover_event_contents:
             emit_event(self.controller, "failover_link_down",
                        content=failover_event_contents)
-
-        while switch_flows:
-            offset = settings.BATCH_SIZE or None
-            switches = list(switch_flows.keys())
-            for dpid in switches:
-                emit_event(
-                    self.controller,
-                    context="kytos.flow_manager",
-                    name="flows.install",
-                    content={
-                        "dpid": dpid,
-                        "flow_dict": {"flows": switch_flows[dpid][:offset]},
-                    }
-                )
-                if offset is None or offset >= len(switch_flows[dpid]):
-                    del switch_flows[dpid]
-                    continue
-                switch_flows[dpid] = switch_flows[dpid][offset:]
-            time.sleep(settings.BATCH_INTERVAL)
+        send_flow_mods_event(self.controller, switch_flows, 'install')
 
         for evc in evcs_normal:
             emit_event(
@@ -957,19 +944,34 @@ class Main(KytosNApp):
     def handle_cleanup_evcs_old_path(self, event):
         """Handle cleanup evcs old path."""
         evcs = event.content.get("evcs", [])
-        event_contents: dict[str, list[dict]] = {}
+        event_contents: dict[str, dict] = defaultdict(list)
+        total_flows = {}
         for evc in evcs:
             if not evc.old_path:
                 continue
-            removed_flows = evc.remove_path_flows(evc.old_path)
-            content = map_evc_event_content(
-                evc,
-                removed_flows=removed_flows,
-                current_path=evc.current_path.as_dict(),
-            )
-            event_contents[evc.id] = content
-            evc.old_path = Path([])
+            with evc.lock:
+                removed_flows = {}
+                try:
+                    nni_flows = evc._prepare_nni_flows(evc.old_path)
+                    uni_flows = evc._prepare_uni_flows(
+                        evc.old_path, skip_in=True
+                    )
+                    removed_flows = merge_flow_dicts(nni_flows, uni_flows)
+                # pylint: disable=broad-except
+                except Exception:
+                    err = traceback.format_exc().replace("\n", ", ")
+                    log.error(f"Fail to remove {evc} old_path: {err}")
+                    continue
+            if removed_flows:
+                total_flows = merge_flow_dicts(removed_flows, total_flows)
+                content = map_evc_event_content(
+                    evc,
+                    removed_flows=removed_flows,
+                    current_path=evc.current_path.as_dict(),
+                )
+                event_contents[evc.id] = content
         if event_contents:
+            send_flow_mods_event(self.controller, total_flows, 'delete')
             emit_event(self.controller, "failover_old_path",
                        content=event_contents)
 
@@ -1017,7 +1019,8 @@ class Main(KytosNApp):
         evc = self.circuits.get(EVC.get_id_from_cookie(flow.cookie))
         if evc:
             with evc.lock:
-                evc.remove_current_flows()
+                evc.remove_current_flows(sync=False)
+                evc.remove_failover_flows(sync=True)
 
     def _evc_dict_with_instances(self, evc_dict):
         """Convert some dict values to instance of EVC classes.

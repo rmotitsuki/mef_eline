@@ -8,9 +8,10 @@ from threading import Lock
 from typing import Union
 from uuid import uuid4
 
-import requests
+import httpx
 from glom import glom
-from requests.exceptions import Timeout
+from tenacity import (retry, retry_if_exception_type, stop_after_attempt,
+                      wait_combine, wait_fixed, wait_random)
 
 from kytos.core import log
 from kytos.core.common import EntityStatus, GenericEntity
@@ -18,9 +19,11 @@ from kytos.core.exceptions import KytosNoTagAvailableError, KytosTagError
 from kytos.core.helpers import get_time, now
 from kytos.core.interface import UNI, Interface, TAGRange
 from kytos.core.link import Link
+from kytos.core.retry import before_sleep
 from kytos.core.tag_ranges import range_difference
 from napps.kytos.mef_eline import controllers, settings
 from napps.kytos.mef_eline.exceptions import (DuplicatedNoTagUNI,
+                                              EVCPathNotInstalled,
                                               FlowModException, InvalidPath)
 from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
@@ -69,6 +72,7 @@ class EVCBase(GenericEntity):
         "enabled"
     }
 
+    # pylint: disable=too-many-statements
     def __init__(self, controller, **kwargs):
         """Create an EVC instance with the provided parameters.
 
@@ -148,7 +152,6 @@ class EVCBase(GenericEntity):
         self.flow_removed_at = get_time(kwargs.get("flow_removed_at")) or None
         self.updated_at = get_time(kwargs.get("updated_at")) or now()
         self.execution_rounds = kwargs.get("execution_rounds", 0)
-
         self.current_links_cache = set()
         self.primary_links_cache = set()
         self.backup_links_cache = set()
@@ -372,7 +375,7 @@ class EVCBase(GenericEntity):
         """Check if a no tag UNI is duplicated."""
         if other_uni in (self.uni_a, self.uni_z):
             msg = f"UNI with interface {other_uni.interface.id} is"\
-                  f" duplicated with EVC {self.id}."
+                  f" duplicated with {self}."
             raise DuplicatedNoTagUNI(msg)
 
     def as_dict(self, keys: set = None):
@@ -486,7 +489,7 @@ class EVCBase(GenericEntity):
                 check_order=False
             )
         except KytosTagError as err:
-            log.error(f"Error in circuit {self._id}: {err}")
+            log.error(f"Error in {self}: {err}")
             return
         if conflict:
             intf = uni.interface.id
@@ -697,10 +700,8 @@ class EVCDeploy(EVCBase):
                     force=force,
                 )
             except FlowModException as err:
-                log.error(
-                    f"Error removing flows from switch {switch.id} for"
-                    f"EVC {self}: {err}"
-                )
+                log.error(f"Error deleting path in {switch.id}, {err}")
+                break
         try:
             self.failover_path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -709,19 +710,19 @@ class EVCDeploy(EVCBase):
         if sync:
             self.sync()
 
-    def remove_current_flows(self, current_path=None, force=True,
-                             sync=True):
-        """Remove all flows from current path."""
+    def remove_current_flows(self, force=True, sync=True):
+        """Remove all flows from current path or path intended for
+         current path if exists."""
         switches = set()
 
-        switches.add(self.uni_a.interface.switch)
-        switches.add(self.uni_z.interface.switch)
-        if not current_path:
-            current_path = self.current_path
+        if not self.current_path and not self.is_intra_switch():
+            return
+        current_path = self.current_path
         for link in current_path:
             switches.add(link.endpoint_a.switch)
             switches.add(link.endpoint_b.switch)
-
+        switches.add(self.uni_a.interface.switch)
+        switches.add(self.uni_z.interface.switch)
         match = {
             "cookie": self.get_cookie(),
             "cookie_mask": int(0xffffffffffffffff)
@@ -731,10 +732,8 @@ class EVCDeploy(EVCBase):
             try:
                 self._send_flow_mods(switch.id, [match], 'delete', force=force)
             except FlowModException as err:
-                log.error(
-                    f"Error removing flows from switch {switch.id} for"
-                    f"EVC {self}: {err}"
-                )
+                log.error(f"Error deleting current_path in {switch.id}, {err}")
+                break
         try:
             current_path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -791,10 +790,8 @@ class EVCDeploy(EVCBase):
             try:
                 self._send_flow_mods(dpid, flows, 'delete', force=force)
             except FlowModException as err:
-                log.error(
-                    "Error removing failover flows: "
-                    f"dpid={dpid} evc={self} error={err}"
-                )
+                log.error(f"Error deleting path in {dpid}, {err}")
+                break
         try:
             path.make_vlans_available(self._controller)
         except KytosTagError as err:
@@ -825,7 +822,8 @@ class EVCDeploy(EVCBase):
 
         return False
 
-    def deploy_to_path(self, path=None):  # pylint: disable=too-many-branches
+    # pylint: disable=too-many-branches, too-many-statements
+    def deploy_to_path(self, path=None):
         """Install the flows for this circuit.
 
         Procedures to deploy:
@@ -840,12 +838,14 @@ class EVCDeploy(EVCBase):
         7. Update links caches(primary, current, backup)
 
         """
-        self.remove_current_flows()
-        use_path = path
+        self.remove_current_flows(sync=False)
+        use_path = path or Path([])
+        tag_errors = []
         if self.should_deploy(use_path):
             try:
                 use_path.choose_vlans(self._controller)
-            except KytosNoTagAvailableError:
+            except KytosNoTagAvailableError as e:
+                tag_errors.append(str(e))
                 use_path = None
         else:
             for use_path in self.discover_new_paths():
@@ -854,8 +854,8 @@ class EVCDeploy(EVCBase):
                 try:
                     use_path.choose_vlans(self._controller)
                     break
-                except KytosNoTagAvailableError:
-                    pass
+                except KytosNoTagAvailableError as e:
+                    tag_errors.append(str(e))
             else:
                 use_path = None
 
@@ -867,15 +867,18 @@ class EVCDeploy(EVCBase):
                 use_path = Path()
                 self._install_direct_uni_flows()
             else:
-                log.warning(
-                    f"{self} was not deployed. No available path was found."
-                )
+                msg = f"{self} was not deployed. No available path was found."
+                if tag_errors:
+                    msg = self.add_tag_errors(msg, tag_errors)
+                    log.error(msg)
+                else:
+                    log.warning(msg)
                 return False
-        except FlowModException as err:
+        except EVCPathNotInstalled as err:
             log.error(
                 f"Error deploying EVC {self} when calling flow_manager: {err}"
             )
-            self.remove_current_flows(use_path)
+            self.remove_current_flows(use_path, sync=True)
             return False
         self.activate()
         self.current_path = use_path
@@ -885,12 +888,16 @@ class EVCDeploy(EVCBase):
 
     def try_setup_failover_path(self, wait=settings.DEPLOY_EVCS_INTERVAL):
         """Try setup failover_path whenever possible."""
-        if self.failover_path:
+        if (
+                self.failover_path or not self.current_path
+                or not self.is_active()
+                ):
             return
         if (now() - self.affected_by_link_at).seconds >= wait:
             with self.lock:
                 self.setup_failover_path()
 
+    # pylint: disable=too-many-statements
     def setup_failover_path(self):
         """Install flows for the failover path of this EVC.
 
@@ -913,6 +920,7 @@ class EVCDeploy(EVCBase):
 
         out_new_flows: dict[str, list[dict]] = {}
         reason = ""
+        tag_errors = []
         out_removed_flows = self.remove_path_flows(self.failover_path)
         self.failover_path = Path([])
 
@@ -922,8 +930,8 @@ class EVCDeploy(EVCBase):
             try:
                 use_path.choose_vlans(self._controller)
                 break
-            except KytosNoTagAvailableError:
-                pass
+            except KytosNoTagAvailableError as e:
+                tag_errors.append(str(e))
         else:
             use_path = Path([])
             reason = "No available path was found"
@@ -934,20 +942,22 @@ class EVCDeploy(EVCBase):
                 out_new_flows = merge_flow_dicts(out_new_flows, _nni_flows)
                 _uni_flows = self._install_uni_flows(use_path, skip_in=True)
                 out_new_flows = merge_flow_dicts(out_new_flows, _uni_flows)
-        except FlowModException as err:
+        except EVCPathNotInstalled as err:
             reason = "Error deploying failover path"
             log.error(
                 f"{reason} for {self}. FlowManager error: {err}"
             )
             _rmed_flows = self.remove_path_flows(use_path)
-            out_new_flows = merge_flow_dicts(out_new_flows, _rmed_flows)
+            out_removed_flows = merge_flow_dicts(
+                out_removed_flows, _rmed_flows
+            )
             use_path = Path([])
 
         self.failover_path = use_path
         self.sync()
 
         if out_new_flows or out_removed_flows:
-            content = {
+            emit_event(self._controller, "failover_deployed", content={
                 self.id: map_evc_event_content(
                     self,
                     flows=out_new_flows,
@@ -955,16 +965,34 @@ class EVCDeploy(EVCBase):
                     error_reason=reason,
                     current_path=self.current_path.as_dict(),
                 )
-            }
-            emit_event(self._controller, "failover_deployed", content=content)
+            })
 
         if not use_path:
-            log.warning(
-                f"Failover path for {self} was not deployed: {reason}"
-            )
+            msg = f"Failover path for {self} was not deployed: {reason}."
+            if tag_errors:
+                msg = self.add_tag_errors(msg, tag_errors)
+                log.error(msg)
+            else:
+                log.warning(msg)
             return False
         log.info(f"Failover path for {self} was deployed.")
         return True
+
+    @staticmethod
+    def add_tag_errors(msg: str, tag_errors: list):
+        """Add to msg the tag errors ecountered when chossing path."""
+        path = ['path', 'paths']
+        was = ['was', 'were']
+        message = ['message', 'messages']
+
+        # Choose either singular(0) or plural(1) words
+        n = 1
+        if len(tag_errors) == 1:
+            n = 0
+
+        msg += f" {len(tag_errors)} {path[n]} {was[n]} rejected"
+        msg += f" with {message[n]}: {tag_errors}"
+        return msg
 
     def get_failover_flows(self):
         """Return the flows needed to make the failover path active, i.e. the
@@ -1050,7 +1078,10 @@ class EVCDeploy(EVCBase):
         same switch.
         """
         (dpid, flows) = self._prepare_direct_uni_flows()
-        self._send_flow_mods(dpid, flows)
+        try:
+            self._send_flow_mods(dpid, flows)
+        except FlowModException as err:
+            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
 
     def _prepare_nni_flows(self, path=None):
         """Prepare NNI flows."""
@@ -1095,8 +1126,11 @@ class EVCDeploy(EVCBase):
     ) -> dict[str, list[dict]]:
         """Install NNI flows."""
         nni_flows = self._prepare_nni_flows(path)
-        for dpid, flows in nni_flows.items():
-            self._send_flow_mods(dpid, flows)
+        try:
+            for dpid, flows in nni_flows.items():
+                self._send_flow_mods(dpid, flows)
+        except FlowModException as err:
+            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
         return nni_flows
 
     @staticmethod
@@ -1219,13 +1253,22 @@ class EVCDeploy(EVCBase):
     ) -> dict[str, list[dict]]:
         """Install UNI flows."""
         uni_flows = self._prepare_uni_flows(path, skip_in, skip_out)
-
-        for (dpid, flows) in uni_flows.items():
-            self._send_flow_mods(dpid, flows)
+        try:
+            for (dpid, flows) in uni_flows.items():
+                self._send_flow_mods(dpid, flows)
+        except FlowModException as err:
+            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
 
         return uni_flows
 
     @staticmethod
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_combine(wait_fixed(3), wait_random(min=2, max=7)),
+        retry=retry_if_exception_type(FlowModException),
+        before_sleep=before_sleep,
+        reraise=True,
+    )
     def _send_flow_mods(dpid, flow_mods, command='flows', force=False):
         """Send a flow_mod list to a specific switch.
 
@@ -1236,13 +1279,15 @@ class EVCDeploy(EVCBase):
             force(bool): True to send via consistency check in case of errors
 
         """
-
         endpoint = f"{settings.MANAGER_URL}/{command}/{dpid}"
 
         data = {"flows": flow_mods, "force": force}
-        response = requests.post(endpoint, json=data)
-        if response.status_code >= 400:
-            raise FlowModException(str(response.text))
+        try:
+            res = httpx.post(endpoint, json=data, timeout=30)
+        except httpx.RequestError as err:
+            raise FlowModException(str(err)) from err
+        if res.is_server_error or res.status_code >= 400:
+            raise FlowModException(res.text)
 
     def get_cookie(self):
         """Return the cookie integer from evc id."""
@@ -1409,8 +1454,8 @@ class EVCDeploy(EVCBase):
                                             }
             data.append(data_uni)
         try:
-            response = requests.put(endpoint, json=data, timeout=30)
-        except Timeout as exception:
+            response = httpx.put(endpoint, json=data, timeout=30)
+        except httpx.TimeoutException as exception:
             log.error(f"Request has timed out: {exception}")
             return {"result": []}
         if response.status_code >= 400:
@@ -1596,17 +1641,6 @@ class LinkProtection(EVCDeploy):
             return True
         return False
 
-    def deploy_to(self, path_name=None, path=None):
-        """Create a deploy to path."""
-        if self.current_path == path:
-            log.debug(f"{path_name} is equal to current_path.")
-            return True
-
-        if path.status is EntityStatus.UP:
-            return self.deploy_to_path(path)
-
-        return False
-
     def handle_link_up(self, link):
         """Handle circuit when link up.
 
@@ -1751,7 +1785,7 @@ class LinkProtection(EVCDeploy):
         }
         self.activate()
         log.info(
-            f"Activating EVC {self.id}. Interfaces: "
+            f"Activating {self}. Interfaces: "
             f"{interface_dicts}."
         )
         emit_event(self._controller, "uni_active_updated",
@@ -1783,7 +1817,7 @@ class LinkProtection(EVCDeploy):
         }
         self.deactivate()
         log.info(
-            f"Deactivating EVC {self.id}. Interfaces: "
+            f"Deactivating {self}. Interfaces: "
             f"{interface_dicts}."
         )
         emit_event(self._controller, "uni_active_updated",
