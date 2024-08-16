@@ -1295,7 +1295,7 @@ class TestMain:
         response = await self.api_client.get(url)
         assert response.status_code == 404
 
-    @patch('requests.post')
+    @patch('httpx.post')
     @patch("napps.kytos.mef_eline.main.Main._use_uni_tags")
     @patch('napps.kytos.mef_eline.scheduler.Scheduler.add')
     @patch('napps.kytos.mef_eline.controllers.ELineController.update_evc')
@@ -1318,11 +1318,12 @@ class TestMain:
         _mongo_controller_update_mock,
         _sched_add_mock,
         mock_use_uni_tags,
-        requests_mock
+        httpx_mock
     ):
         """Test update a circuit circuit."""
         self.napp.controller.loop = asyncio.get_running_loop()
         mock_use_uni_tags.return_value = True
+        evc_deploy.return_value = True
         interface_by_id_mock.return_value = get_uni_mocked().interface
         unis = [
             get_uni_mocked(switch_dpid="00:00:00:00:00:00:00:01"),
@@ -1332,7 +1333,7 @@ class TestMain:
 
         response = MagicMock()
         response.status_code = 201
-        requests_mock.return_value = response
+        httpx_mock.return_value = response
 
         payloads = [
             {
@@ -1837,6 +1838,31 @@ class TestMain:
         assert 404 == response.status_code
         assert len(self.napp.circuits) == 0
 
+    @patch("napps.kytos.mef_eline.main.emit_event")
+    async def test_delete_circuit(self, emit_event_mock):
+        """Test delete_circuit"""
+        evc = MagicMock()
+        evc.archived = False
+        circuit_id = '1'
+        self.napp.circuits[circuit_id] = evc
+        response = await self.api_client.delete(
+            f"{self.base_endpoint}/v2/evc/{circuit_id}"
+        )
+        assert 200 == response.status_code
+        assert evc.deactivate.call_count == 1
+        assert evc.disable.call_count == 1
+        evc.remove_current_flows.assert_called_once_with(
+            sync=False
+        )
+        evc.remove_failover_flows.assert_called_once_with(
+            sync=False
+        )
+        assert evc.archive.call_count == 1
+        assert evc.remove_uni_tags.call_count == 1
+        assert evc.sync.call_count == 1
+        assert not self.napp.circuits
+        assert emit_event_mock.call_count == 1
+
     def test_handle_link_up(self):
         """Test handle_link_up method."""
         evc_mock = create_autospec(EVC)
@@ -1854,8 +1880,11 @@ class TestMain:
         evc_mock.handle_link_up.assert_called_with("abc")
 
     @patch("time.sleep", return_value=None)
+    @patch("napps.kytos.mef_eline.utils.emit_event")
     @patch("napps.kytos.mef_eline.main.emit_event")
-    def test_handle_link_down(self, emit_event_mock, _):
+    def test_handle_link_down(
+        self, emit_main_mock, emit_utils_mock, _
+    ):
         """Test handle_link_down method."""
         uni = create_autospec(UNI)
         evc1 = MagicMock(id="1", service_level=0, creation_time=1,
@@ -1913,7 +1942,7 @@ class TestMain:
 
         assert evc5.service_level > evc4.service_level
         # evc5 batched flows should be sent first
-        emit_event_mock.assert_has_calls([
+        emit_utils_mock.assert_has_calls([
             call(
                 self.napp.controller,
                 context="kytos.flow_manager",
@@ -1921,6 +1950,7 @@ class TestMain:
                 content={
                     "dpid": "4",
                     "flow_dict": {"flows": ["flow7", "flow8"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1930,6 +1960,7 @@ class TestMain:
                 content={
                     "dpid": "5",
                     "flow_dict": {"flows": ["flow9", "flow10"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1939,6 +1970,7 @@ class TestMain:
                 content={
                     "dpid": "2",
                     "flow_dict": {"flows": ["flow1", "flow2"]},
+                    'force': True,
                 }
             ),
             call(
@@ -1950,13 +1982,14 @@ class TestMain:
                     "flow_dict": {
                         "flows": ["flow3", "flow4", "flow5", "flow6"]
                     },
+                    'force': True,
                 }
-            ),
+            )
         ])
         event_name = "evc_affected_by_link_down"
         assert evc3.service_level > evc1.service_level
         # evc3 should be handled before evc1
-        emit_event_mock.assert_has_calls([
+        emit_main_mock.assert_has_calls([
             call(self.napp.controller, event_name, content={
                 "link": link,
                 "id": "6",
@@ -1995,7 +2028,7 @@ class TestMain:
             [{"id": "5"}, {"id": "4"}, {"id": "2"}]
         )
         event_name = "failover_link_down"
-        assert emit_event_mock.call_args_list[0][0][1] == event_name
+        assert emit_main_mock.call_args_list[0][0][1] == event_name
 
     @patch("napps.kytos.mef_eline.main.emit_event")
     def test_handle_evc_affected_by_link_down(self, emit_event_mock):
@@ -2064,6 +2097,7 @@ class TestMain:
         current_path, map_evc_content, emit_event = [
             MagicMock(), MagicMock(), MagicMock()
         ]
+        send_flows, merge_flows = MagicMock(), MagicMock()
         monkeypatch.setattr(
             "napps.kytos.mef_eline.main.map_evc_event_content",
             map_evc_content
@@ -2072,20 +2106,36 @@ class TestMain:
             "napps.kytos.mef_eline.main.emit_event",
             emit_event
         )
+        monkeypatch.setattr(
+            "napps.kytos.mef_eline.main.send_flow_mods_event",
+            send_flows
+        )
+        monkeypatch.setattr(
+            "napps.kytos.mef_eline.main.merge_flow_dicts",
+            merge_flows
+        )
+        merge_flows.return_value = ['1', '2']
         evc1 = create_autospec(EVC, id="1", old_path=["1"],
-                               current_path=current_path)
+                               current_path=current_path, lock=MagicMock())
         evc2 = create_autospec(EVC, id="2", old_path=["2"],
-                               current_path=current_path)
-        evc3 = create_autospec(EVC, id="3", old_path=[], current_path=[])
+                               current_path=current_path, lock=MagicMock())
+        evc3 = create_autospec(EVC, id="3", old_path=[],
+                               current_path=[], lock=MagicMock())
 
         event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
         self.napp.handle_cleanup_evcs_old_path(event)
-        evc1.remove_path_flows.assert_called_with(["1"])
-        evc2.remove_path_flows.assert_called_with(["2"])
-        evc3.remove_path_flows.assert_not_called()
+        evc1._prepare_nni_flows.assert_called_with(["1"])
+        evc1._prepare_uni_flows.assert_called_with(["1"], skip_in=True)
+        evc2._prepare_nni_flows.assert_called_with(["2"])
+        evc2._prepare_uni_flows.assert_called_with(["2"], skip_in=True)
+        evc3._prepare_nni_flows.assert_not_called()
+        evc3._prepare_uni_flows.assert_not_called()
         assert emit_event.call_count == 1
         assert emit_event.call_args[0][1] == "failover_old_path"
         assert len(emit_event.call_args[1]["content"]) == 2
+        assert send_flows.call_count == 1
+        assert send_flows.call_args[0][1] == ['1', '2']
+        assert send_flows.call_args[0][2] == 'delete'
 
     async def test_add_metadata(self):
         """Test method to add metadata"""

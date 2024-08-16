@@ -7,7 +7,7 @@ from kytos.core.interface import UNI, Interface, TAGRange
 from napps.kytos.mef_eline.exceptions import DisabledSwitch
 
 
-def map_evc_event_content(evc, **kwargs):
+def map_evc_event_content(evc, **kwargs) -> dict:
     """Returns a set of values from evc to be used for content"""
     return kwargs | {"evc_id": evc.id,
                      "id": evc.id,
@@ -159,3 +159,21 @@ def make_uni_list(list_circuits: list) -> list:
                 (circuit.uni_z.interface, tag_z)
             )
     return uni_list
+
+
+def send_flow_mods_event(
+    controller, flow_dict: dict[str, list], action: str, force=True
+):
+    """Send flow mods to be deleted or install to flow_manager
+     through an event"""
+    for dpid, flows in flow_dict.items():
+        emit_event(
+            controller,
+            context="kytos.flow_manager",
+            name=f"flows.{action}",
+            content={
+                "dpid": dpid,
+                "flow_dict": {"flows": flows},
+                "force": force,
+            },
+        )

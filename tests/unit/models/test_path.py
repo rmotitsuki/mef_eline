@@ -70,8 +70,8 @@ class TestPath():
         current_path = Path(links)
         assert current_path.status == EntityStatus.DISABLED
 
-    # This method will be used by the mock to replace requests.get
-    def _mocked_requests_get_status_case_4(self):
+    # This method will be used by the mock to replace httpx.get
+    def _mocked_httpx_get_status_case_4(self):
         return MockResponse(
             {
                 "links": {
@@ -299,64 +299,8 @@ class TestDynamicPathManager():
         ]
         assert DynamicPathManager.create_path(path) is None
 
-    @patch("requests.post")
-    def test_get_best_path(self, mock_requests_post):
-        """Test get_best_path method."""
-        controller = MagicMock()
-        controller.get_interface_by_id.side_effect = id_to_interface_mock
-        DynamicPathManager.set_controller(controller)
-
-        paths1 = {
-            "paths": [
-                {
-                    "cost": 5,
-                    "hops": [
-                        "00:00:00:00:00:00:00:01:1",
-                        "00:00:00:00:00:00:00:01",
-                        "00:00:00:00:00:00:00:01:2",
-                        "00:00:00:00:00:00:00:02:2",
-                        "00:00:00:00:00:00:00:02",
-                        "00:00:00:00:00:00:00:02:1"
-                        ]
-                },
-            ]
-        }
-
-        expected_path = [
-            Link(
-                id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
-                id_to_interface_mock("00:00:00:00:00:00:00:02:2")
-            ),
-        ]
-
-        # test success case
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = paths1
-        mock_requests_post.return_value = mock_response
-
-        res_paths = list(DynamicPathManager.get_best_path(MagicMock()))
-        assert (
-            [link.id for link in res_paths] ==
-            [link.id for link in expected_path]
-        )
-
-        # test failure when controller dont find the interface on create_path
-        controller.get_interface_by_id.side_effect = [
-            id_to_interface_mock("00:00:00:00:00:00:00:01:2"),
-            None
-        ]
-        assert DynamicPathManager.get_best_path(MagicMock()) is None
-
-        mock_response.status_code = 400
-        mock_response.json.return_value = {}
-        mock_requests_post.return_value = mock_response
-
-        res_paths = DynamicPathManager.get_best_path(MagicMock())
-        assert res_paths is None
-
-    @patch("requests.post")
-    def test_get_best_paths(self, mock_requests_post):
+    @patch("httpx.post")
+    def test_get_best_paths(self, mock_httpx_post):
         """Test get_best_paths method."""
         controller = MagicMock()
         controller.get_interface_by_id.side_effect = id_to_interface_mock
@@ -420,7 +364,7 @@ class TestDynamicPathManager():
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = paths1
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         kwargs = {
             "spf_attribute": settings.SPF_ATTRIBUTE,
             "spf_max_path_cost": 8,
@@ -452,12 +396,14 @@ class TestDynamicPathManager():
                 },
                 **kwargs
             },
+            timeout=10,
         )
-        mock_requests_post.assert_has_calls([expected_call])
+        mock_httpx_post.assert_has_calls([expected_call])
 
+    @patch('time.sleep')
     @patch("napps.kytos.mef_eline.models.path.log")
-    @patch("requests.post")
-    def test_get_best_paths_error(self, mock_requests_post, mock_log):
+    @patch("httpx.post")
+    def test_get_best_paths_error(self, mock_httpx_post, mock_log, _):
         """Test get_best_paths method."""
         controller = MagicMock()
         DynamicPathManager.set_controller(controller)
@@ -470,7 +416,7 @@ class TestDynamicPathManager():
         mock_response = MagicMock()
         mock_response.status_code = 400
         mock_response.json.return_value = {}
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
 
         res_paths = list(DynamicPathManager.get_best_paths(circuit))
         assert not res_paths
@@ -483,8 +429,8 @@ class TestDynamicPathManager():
         "get_shared_components",
         side_effect=DynamicPathManager.get_shared_components
     )
-    @patch("requests.post")
-    def test_get_disjoint_paths(self, mock_requests_post, mock_shared):
+    @patch("httpx.post")
+    def test_get_disjoint_paths(self, mock_httpx_post, mock_shared):
         """Test get_disjoint_paths method."""
 
         controller = MagicMock()
@@ -612,7 +558,7 @@ class TestDynamicPathManager():
         mock_response.json.return_value = paths1
 
         # when we dont have the current_path
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         disjoint_paths = list(DynamicPathManager.get_disjoint_paths(evc, []))
         assert not disjoint_paths
 
@@ -643,7 +589,7 @@ class TestDynamicPathManager():
         # only one path available from pathfinder (precesilly the
         # current_path), so the maximum disjoint path will be empty
         mock_response.json.return_value = {"paths": paths1["paths"][0:1]}
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
         args = mock_shared.call_args[0]
         assert args[0] == paths1["paths"][0]
@@ -672,7 +618,7 @@ class TestDynamicPathManager():
 
         # there are one alternative path
         mock_response.json.return_value = paths1
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
         args = mock_shared.call_args[0]
         assert args[0] == paths1["paths"][-1]
@@ -703,10 +649,11 @@ class TestDynamicPathManager():
                 },
                 **evc.secondary_constraints
             },
+            timeout=10,
         )
-        assert mock_requests_post.call_count >= 1
+        assert mock_httpx_post.call_count >= 1
         # If secondary_constraints are set they are expected to be parametrized
-        mock_requests_post.assert_has_calls([expected_call])
+        mock_httpx_post.assert_has_calls([expected_call])
 
         # EP029 Topo2
         evc.uni_a.interface.switch.id = "00:00:00:00:00:00:00:01"
@@ -813,7 +760,7 @@ class TestDynamicPathManager():
         ]
 
         mock_response.json.return_value = {"paths": paths2["paths"]}
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
         args = mock_shared.call_args[0]
         assert args[0] == paths2["paths"][-1]
@@ -825,8 +772,8 @@ class TestDynamicPathManager():
             [link.id for link in expected_disjoint_path]
         )
 
-    @patch("requests.post")
-    def test_get_disjoint_paths_simple_evc(self, mock_requests_post):
+    @patch("httpx.post")
+    def test_get_disjoint_paths_simple_evc(self, mock_httpx_post):
         """Test get_disjoint_paths method for simple EVCs."""
         controller = MagicMock()
         controller.get_interface_by_id.side_effect = id_to_interface_mock
@@ -894,7 +841,7 @@ class TestDynamicPathManager():
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_response.json.return_value = mock_paths
-        mock_requests_post.return_value = mock_response
+        mock_httpx_post.return_value = mock_response
         paths = list(DynamicPathManager.get_disjoint_paths(evc, current_path))
         assert len(paths) == 1
         assert (
