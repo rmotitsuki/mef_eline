@@ -2097,7 +2097,9 @@ class TestMain:
         current_path, map_evc_content, emit_event = [
             MagicMock(), MagicMock(), MagicMock()
         ]
-        send_flows, merge_flows = MagicMock(), MagicMock()
+        send_flows, merge_flows, create_flows = [
+            MagicMock(), MagicMock(), MagicMock()
+        ]
         monkeypatch.setattr(
             "napps.kytos.mef_eline.main.map_evc_event_content",
             map_evc_content
@@ -2113,6 +2115,10 @@ class TestMain:
         monkeypatch.setattr(
             "napps.kytos.mef_eline.main.merge_flow_dicts",
             merge_flows
+        )
+        monkeypatch.setattr(
+            "napps.kytos.mef_eline.main.prepare_delete_flow",
+            create_flows
         )
         merge_flows.return_value = ['1', '2']
         evc1 = create_autospec(EVC, id="1", old_path=["1"],
@@ -2130,6 +2136,7 @@ class TestMain:
         evc2._prepare_uni_flows.assert_called_with(["2"], skip_in=True)
         evc3._prepare_nni_flows.assert_not_called()
         evc3._prepare_uni_flows.assert_not_called()
+        assert create_flows.call_count == 4
         assert emit_event.call_count == 1
         assert emit_event.call_args[0][1] == "failover_old_path"
         assert len(emit_event.call_args[1]["content"]) == 2

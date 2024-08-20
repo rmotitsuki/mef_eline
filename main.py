@@ -31,7 +31,7 @@ from napps.kytos.mef_eline.scheduler import CircuitSchedule, Scheduler
 from napps.kytos.mef_eline.utils import (aemit_event, check_disabled_component,
                                          emit_event, get_vlan_tags_and_masks,
                                          map_evc_event_content,
-                                         merge_flow_dicts,
+                                         merge_flow_dicts, prepare_delete_flow,
                                          send_flow_mods_event)
 
 
@@ -952,11 +952,15 @@ class Main(KytosNApp):
             with evc.lock:
                 removed_flows = {}
                 try:
-                    nni_flows = evc._prepare_nni_flows(evc.old_path)
-                    uni_flows = evc._prepare_uni_flows(
-                        evc.old_path, skip_in=True
+                    nni_flows = prepare_delete_flow(
+                        evc._prepare_nni_flows(evc.old_path)
                     )
-                    removed_flows = merge_flow_dicts(nni_flows, uni_flows)
+                    uni_flows = prepare_delete_flow(
+                        evc._prepare_uni_flows(evc.old_path, skip_in=True)
+                    )
+                    removed_flows = merge_flow_dicts(
+                        nni_flows, uni_flows
+                    )
                 # pylint: disable=broad-except
                 except Exception:
                     err = traceback.format_exc().replace("\n", ", ")

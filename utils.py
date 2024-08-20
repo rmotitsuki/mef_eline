@@ -177,3 +177,21 @@ def send_flow_mods_event(
                 "force": force,
             },
         )
+
+
+def prepare_delete_flow(evc_flows: dict[str, list[dict]]):
+    """Create flow mods suited for flow deletion."""
+    dpid_flows: dict[str, list[dict]] = {}
+
+    if not evc_flows:
+        return dpid_flows
+
+    for dpid, flows in evc_flows.items():
+        dpid_flows.setdefault(dpid, [])
+        for flow in flows:
+            dpid_flows[dpid].append({
+                "cookie": flow["cookie"],
+                "match": flow["match"],
+                "cookie_mask": int(0xffffffffffffffff)
+            })
+    return dpid_flows
