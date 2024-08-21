@@ -192,6 +192,7 @@ def prepare_delete_flow(evc_flows: dict[str, list[dict]]):
             dpid_flows[dpid].append({
                 "cookie": flow["cookie"],
                 "match": flow["match"],
+                "owner": "mef_eline",
                 "cookie_mask": int(0xffffffffffffffff)
             })
     return dpid_flows

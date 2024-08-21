@@ -694,6 +694,7 @@ class EVCDeploy(EVCBase):
                         {
                             "cookie": cookie,
                             "cookie_mask": int(0xffffffffffffffff),
+                            "owner": "mef_eline",
                         }
                     ],
                     "delete",
@@ -725,7 +726,8 @@ class EVCDeploy(EVCBase):
         switches.add(self.uni_z.interface.switch)
         match = {
             "cookie": self.get_cookie(),
-            "cookie_mask": int(0xffffffffffffffff)
+            "cookie_mask": int(0xffffffffffffffff),
+            "owner": "mef_eline",
         }
 
         for switch in switches:
@@ -766,6 +768,7 @@ class EVCDeploy(EVCBase):
                 dpid_flows_match[dpid].append({
                     "cookie": flow["cookie"],
                     "match": flow["match"],
+                    "owner": "mef_eline",
                     "cookie_mask": int(0xffffffffffffffff)
                 })
 
@@ -783,6 +786,7 @@ class EVCDeploy(EVCBase):
                 dpid_flows_match[dpid].append({
                     "cookie": flow["cookie"],
                     "match": flow["match"],
+                    "owner": "mef_eline",
                     "cookie_mask": int(0xffffffffffffffff)
                 })
 

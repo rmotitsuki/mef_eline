@@ -1008,7 +1008,8 @@ class TestEVC():
         assert send_flow_mods_mocked.call_count == 5
         assert evc.is_active() is False
         flows = [
-            {"cookie": evc.get_cookie(), "cookie_mask": 18446744073709551615}
+            {"cookie": evc.get_cookie(), "cookie_mask": 18446744073709551615,
+             "owner": "mef_eline"}
         ]
         switch_1 = evc.primary_links[0].endpoint_a.switch
         switch_2 = evc.primary_links[0].endpoint_b.switch
@@ -1076,7 +1077,8 @@ class TestEVC():
         assert send_flow_mods_mocked.call_count == 1
         flows = [
             {"cookie": evc.get_cookie(),
-             "cookie_mask": int(0xffffffffffffffff)}
+             "cookie_mask": int(0xffffffffffffffff),
+             "owner": "mef_eline"}
         ]
         send_flow_mods_mocked.assert_any_call(switch_b.id, flows, 'delete',
                                               force=True)
@@ -1140,7 +1142,8 @@ class TestEVC():
         assert send_flow_mods_mocked.call_count == 3
         flows = [
             {"cookie": evc.get_cookie(),
-             "cookie_mask": int(0xffffffffffffffff)}
+             "cookie_mask": int(0xffffffffffffffff),
+             "owner": "mef_eline"}
         ]
         send_flow_mods_mocked.assert_any_call(switch_a.id, flows, 'delete',
                                               force=True)
@@ -1367,6 +1370,7 @@ class TestEVC():
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
+                "owner": "mef_eline",
                 'match': {'in_port': 9, 'dl_vlan':  5}
             },
         ]
@@ -1374,11 +1378,13 @@ class TestEVC():
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
+                "owner": "mef_eline",
                 'match': {'in_port': 10, 'dl_vlan': 5}
             },
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
+                "owner": "mef_eline",
                 'match': {'in_port': 11, 'dl_vlan': 6}
             },
         ]
@@ -1386,6 +1392,7 @@ class TestEVC():
             {
                 'cookie': 12249790986447749121,
                 'cookie_mask': 18446744073709551615,
+                "owner": "mef_eline",
                 'match': {'in_port': 12, 'dl_vlan': 6}
             },
         ]
