@@ -770,14 +770,14 @@ module.exports = {
             title: 'EVC id: ' + id + ' | name: ' + name + ' redeployed.',
             description: ""
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
       request.fail(function(data) {
         let notification = {
           title: 'Redeploy EVC failed',
           description: 'Error redeploying EVC ' + id +'. ' + data.responseJSON.description
         }
-        _this.$kytos.$emit("setNotification" , notification);
+        _this.$kytos.eventBus.$emit("setNotification" , notification);
       });
     },
     saveEvc: function() {

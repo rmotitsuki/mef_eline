@@ -9,7 +9,7 @@ from napps.kytos.mef_eline.utils import (check_disabled_component,
                                          compare_endpoint_trace,
                                          compare_uni_out_trace,
                                          get_vlan_tags_and_masks, map_dl_vlan,
-                                         merge_flow_dicts)
+                                         merge_flow_dicts, prepare_delete_flow)
 
 
 # pylint: disable=too-many-public-methods, too-many-lines
@@ -163,3 +163,35 @@ class TestUtils:
     def test_merge_flow_dicts(self, src1, src2, src3, expected) -> None:
         """test merge flow dicts."""
         assert merge_flow_dicts({}, src1, src2, src3) == expected
+
+    def test_prepare_delete_flow(self):
+        """Test prepare_delete_flow"""
+        cookie_mask = int(0xffffffffffffffff)
+        flow_mod = {'00:01': [
+            {
+                'match': {'in_port': 1, 'dl_vlan': 22},
+                'cookie': 12275899796742638400,
+                'actions': [{'action_type': 'pop_vlan'}],
+                'owner': 'mef_eline',
+                'table_group': 'evpl',
+                'table_id': 0,
+                'priority': 20000
+            },
+            {
+                'match': {'in_port': 3, 'dl_vlan': 1},
+                'cookie': 12275899796742638400,
+                'actions': [{'action_type': 'pop_vlan'}],
+                'owner': 'mef_eline',
+                'table_group': 'evpl',
+                'table_id': 0,
+                'priority': 20000
+            }
+        ]}
+        actual_flows = prepare_delete_flow(flow_mod)
+        assert '00:01' in actual_flows
+        for i in range(len(actual_flows['00:01'])):
+            assert (actual_flows['00:01'][i]['cookie'] ==
+                    flow_mod["00:01"][i]['cookie'])
+            assert (actual_flows['00:01'][i]['match'] ==
+                    flow_mod["00:01"][i]['match'])
+            assert actual_flows['00:01'][i]['cookie_mask'] == cookie_mask
