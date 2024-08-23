@@ -964,8 +964,8 @@ class EVCDeploy(EVCBase):
             emit_event(self._controller, "failover_deployed", content={
                 self.id: map_evc_event_content(
                     self,
-                    flows=out_new_flows,
-                    removed_flows=out_removed_flows,
+                    flows=deepcopy(out_new_flows),
+                    removed_flows=deepcopy(out_removed_flows),
                     error_reason=reason,
                     current_path=self.current_path.as_dict(),
                 )
