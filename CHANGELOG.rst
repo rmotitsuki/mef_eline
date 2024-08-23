@@ -6,6 +6,9 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2024.1.1] - 2024-08-23
+***********************
+
 Fixed
 =====
 - Fixed flow mods when deleting ``old_path``
