@@ -11,6 +11,13 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 
 Fixed
 =====
+- Flows sent through an event are deep copies, meaning these can be modified from a subscriber NApp without affecting other subscribers.
+
+[2024.1.1] - 2024-08-23
+***********************
+
+Fixed
+=====
 - Fixed flow mods when deleting ``old_path``
 
 [2024.1.0] - 2024-07-23
