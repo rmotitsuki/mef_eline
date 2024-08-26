@@ -6,7 +6,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
-[2024.1.2] - 2024-08-23
+[2024.1.2] - 2024-08-26
 ***********************
 
 Fixed
