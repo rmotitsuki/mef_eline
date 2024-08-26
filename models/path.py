@@ -227,8 +227,16 @@ class DynamicPathManager:
         if not unwanted_links:
             return None
 
-        paths = cls.get_paths(circuit, max_paths=cutoff,
-                              **circuit.secondary_constraints)
+        try:
+            paths = cls.get_paths(circuit, max_paths=cutoff,
+                                  **circuit.secondary_constraints)
+        except PathFinderException as err:
+            log.error(
+                f"{circuit} failed to get disjointed paths from pathfinder."
+                f" Error {err}"
+            )
+            return None
+
         for path in paths:
             links_n, switches_n = cls.get_shared_components(
                 path, unwanted_links, unwanted_switches
