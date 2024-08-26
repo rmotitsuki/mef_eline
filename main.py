@@ -7,6 +7,7 @@ import pathlib
 import time
 import traceback
 from collections import defaultdict
+from copy import deepcopy
 from threading import Lock
 from typing import Optional
 
@@ -875,7 +876,7 @@ class Main(KytosNApp):
 
         if failover_event_contents:
             emit_event(self.controller, "failover_link_down",
-                       content=failover_event_contents)
+                       content=deepcopy(failover_event_contents))
         send_flow_mods_event(self.controller, switch_flows, 'install')
 
         for evc in evcs_normal:
@@ -970,7 +971,7 @@ class Main(KytosNApp):
                 total_flows = merge_flow_dicts(removed_flows, total_flows)
                 content = map_evc_event_content(
                     evc,
-                    removed_flows=removed_flows,
+                    removed_flows=deepcopy(removed_flows),
                     current_path=evc.current_path.as_dict(),
                 )
                 event_contents[evc.id] = content

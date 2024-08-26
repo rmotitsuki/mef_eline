@@ -6,6 +6,14 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2024.1.2] - 2024-08-26
+***********************
+
+Fixed
+=====
+- Flows sent through an event are deep copies, meaning these can be modified from a subscriber NApp without affecting other subscribers.
+- Added exception handler when getting path for disjointed paths.
+
 [2024.1.1] - 2024-08-23
 ***********************
 

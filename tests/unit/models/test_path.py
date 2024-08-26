@@ -3,7 +3,7 @@ import sys
 from unittest.mock import call, patch, Mock, MagicMock
 import pytest
 from napps.kytos.mef_eline import settings
-
+from httpx import TimeoutException
 from kytos.core.common import EntityStatus
 from kytos.core.link import Link
 from kytos.core.switch import Switch
@@ -848,6 +848,34 @@ class TestDynamicPathManager():
             [link.id for link in paths[0]] ==
             [link.id for link in expected_disjoint_path]
         )
+
+    @patch("httpx.post")
+    @patch("napps.kytos.mef_eline.models.path.log")
+    @patch("time.sleep")
+    def test_get_disjoint_paths_error(self, _, mock_log, mock_post):
+        """Test get_disjoint_paths"""
+        mock_post.side_effect = TimeoutException('mock')
+        unwanted_path = [
+            Link(
+                id_to_interface_mock("00:00:00:00:00:00:00:01:4"),
+                id_to_interface_mock("00:00:00:00:00:00:00:03:3")
+            ),
+        ]
+        evc = MagicMock()
+        evc.secondary_constraints = {
+            "spf_attribute": "hop",
+            "spf_max_path_cost": 20,
+            "mandatory_metrics": {
+                "ownership": "red"
+            }
+        }
+        evc.uni_a.interface.id = "1"
+        evc.uni_z.interface.id = "2"
+        evc.uni_a.interface.switch.id = "00:00:00:00:00:00:00:01"
+        evc.uni_z.interface.switch.id = "00:00:00:00:00:00:00:05"
+        path = DynamicPathManager.get_disjoint_paths(evc, unwanted_path)
+        assert len(list(path)) == 0
+        assert mock_log.error.call_count == 1
 
     def test_get_shared_components(self):
         """Test get_shared_components"""
