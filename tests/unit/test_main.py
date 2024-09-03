@@ -2129,6 +2129,8 @@ class TestMain:
                                current_path=[], lock=MagicMock())
 
         event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
+        assert evc1.old_path
+        assert evc2.old_path
         self.napp.handle_cleanup_evcs_old_path(event)
         evc1._prepare_nni_flows.assert_called_with(["1"])
         evc1._prepare_uni_flows.assert_called_with(["1"], skip_in=True)
@@ -2145,6 +2147,8 @@ class TestMain:
         assert send_flows.call_args[0][1] == ['1', '2']
         assert send_flows.call_args[0][2] == 'delete'
         assert merge_flows.call_count == 4
+        assert not evc1.old_path
+        assert not evc2.old_path
 
     async def test_add_metadata(self):
         """Test method to add metadata"""

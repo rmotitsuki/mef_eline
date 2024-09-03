@@ -12,6 +12,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 Fixed
 =====
 - Fixed extra removed flows that were being published on event ``"failover_old_path"``
+- Fixed evc.old_path clean up
 
 
 [2024.1.2] - 2024-08-26

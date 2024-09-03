@@ -967,14 +967,15 @@ class Main(KytosNApp):
                     err = traceback.format_exc().replace("\n", ", ")
                     log.error(f"Fail to remove {evc} old_path: {err}")
                     continue
-            if removed_flows:
-                total_flows = merge_flow_dicts(total_flows, removed_flows)
-                content = map_evc_event_content(
-                    evc,
-                    removed_flows=deepcopy(removed_flows),
-                    current_path=evc.current_path.as_dict(),
-                )
-                event_contents[evc.id] = content
+                if removed_flows:
+                    total_flows = merge_flow_dicts(total_flows, removed_flows)
+                    content = map_evc_event_content(
+                        evc,
+                        removed_flows=deepcopy(removed_flows),
+                        current_path=evc.current_path.as_dict(),
+                    )
+                    event_contents[evc.id] = content
+                    evc.old_path = Path([])
         if event_contents:
             send_flow_mods_event(self.controller, total_flows, 'delete')
             emit_event(self.controller, "failover_old_path",
