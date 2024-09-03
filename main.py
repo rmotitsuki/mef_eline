@@ -968,7 +968,7 @@ class Main(KytosNApp):
                     log.error(f"Fail to remove {evc} old_path: {err}")
                     continue
             if removed_flows:
-                total_flows = merge_flow_dicts(removed_flows, total_flows)
+                total_flows = merge_flow_dicts(total_flows, removed_flows)
                 content = map_evc_event_content(
                     evc,
                     removed_flows=deepcopy(removed_flows),

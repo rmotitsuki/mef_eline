@@ -2139,10 +2139,12 @@ class TestMain:
         assert create_flows.call_count == 4
         assert emit_event.call_count == 1
         assert emit_event.call_args[0][1] == "failover_old_path"
+        assert map_evc_content.call_args[1]['removed_flows'] == ['1', '2']
         assert len(emit_event.call_args[1]["content"]) == 2
         assert send_flows.call_count == 1
         assert send_flows.call_args[0][1] == ['1', '2']
         assert send_flows.call_args[0][2] == 'delete'
+        assert merge_flows.call_count == 4
 
     async def test_add_metadata(self):
         """Test method to add metadata"""
