@@ -246,6 +246,7 @@
       </div>
       <k-modal
         message="Delete EVC?"
+        buttonTitle="Delete"
         :action="deleteEVC"
         v-model:show-modal="showDelModal">
       </k-modal>
