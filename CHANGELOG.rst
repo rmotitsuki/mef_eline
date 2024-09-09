@@ -6,6 +6,13 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+[2024.1.4] - 2024-09-09
+***********************
+
+Fixed
+=====
+- Catching error when searching for ``failover_path`` at kytos start.
+
 [2024.1.3] - 2024-09-03
 ***********************
 
