@@ -853,7 +853,8 @@ class TestDynamicPathManager():
     @patch("napps.kytos.mef_eline.models.path.log")
     @patch("time.sleep")
     def test_get_disjoint_paths_error(self, _, mock_log, mock_post):
-        """Test get_disjoint_paths"""
+        """Test get_disjoint_paths with reported errors. These are caught under
+        httpx.RequestError."""
         mock_post.side_effect = TimeoutException('mock')
         unwanted_path = [
             Link(
