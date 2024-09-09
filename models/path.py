@@ -147,6 +147,8 @@ class DynamicPathManager:
             api_reply = httpx.post(endpoint, json=request_data, timeout=10)
         except httpx.TimeoutException as err:
             raise PathFinderException(str(err)) from err
+        except httpx.ConnectError as err:
+            raise PathFinderException(str(err)) from err
 
         if api_reply.status_code >= 400:
             raise PathFinderException(api_reply.text)
