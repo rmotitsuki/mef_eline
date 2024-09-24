@@ -3,7 +3,7 @@ import sys
 from unittest.mock import call, patch, Mock, MagicMock
 import pytest
 from napps.kytos.mef_eline import settings
-from httpx import TimeoutException
+from httpx import TimeoutException, ConnectError
 from kytos.core.common import EntityStatus
 from kytos.core.link import Link
 from kytos.core.switch import Switch
@@ -853,7 +853,8 @@ class TestDynamicPathManager():
     @patch("napps.kytos.mef_eline.models.path.log")
     @patch("time.sleep")
     def test_get_disjoint_paths_error(self, _, mock_log, mock_post):
-        """Test get_disjoint_paths"""
+        """Test get_disjoint_paths with reported errors. These are caught under
+        httpx.RequestError."""
         mock_post.side_effect = TimeoutException('mock')
         unwanted_path = [
             Link(
@@ -876,6 +877,11 @@ class TestDynamicPathManager():
         path = DynamicPathManager.get_disjoint_paths(evc, unwanted_path)
         assert len(list(path)) == 0
         assert mock_log.error.call_count == 1
+
+        mock_post.side_effect = ConnectError('mock')
+        path = DynamicPathManager.get_disjoint_paths(evc, unwanted_path)
+        assert len(list(path)) == 0
+        assert mock_log.error.call_count == 2
 
     def test_get_shared_components(self):
         """Test get_shared_components"""

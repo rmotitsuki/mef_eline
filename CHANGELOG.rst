@@ -10,6 +10,13 @@ Changed
 =======
 - The mef_eline modal now uses the modal component
 
+[2024.1.4] - 2024-09-09
+***********************
+
+Fixed
+=====
+- Catching error when searching for ``failover_path`` at kytos start.
+
 [2024.1.3] - 2024-09-03
 ***********************
 
