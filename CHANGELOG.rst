@@ -6,6 +6,10 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Changed
+=======
+- The mef_eline modal now uses the modal component
+
 [2024.1.4] - 2024-09-09
 ***********************
 
