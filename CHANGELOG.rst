@@ -10,6 +10,7 @@ Changed
 =======
 - The mef_eline modal now uses the modal component
 - UI: fixed premature submit when pressing Enter during autocomplete on inputs
+- UI: fixed path constraints fields to be collabsed by default when creating EVC to better usability for listing EVCs
 
 [2024.1.4] - 2024-09-09
 ***********************
