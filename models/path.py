@@ -41,7 +41,6 @@ class Path(list[Link], GenericEntity):
         for link in self:
             tag_value = link.get_next_available_tag(controller, link.id)
             tag = TAG('vlan', tag_value)
-            link.remove_metadata("s_vlan")
             link.add_metadata("s_vlan", tag)
 
     def make_vlans_available(self, controller):

@@ -1105,7 +1105,7 @@ class Main(KytosNApp):
         uni = UNI(interface, tag)
         return uni
 
-    def _link_from_dict(self, link_dict):
+    def _link_from_dict(self, link_dict) -> Link:
         """Return a Link object from python dict."""
         id_a = link_dict.get("endpoint_a").get("id")
         id_b = link_dict.get("endpoint_b").get("id")

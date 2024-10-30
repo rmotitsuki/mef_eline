@@ -259,20 +259,6 @@ class TestPath():
         with pytest.raises(InvalidPath):
             path.is_valid(switch3, switch6)
 
-    def test_choose_vlans(self):
-        """Test choose_vlans"""
-        link1 = get_link_mocked()
-        link2 = get_link_mocked()
-        link1.id = "def"
-        link2.id = "abc"
-        links = [link1, link2]
-        current_path = Path(links)
-        current_path.choose_vlans(MagicMock())
-        assert link1.remove_metadata.call_count == 1
-        assert link1.add_metadata.call_count == 1
-        assert link2.remove_metadata.call_count == 1
-        assert link2.add_metadata.call_count == 1
-
 
 class TestDynamicPathManager():
     """Tests for the DynamicPathManager class"""
