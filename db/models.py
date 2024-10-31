@@ -108,18 +108,6 @@ class EVCUpdateDoc(DocumentBaseModel):
     enabled: Optional[bool] = None
 
 
-class PrefferedEndpoint(BaseModel):
-    """Model for endpoints"""
-    id: str
-
-
-class PrefferedLinks(BaseModel):
-    """Preferred Links chosen by the user.
-     Only endpoints should be allowed."""
-    endpoint_a: PrefferedEndpoint
-    endpoint_b: PrefferedEndpoint
-
-
 class EVCBaseDoc(DocumentBaseModel):
     """Base model for EVC documents"""
 
@@ -133,12 +121,12 @@ class EVCBaseDoc(DocumentBaseModel):
     flow_removed_at: Optional[datetime] = None
     execution_rounds: int = 0
     bandwidth: int = 0
-    primary_path: Optional[list[PrefferedLinks]] = None
-    backup_path: Optional[list[PrefferedLinks]] = None
+    primary_path: Optional[list] = None
+    backup_path: Optional[list] = None
     current_path: Optional[list] = None
     failover_path: Optional[list] = None
-    primary_links: Optional[list[PrefferedLinks]] = None
-    backup_links: Optional[list[PrefferedLinks]] = None
+    primary_links: Optional[list] = None
+    backup_links: Optional[list] = None
     dynamic_backup_path: bool
     primary_constraints: Optional[PathConstraints] = None
     secondary_constraints: Optional[PathConstraints] = None
