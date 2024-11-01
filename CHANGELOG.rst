@@ -6,6 +6,10 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Added
+=====
+- Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
+
 Changed
 =======
 - The mef_eline modal now uses the modal component
