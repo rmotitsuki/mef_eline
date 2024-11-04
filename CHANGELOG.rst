@@ -10,6 +10,10 @@ Added
 =====
 - Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
 
+Fixed
+=======
+- UI: fixed issue where non-JSON data was being parsed as JSON data.
+
 Changed
 =======
 - The mef_eline modal now uses the modal component
