@@ -60,9 +60,134 @@ Subscribed
 - ``kytos/flow_manager.flow.error``
 - ``kytos/flow_manager.flow.removed``
 - ``kytos/of_multi_table.enable_table``
+- ``kytos/mef_eline.evc_affected_by_link_down``
+- ``kytos/mef_eline.cleanup_evcs_old_path``
+- ``kytos/mef_eline.redeployed_link_up``
+- ``kytos/mef_eline.redeployed_link_down``
+- ``kytos/mef_eline.deployed``
 
 Published
 ---------
+
+kytos/mef_eline.redeployed_link_down
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting a redeployed circuit after a link down event.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict()
+  }
+
+kytos/mef_eline.error_redeploy_link_down
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting an error with redeploying a circuit with a link down event.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict()
+  }
+
+kytos/mef_eline.cleanup_evcs_old_path
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting the old circuit's path after a link down event.
+
+.. code-block:: python3
+
+  {
+    "evcs": evcs_with_failover + check_failover
+  }
+
+kytos/mef_eline.evcs_affected_by_link_down
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting that a link down event has occurred.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict(),
+    "link": link
+  }
+
+kytos/mef_eline.redeployed_link_up
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting that a link up event has occurred.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict()
+  }
+
+kytos/mef_eline.updated
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting that a circuit has been updated.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict()
+  }
+
+kytos/mef_eline.(deployed|undeployed)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Event reporting that a circuit was deployed or removed.
+
+.. code-block:: python3
+
+  {
+    "evc_id": evc.id,
+    "id": evc.id,
+    "name": evc.name,
+    "metadata": evc.metadata,
+    "active": evc._active,
+    "enabled": evc._enabled,
+    "uni_a": evc.uni_a.as_dict(),
+    "uni_z": evc.uni_z.as_dict()
+  }
 
 kytos/mef_eline.created
 ~~~~~~~~~~~~~~~~~~~~~~~
