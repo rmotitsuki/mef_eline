@@ -110,7 +110,7 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.httpx")
     def test_send_flow_mods_case1(self, httpx_mock):
-        """Test if _send_flow_mods is sending flow_mods."""
+        """Test if _send_flow_mods is sending flow_mods to be installed."""
         flow_mods = {"00:01": {"flows": [20]}}
 
         response = MagicMock()
@@ -131,7 +131,8 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.httpx")
     def test_send_flow_mods_case2(self, httpx_mock):
-        """Test if you are sending flow_mods."""
+        """Test if _send_flow_mods are sending flow_mods to be deleted
+         and by_switch."""
         flow_mods = {"00:01": {"flows": [20]}}
         response = MagicMock()
         response.status_code = 201
@@ -139,14 +140,14 @@ class TestEVC():
         httpx_mock.request.return_value = response
 
         # pylint: disable=protected-access
-        EVC._send_flow_mods(flow_mods, command='delete', force=True)
+        EVC._send_flow_mods(
+            flow_mods, command='delete', force=True, by_switch=True
+        )
 
-        expected_endpoint = f"{MANAGER_URL}/flows"
-        expected_data = flow_mods
-        expected_data["force"] = True
+        expected_endpoint = f"{MANAGER_URL}/flows_by_switch/?force={True}"
         assert httpx_mock.request.call_count == 1
         httpx_mock.request.assert_called_once_with(
-            "DELETE", expected_endpoint, json=expected_data, timeout=30
+            "DELETE", expected_endpoint, json=flow_mods, timeout=30
         )
 
     @patch("time.sleep")
@@ -1159,7 +1160,7 @@ class TestEVC():
         prepare_uni_flows_mock.assert_called_with(path, skip_out=True)
 
     @patch("napps.kytos.mef_eline.models.evc.log")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods_by_switch")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.path.Path.make_vlans_available")
     def test_remove_path_flows(self, *args):
         """Test remove path flows."""
@@ -1218,7 +1219,7 @@ class TestEVC():
             3: {"flows": expected_flows_3}
         }
         send_flow_mods_mock.assert_called_with(
-            expected_flows, "delete", force=True
+            expected_flows, "delete", force=True, by_switch=True
         )
 
         send_flow_mods_mock.side_effect = FlowModException("err")
@@ -2041,3 +2042,43 @@ class TestEVC():
         send_mock.side_effect = FlowModException
         with pytest.raises(EVCPathNotInstalled):
             self.evc_deploy._install_direct_uni_flows()
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
+    def test_install_unni_flows_error(
+        self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
+    ):
+        """Test _install_unni_flows with error"""
+        prepare_nni_mock.return_value = {'1': [1]}
+        prepare_uni_mock.return_value = {'2': [2]}
+        send_flow_mock.side_effect = FlowModException('err')
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_unni_flows()
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
+    def test_install_unni_flows(
+        self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
+    ):
+        """Test that the dictionary contains uni and nni flows sent
+         to be installed from _install_uni_flows."""
+        prepare_nni_mock.return_value = {'00:01': ["flow1"]}
+        prepare_uni_mock.return_value = {
+            '00:02': ["flow1"], '00:01': ["flow2"]
+        }
+        out_flows = self.evc_deploy._install_unni_flows()
+        expected_out_fows = {
+            '00:01': ["flow1", "flow2"],
+            '00:02': ["flow1"]
+        }
+        assert out_flows == expected_out_fows
+
+        expected_installed_flows = {
+            '00:01': {"flows": ["flow1", "flow2"]},
+            '00:02': {"flows": ["flow1"]}
+        }
+        send_flow_mock.assert_called_with(
+            expected_installed_flows, "install", by_switch=True
+        )

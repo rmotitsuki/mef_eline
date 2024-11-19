@@ -792,8 +792,8 @@ class EVCDeploy(EVCBase):
                 out_flows[dpid].append(flow_mod)
 
         try:
-            self._send_flow_mods_by_switch(
-                dpid_flows_match, 'delete', force=force
+            self._send_flow_mods(
+                dpid_flows_match, 'delete', force=force, by_switch=True
             )
         except FlowModException as err:
             log.error(f"Error deleting path, {err}")
@@ -1142,7 +1142,7 @@ class EVCDeploy(EVCBase):
             new_flows[dpid].extend(flows)
 
         try:
-            self._send_flow_mods_by_switch(flows_by_switch, "install")
+            self._send_flow_mods(flows_by_switch, "install", by_switch=True)
         except FlowModException as err:
             raise EVCPathNotInstalled(str(err)) from err
 
@@ -1271,51 +1271,32 @@ class EVCDeploy(EVCBase):
         before_sleep=before_sleep,
         reraise=True,
     )
-    def _send_flow_mods(data_content: dict, command="install", force=False):
+    def _send_flow_mods(
+        data_content: dict,
+        command="install",
+        force=False,
+        by_switch=False
+    ):
         """Send a flow_mod list to a specific switch.
 
         Args:
             dpid(str): The target of flows (i.e. Switch.id).
             flow_mods(dict): Python dictionary with flow_mods.
             command(str): By default is 'flows'. To remove a flow is 'remove'.
-            force(bool): True to send via consistency check in case of errors
-
+            force(bool): True to send via consistency check in case of errors.
+            by_switch(bool): True to send to 'flows_by_switch' request instead.
         """
-        endpoint = f"{settings.MANAGER_URL}/flows"
-        data_content["force"] = force
+        if by_switch:
+            endpoint = f"{settings.MANAGER_URL}/flows_by_switch/?force={force}"
+        else:
+            endpoint = f"{settings.MANAGER_URL}/flows"
+            data_content["force"] = force
         try:
             if command == "install":
                 res = httpx.post(endpoint, json=data_content, timeout=30)
             elif command == "delete":
                 res = httpx.request(
                     "DELETE", endpoint, json=data_content, timeout=30
-                )
-        except httpx.RequestError as err:
-            raise FlowModException(str(err)) from err
-        if res.is_server_error or res.status_code >= 400:
-            raise FlowModException(res.text)
-
-    @staticmethod
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_combine(wait_fixed(3), wait_random(min=2, max=7)),
-        retry=retry_if_exception_type(FlowModException),
-        before_sleep=before_sleep,
-        reraise=True,
-    )
-    def _send_flow_mods_by_switch(
-        flows_dict: dict[str, list],
-        command: str,
-        force=False
-    ):
-        """Send flow mods"""
-        endpoint = f"{settings.MANAGER_URL}/flows_by_switch/?force={force}"
-        try:
-            if command == "install":
-                res = httpx.post(endpoint, json=flows_dict, timeout=30)
-            elif command == "delete":
-                res = httpx.request(
-                    "DELETE", endpoint, json=flows_dict, timeout=30
                 )
         except httpx.RequestError as err:
             raise FlowModException(str(err)) from err
