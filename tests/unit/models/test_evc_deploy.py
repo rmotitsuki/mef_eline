@@ -827,7 +827,7 @@ class TestEVC():
 
         deployed = evc.deploy_to_backup_path()
 
-        deploy_to_path_mocked.assert_called_once_with()
+        deploy_to_path_mocked.assert_called_once_with(path_dict=None)
         assert deployed is True
 
     @patch("httpx.post")
