@@ -698,11 +698,11 @@ class EVCDeploy(EVCBase):
                 force=force,
             )
         except FlowModException as err:
-            log.error(f"Error deleting path, {err}")
+            log.error(f"Error deleting {self} failover_path flows, {err}")
         try:
             self.failover_path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing failover flows: {err}")
+            log.error(f"Error removing {self} failover_path: {err}")
         self.failover_path = Path([])
         if sync:
             self.sync()
@@ -732,12 +732,12 @@ class EVCDeploy(EVCBase):
         try:
             self._send_flow_mods(flow_mods, "delete", force=force)
         except FlowModException as err:
-            log.error(f"Error deleting current_path, {err}")
+            log.error(f"Error deleting {self} current_path flows, {err}")
 
         try:
             current_path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing current path flows: {err}")
+            log.error(f"Error removing {self} current_path: {err}")
         self.current_path = Path([])
         self.deactivate()
         if sync:
@@ -796,12 +796,14 @@ class EVCDeploy(EVCBase):
                 dpid_flows_match, 'delete', force=force, by_switch=True
             )
         except FlowModException as err:
-            log.error(f"Error deleting path, {err}")
+            log.error(
+                f"Error deleting {self} path flows, path:{path}, error={err}"
+            )
 
         try:
             path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing path flows: {err}")
+            log.error(f"Error removing {self} path: {err}")
 
         return out_flows
 
@@ -867,7 +869,7 @@ class EVCDeploy(EVCBase):
 
         try:
             if use_path:
-                self._install_unni_flows(use_path)
+                self._install_flows(use_path)
             elif self.is_intra_switch():
                 use_path = Path()
                 self._install_direct_uni_flows()
@@ -943,7 +945,7 @@ class EVCDeploy(EVCBase):
 
         try:
             if use_path:
-                out_new_flows = self._install_unni_flows(
+                out_new_flows = self._install_flows(
                     use_path, skip_in=True
                 )
         except EVCPathNotInstalled as err:
@@ -1086,7 +1088,7 @@ class EVCDeploy(EVCBase):
         try:
             self._send_flow_mods(flow_mods, "install")
         except FlowModException as err:
-            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
+            raise EVCPathNotInstalled(str(err)) from err
 
     def _prepare_nni_flows(self, path=None):
         """Prepare NNI flows."""
@@ -1126,7 +1128,7 @@ class EVCDeploy(EVCBase):
             nni_flows[in_endpoint.switch.id] = flows
         return nni_flows
 
-    def _install_unni_flows(
+    def _install_flows(
         self, path=None, skip_in=False, skip_out=False
     ) -> dict[str, list[dict]]:
         """Install uni and nni flows"""

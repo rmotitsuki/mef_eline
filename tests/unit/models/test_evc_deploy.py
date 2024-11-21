@@ -369,7 +369,7 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_direct_uni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
@@ -415,7 +415,7 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.EVC.sync")
@@ -468,7 +468,7 @@ class TestEVC():
         return_value=[],
     )
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC.remove_current_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.sync")
@@ -537,7 +537,7 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.emit_event")
     @patch("napps.kytos.mef_eline.models.evc.EVC.get_failover_path_candidates")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.remove_path_flows")
     @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_setup_failover_path(self, *args):
@@ -635,7 +635,7 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
@@ -2046,20 +2046,20 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
-    def test_install_unni_flows_error(
+    def test_install_flows_error(
         self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
     ):
-        """Test _install_unni_flows with error"""
+        """Test _install_flows with error"""
         prepare_nni_mock.return_value = {'1': [1]}
         prepare_uni_mock.return_value = {'2': [2]}
         send_flow_mock.side_effect = FlowModException('err')
         with pytest.raises(EVCPathNotInstalled):
-            self.evc_deploy._install_unni_flows()
+            self.evc_deploy._install_flows()
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
-    def test_install_unni_flows(
+    def test_install_flows(
         self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
     ):
         """Test that the dictionary contains uni and nni flows sent
@@ -2068,7 +2068,7 @@ class TestEVC():
         prepare_uni_mock.return_value = {
             '00:02': ["flow1"], '00:01': ["flow2"]
         }
-        out_flows = self.evc_deploy._install_unni_flows()
+        out_flows = self.evc_deploy._install_flows()
         expected_out_fows = {
             '00:01': ["flow1", "flow2"],
             '00:02': ["flow1"]

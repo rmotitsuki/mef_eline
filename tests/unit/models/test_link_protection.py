@@ -454,11 +454,11 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.UP)
     async def test_handle_link_up_case_3(
         self,
-        _install_unni_flows_mocked,
+        _install_flows_mocked,
         deploy_to_path_mocked,
         deploy_mocked,
     ):
@@ -516,12 +516,12 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         assert current_handle_link_up
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_unni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.DOWN)
     async def test_handle_link_up_case_4(self, *args):
         """Test if not path is found a dynamic path is used."""
         (
-            _install_unni_flows_mocked,
+            _install_flows_mocked,
             deploy_to_path_mocked,
         ) = args
 
