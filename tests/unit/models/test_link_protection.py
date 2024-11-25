@@ -854,6 +854,8 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         interface_a.activate()
 
         assert emit_mock.call_count == 1
+        self.evc.try_to_handle_uni_as_link_up = MagicMock()
+        self.evc.try_to_handle_uni_as_link_up.return_value = False
         self.evc.handle_interface_link_up(interface_a)
 
         self.evc.activate.assert_called_once()
