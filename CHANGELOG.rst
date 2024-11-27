@@ -9,6 +9,7 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 Fixed
 =====
 - Try to handle uni interface up as link up for inter-EVCs
+- EVCs activation now take into account UNIs statuses before trying to activate
 
 Added
 =====
@@ -42,7 +43,6 @@ Fixed
 - Fixed evc.old_path clean up
 
 
->>>>>>> master
 [2024.1.2] - 2024-08-26
 ***********************
 
