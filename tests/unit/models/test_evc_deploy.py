@@ -562,7 +562,7 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_direct_uni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
+    @patch("napps.kytos.mef_eline.models.evc.EVC.try_to_activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     def test_deploy_successfully(self, *args):
         """Test if all methods to deploy are called."""
@@ -836,7 +836,7 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
+    @patch("napps.kytos.mef_eline.models.evc.EVC.try_to_activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
     def test_deploy_without_path_case1(self, *args):
