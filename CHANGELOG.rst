@@ -6,6 +6,11 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Fixed
+=====
+- Try to handle uni interface up as link up for inter-EVCs
+- EVCs activation now take into account UNIs statuses before trying to activate
+
 Added
 =====
 - Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
