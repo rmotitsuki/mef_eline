@@ -14,7 +14,8 @@ from httpx import TimeoutException
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.exceptions import (FlowModException,   # NOQA
+from napps.kytos.mef_eline.exceptions import (ActivationError,
+                                              FlowModException,   # NOQA
                                               EVCPathNotInstalled)
 from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
 from napps.kytos.mef_eline.settings import (ANY_SB_PRIORITY,  # NOQA
@@ -603,6 +604,71 @@ class TestEVC():
         assert activate_mock.call_count == 2
         assert log_mock.info.call_count == 2
         log_mock.info.assert_called_with(f"{evc} was deployed.")
+
+    def test_try_to_activate_intra_evc(self) -> None:
+        """Test try_to_activate for intra EVC."""
+
+        evc = self.create_evc_intra_switch()
+        assert evc.is_intra_switch()
+        assert not evc.is_active()
+        assert evc.uni_a.interface.status == EntityStatus.DISABLED
+        assert evc.uni_z.interface.status == EntityStatus.DISABLED
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_a.interface.enable()
+        evc.uni_z.interface.enable()
+        evc.uni_a.interface.activate()
+        evc.uni_z.interface.deactivate()
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_z.interface.activate()
+
+        assert evc.try_to_activate()
+        assert evc.is_active()
+
+    def test_try_to_activate_inter_evc(self) -> None:
+        """Test try_to_activate for inter EVC."""
+
+        evc = self.create_evc_inter_switch()
+        assert not evc.is_intra_switch()
+        assert not evc.is_active()
+        assert evc.uni_a.interface.status == EntityStatus.DISABLED
+        assert evc.uni_z.interface.status == EntityStatus.DISABLED
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_a.interface.enable()
+        evc.uni_z.interface.enable()
+        evc.uni_a.interface.activate()
+        evc.uni_z.interface.deactivate()
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_z.interface.activate()
+
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "due to current_path status EntityStatus.DISABLED" in str(exc)
+
+        cur_path = MagicMock()
+        setattr(evc, "current_path", cur_path)
+        cur_path.status = EntityStatus.UP
+        assert evc.try_to_activate()
+        assert evc.is_active()
 
     @patch("httpx.post")
     @patch("napps.kytos.mef_eline.models.evc.log")
