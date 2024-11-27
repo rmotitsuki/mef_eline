@@ -1,6 +1,6 @@
 """Classes used in the main application."""  # pylint: disable=too-many-lines
 import traceback
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from copy import deepcopy
 from datetime import datetime
 from operator import eq, ne
@@ -675,39 +675,35 @@ class EVCDeploy(EVCBase):
         """
         if not self.failover_path:
             return
-        switches, cookie, excluded = OrderedDict(), self.get_cookie(), set()
-        links = set()
+        switches, cookie, excluded = set(), self.get_cookie(), set()
         if exclude_uni_switches:
             excluded.add(self.uni_a.interface.switch.id)
             excluded.add(self.uni_z.interface.switch.id)
         for link in self.failover_path:
             if link.endpoint_a.switch.id not in excluded:
-                switches[link.endpoint_a.switch.id] = link.endpoint_a.switch
-                links.add(link)
+                switches.add(link.endpoint_a.switch.id)
             if link.endpoint_b.switch.id not in excluded:
-                switches[link.endpoint_b.switch.id] = link.endpoint_b.switch
-                links.add(link)
-        for switch in switches.values():
-            try:
-                self._send_flow_mods(
-                    switch.id,
-                    [
-                        {
-                            "cookie": cookie,
-                            "cookie_mask": int(0xffffffffffffffff),
-                            "owner": "mef_eline",
-                        }
-                    ],
-                    "delete",
-                    force=force,
-                )
-            except FlowModException as err:
-                log.error(f"Error deleting path in {switch.id}, {err}")
-                break
+                switches.add(link.endpoint_b.switch.id)
+        flow_mods = {
+            "switches": list(switches),
+            "flows": [{
+                "cookie": cookie,
+                "cookie_mask": int(0xffffffffffffffff),
+                "owner": "mef_eline",
+            }]
+        }
+        try:
+            self._send_flow_mods(
+                flow_mods,
+                "delete",
+                force=force,
+            )
+        except FlowModException as err:
+            log.error(f"Error deleting {self} failover_path flows, {err}")
         try:
             self.failover_path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing failover flows: {err}")
+            log.error(f"Error removing {self} failover_path: {err}")
         self.failover_path = Path([])
         if sync:
             self.sync()
@@ -721,26 +717,28 @@ class EVCDeploy(EVCBase):
             return
         current_path = self.current_path
         for link in current_path:
-            switches.add(link.endpoint_a.switch)
-            switches.add(link.endpoint_b.switch)
-        switches.add(self.uni_a.interface.switch)
-        switches.add(self.uni_z.interface.switch)
-        match = {
-            "cookie": self.get_cookie(),
-            "cookie_mask": int(0xffffffffffffffff),
-            "owner": "mef_eline",
+            switches.add(link.endpoint_a.switch.id)
+            switches.add(link.endpoint_b.switch.id)
+        switches.add(self.uni_a.interface.switch.id)
+        switches.add(self.uni_z.interface.switch.id)
+        flow_mods = {
+            "switches": list(switches),
+            "flows": [{
+                "cookie": self.get_cookie(),
+                "cookie_mask": int(0xffffffffffffffff),
+                "owner": "mef_eline",
+            }]
         }
 
-        for switch in switches:
-            try:
-                self._send_flow_mods(switch.id, [match], 'delete', force=force)
-            except FlowModException as err:
-                log.error(f"Error deleting current_path in {switch.id}, {err}")
-                break
+        try:
+            self._send_flow_mods(flow_mods, "delete", force=force)
+        except FlowModException as err:
+            log.error(f"Error deleting {self} current_path flows, {err}")
+
         try:
             current_path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing current path flows: {err}")
+            log.error(f"Error removing {self} current_path: {err}")
         self.current_path = Path([])
         self.deactivate()
         if sync:
@@ -750,7 +748,8 @@ class EVCDeploy(EVCBase):
         self, path=None, force=True
     ) -> dict[str, list[dict]]:
         """Remove all flows from path, and return the removed flows."""
-        dpid_flows_match: dict[str, list[dict]] = {}
+        dpid_flows_match: dict[str, dict] = defaultdict(lambda: {"flows": []})
+        out_flows: dict[str, list[dict]] = defaultdict(list)
 
         if not path:
             return dpid_flows_match
@@ -764,14 +763,15 @@ class EVCDeploy(EVCBase):
             nni_flows = {}
 
         for dpid, flows in nni_flows.items():
-            dpid_flows_match.setdefault(dpid, [])
             for flow in flows:
-                dpid_flows_match[dpid].append({
+                flow_mod = {
                     "cookie": flow["cookie"],
                     "match": flow["match"],
                     "owner": "mef_eline",
                     "cookie_mask": int(0xffffffffffffffff)
-                })
+                }
+                dpid_flows_match[dpid]["flows"].append(flow_mod)
+                out_flows[dpid].append(flow_mod)
 
         try:
             uni_flows = self._prepare_uni_flows(path, skip_in=True)
@@ -782,27 +782,31 @@ class EVCDeploy(EVCBase):
             uni_flows = {}
 
         for dpid, flows in uni_flows.items():
-            dpid_flows_match.setdefault(dpid, [])
             for flow in flows:
-                dpid_flows_match[dpid].append({
+                flow_mod = {
                     "cookie": flow["cookie"],
                     "match": flow["match"],
                     "owner": "mef_eline",
                     "cookie_mask": int(0xffffffffffffffff)
-                })
+                }
+                dpid_flows_match[dpid]["flows"].append(flow_mod)
+                out_flows[dpid].append(flow_mod)
 
-        for dpid, flows in dpid_flows_match.items():
-            try:
-                self._send_flow_mods(dpid, flows, 'delete', force=force)
-            except FlowModException as err:
-                log.error(f"Error deleting path in {dpid}, {err}")
-                break
+        try:
+            self._send_flow_mods(
+                dpid_flows_match, 'delete', force=force, by_switch=True
+            )
+        except FlowModException as err:
+            log.error(
+                f"Error deleting {self} path flows, path:{path}, error={err}"
+            )
+
         try:
             path.make_vlans_available(self._controller)
         except KytosTagError as err:
-            log.error(f"Error when removing path flows: {err}")
+            log.error(f"Error removing {self} path: {err}")
 
-        return dpid_flows_match
+        return out_flows
 
     @staticmethod
     def links_zipped(path=None):
@@ -921,8 +925,7 @@ class EVCDeploy(EVCBase):
 
         try:
             if use_path:
-                self._install_nni_flows(use_path)
-                self._install_uni_flows(use_path)
+                self._install_flows(use_path)
             elif self.is_intra_switch():
                 use_path = Path()
                 self._install_direct_uni_flows()
@@ -1003,10 +1006,9 @@ class EVCDeploy(EVCBase):
 
         try:
             if use_path:
-                _nni_flows = self._install_nni_flows(use_path)
-                out_new_flows = merge_flow_dicts(out_new_flows, _nni_flows)
-                _uni_flows = self._install_uni_flows(use_path, skip_in=True)
-                out_new_flows = merge_flow_dicts(out_new_flows, _uni_flows)
+                out_new_flows = self._install_flows(
+                    use_path, skip_in=True
+                )
         except EVCPathNotInstalled as err:
             reason = "Error deploying failover path"
             log.error(
@@ -1143,10 +1145,11 @@ class EVCDeploy(EVCBase):
         same switch.
         """
         (dpid, flows) = self._prepare_direct_uni_flows()
+        flow_mods = {"switches": [dpid], "flows": flows}
         try:
-            self._send_flow_mods(dpid, flows)
+            self._send_flow_mods(flow_mods, "install")
         except FlowModException as err:
-            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
+            raise EVCPathNotInstalled(str(err)) from err
 
     def _prepare_nni_flows(self, path=None):
         """Prepare NNI flows."""
@@ -1186,17 +1189,27 @@ class EVCDeploy(EVCBase):
             nni_flows[in_endpoint.switch.id] = flows
         return nni_flows
 
-    def _install_nni_flows(
-        self, path=None
+    def _install_flows(
+        self, path=None, skip_in=False, skip_out=False
     ) -> dict[str, list[dict]]:
-        """Install NNI flows."""
-        nni_flows = self._prepare_nni_flows(path)
+        """Install uni and nni flows"""
+        flows_by_switch = defaultdict(lambda: {"flows": []})
+        new_flows = defaultdict(list)
+        for dpid, flows in self._prepare_nni_flows(path).items():
+            flows_by_switch[dpid]["flows"].extend(flows)
+            new_flows[dpid].extend(flows)
+        for dpid, flows in self._prepare_uni_flows(
+            path, skip_in, skip_out
+        ).items():
+            flows_by_switch[dpid]["flows"].extend(flows)
+            new_flows[dpid].extend(flows)
+
         try:
-            for dpid, flows in nni_flows.items():
-                self._send_flow_mods(dpid, flows)
+            self._send_flow_mods(flows_by_switch, "install", by_switch=True)
         except FlowModException as err:
-            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
-        return nni_flows
+            raise EVCPathNotInstalled(str(err)) from err
+
+        return new_flows
 
     @staticmethod
     def _get_value_from_uni_tag(uni: UNI):
@@ -1313,19 +1326,6 @@ class EVCDeploy(EVCBase):
 
         return uni_flows
 
-    def _install_uni_flows(
-        self, path=None, skip_in=False, skip_out=False
-    ) -> dict[str, list[dict]]:
-        """Install UNI flows."""
-        uni_flows = self._prepare_uni_flows(path, skip_in, skip_out)
-        try:
-            for (dpid, flows) in uni_flows.items():
-                self._send_flow_mods(dpid, flows)
-        except FlowModException as err:
-            raise EVCPathNotInstalled(f"In {dpid}, {err}") from err
-
-        return uni_flows
-
     @staticmethod
     @retry(
         stop=stop_after_attempt(3),
@@ -1334,21 +1334,33 @@ class EVCDeploy(EVCBase):
         before_sleep=before_sleep,
         reraise=True,
     )
-    def _send_flow_mods(dpid, flow_mods, command='flows', force=False):
+    def _send_flow_mods(
+        data_content: dict,
+        command="install",
+        force=False,
+        by_switch=False
+    ):
         """Send a flow_mod list to a specific switch.
 
         Args:
             dpid(str): The target of flows (i.e. Switch.id).
             flow_mods(dict): Python dictionary with flow_mods.
             command(str): By default is 'flows'. To remove a flow is 'remove'.
-            force(bool): True to send via consistency check in case of errors
-
+            force(bool): True to send via consistency check in case of errors.
+            by_switch(bool): True to send to 'flows_by_switch' request instead.
         """
-        endpoint = f"{settings.MANAGER_URL}/{command}/{dpid}"
-
-        data = {"flows": flow_mods, "force": force}
+        if by_switch:
+            endpoint = f"{settings.MANAGER_URL}/flows_by_switch/?force={force}"
+        else:
+            endpoint = f"{settings.MANAGER_URL}/flows"
+            data_content["force"] = force
         try:
-            res = httpx.post(endpoint, json=data, timeout=30)
+            if command == "install":
+                res = httpx.post(endpoint, json=data_content, timeout=30)
+            elif command == "delete":
+                res = httpx.request(
+                    "DELETE", endpoint, json=data_content, timeout=30
+                )
         except httpx.RequestError as err:
             raise FlowModException(str(err)) from err
         if res.is_server_error or res.status_code >= 400:

@@ -967,14 +967,15 @@ class Main(KytosNApp):
                     err = traceback.format_exc().replace("\n", ", ")
                     log.error(f"Fail to remove {evc} old_path: {err}")
                     continue
-            if removed_flows:
-                total_flows = merge_flow_dicts(removed_flows, total_flows)
-                content = map_evc_event_content(
-                    evc,
-                    removed_flows=deepcopy(removed_flows),
-                    current_path=evc.current_path.as_dict(),
-                )
-                event_contents[evc.id] = content
+                if removed_flows:
+                    total_flows = merge_flow_dicts(total_flows, removed_flows)
+                    content = map_evc_event_content(
+                        evc,
+                        removed_flows=deepcopy(removed_flows),
+                        current_path=evc.current_path.as_dict(),
+                    )
+                    event_contents[evc.id] = content
+                    evc.old_path = Path([])
         if event_contents:
             send_flow_mods_event(self.controller, total_flows, 'delete')
             emit_event(self.controller, "failover_old_path",
@@ -1056,7 +1057,7 @@ class Main(KytosNApp):
             #     backup_links_cache
             if "links" in attribute:
                 data[attribute] = [
-                    self._link_from_dict(link) for link in value
+                    self._link_from_dict(link, attribute) for link in value
                 ]
 
             # Ex: current_path,
@@ -1064,7 +1065,7 @@ class Main(KytosNApp):
             #     backup_path
             if "path" in attribute and attribute != "dynamic_backup_path":
                 data[attribute] = Path(
-                    [self._link_from_dict(link) for link in value]
+                    [self._link_from_dict(link, attribute) for link in value]
                 )
 
         return data
@@ -1104,7 +1105,7 @@ class Main(KytosNApp):
         uni = UNI(interface, tag)
         return uni
 
-    def _link_from_dict(self, link_dict):
+    def _link_from_dict(self, link_dict: dict, attribute: str) -> Link:
         """Return a Link object from python dict."""
         id_a = link_dict.get("endpoint_a").get("id")
         id_b = link_dict.get("endpoint_b").get("id")
@@ -1119,7 +1120,8 @@ class Main(KytosNApp):
             raise ValueError(error_msg)
 
         link = Link(endpoint_a, endpoint_b)
-        if "metadata" in link_dict:
+        allowed_paths = {"current_path", "failover_path"}
+        if "metadata" in link_dict and attribute in allowed_paths:
             link.extend_metadata(link_dict.get("metadata"))
 
         s_vlan = link.get_metadata("s_vlan")

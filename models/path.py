@@ -12,7 +12,7 @@ from napps.kytos.mef_eline import settings
 from napps.kytos.mef_eline.exceptions import InvalidPath, PathFinderException
 
 
-class Path(list, GenericEntity):
+class Path(list[Link], GenericEntity):
     """Class to represent a Path."""
 
     def __eq__(self, other=None):
@@ -145,7 +145,7 @@ class DynamicPathManager:
         request_data.update(kwargs)
         try:
             api_reply = httpx.post(endpoint, json=request_data, timeout=10)
-        except httpx.TimeoutException as err:
+        except httpx.RequestError as err:
             raise PathFinderException(str(err)) from err
 
         if api_reply.status_code >= 400:

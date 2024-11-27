@@ -67,7 +67,7 @@
         </k-accordion-item>
 
         <span v-for="constraint in ['primary_constraints', 'secondary_constraints']">
-            <k-accordion-item :title="constraint_titles[constraint]" ref="accordion_checked">
+            <k-accordion-item :title="constraint_titles[constraint]" :checked=false>
 
                 <k-select :title="constraint_titles.undesired_links" :options="get_link_options()"
                 v-model:value ="form_constraints[constraint].undesired_links"
@@ -208,6 +208,7 @@
                 </div>
             </k-accordion-item>
         </span>
+        </form>
         <k-button tooltip="Request Circuit" title="Request Circuit"
         icon="gear" @click="request_circuit">
         </k-button>
@@ -215,7 +216,6 @@
             <k-button tooltip="List installed EVC" title="List installed EVC"
                      icon="plug" @click="viewPanel">
             </k-button>
-        </form>
         </k-accordion-item>
       </k-accordion>
     </div>
@@ -309,6 +309,13 @@ module.exports = {
     },
   },
   methods: {
+    parse_check: function (val) {
+      try { return JSON.parse(val) }
+      catch (e) {
+        if (e instanceof SyntaxError) { return val }
+        else { throw e }
+      }
+    },
     get_spf_attribute_options: function() {
       /**
        * Method to build option items for spf attribute.
@@ -479,11 +486,11 @@ module.exports = {
         
         if (this.tag_type_a != "" && this.tag_value_a != "") {
             request.uni_a['tag'] = {tag_type: this.tag_type_a,
-                                    value: JSON.parse(this.tag_value_a)}
+                                    value: this.parse_check(this.tag_value_a)}
         }
         if (this.tag_type_z != "" && this.tag_value_z != "") {
             request.uni_z['tag'] = {tag_type: this.tag_type_z,
-                                    value: JSON.parse(this.tag_value_z)}
+                                    value: this.parse_check(this.tag_value_z)}
         }
         if (this.service_level !== undefined && this.service_level !== "") {
             request.service_level = parseInt(this.service_level)
@@ -611,11 +618,6 @@ module.exports = {
     this.fetch_dpids();
     this.load_topology();
     this.init_path_constraints();
-
-    // Close constraint accordion-item
-    this.$refs.accordion_checked.forEach((item) => {
-      item.checked = false;
-    });
   },
 }
 </script>

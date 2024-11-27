@@ -10,6 +10,39 @@ Fixed
 =====
 - Try to handle uni interface up as link up for inter-EVCs
 
+Added
+=====
+- Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
+
+Fixed
+=======
+- UI: fixed issue where non-JSON data was being parsed as JSON data.
+
+Changed
+=======
+- The mef_eline modal now uses the modal component
+- UI: fixed premature submit when pressing Enter during autocomplete on inputs
+- UI: fixed path constraints fields to be collabsed by default when creating EVC to better usability for listing EVCs
+- ``primary_path``, ``backup_path``, ``primary_links`` and ``backup_links`` now only accept endpoint IDs in the API request content.
+- Now when installing or deleting a path, a single request to ``flow_manager`` will be sent per path.
+
+[2024.1.4] - 2024-09-09
+***********************
+
+Fixed
+=====
+- Catching error when searching for ``failover_path`` at kytos start.
+
+[2024.1.3] - 2024-09-03
+***********************
+
+Fixed
+=====
+- Fixed extra removed flows that were being published on event ``"failover_old_path"``
+- Fixed evc.old_path clean up
+
+
+>>>>>>> master
 [2024.1.2] - 2024-08-26
 ***********************
 

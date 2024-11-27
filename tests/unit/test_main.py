@@ -1669,7 +1669,27 @@ class TestMain:
             "endpoint_b": {"id": "b"}
         }
         with pytest.raises(ValueError):
-            self.napp._link_from_dict(link_dict)
+            self.napp._link_from_dict(link_dict, "current_path")
+
+    def test_link_from_dict_vlan_metadata(self):
+        """Test that link_from_dict only accepts vlans for current_path
+         and failover_path."""
+        intf = MagicMock(id="01:1")
+        self.napp.controller.get_interface_by_id = MagicMock(return_value=intf)
+        link_dict = {
+            'id': 'mock_link',
+            'endpoint_a': {'id': '00:00:00:00:00:00:00:01:4'},
+            'endpoint_b': {'id': '00:00:00:00:00:00:00:05:2'},
+            'metadata': {'s_vlan': {'tag_type': 'vlan', 'value': 1}}
+        }
+        link = self.napp._link_from_dict(link_dict, "current_path")
+        assert link.metadata.get('s_vlan', None)
+
+        link = self.napp._link_from_dict(link_dict, "failover_path")
+        assert link.metadata.get('s_vlan', None)
+
+        link = self.napp._link_from_dict(link_dict, "primary_path")
+        assert link.metadata.get('s_vlan', None) is None
 
     def test_uni_from_dict_non_existent_intf(self):
         """Test _link_from_dict non existent intf."""
@@ -2129,6 +2149,8 @@ class TestMain:
                                current_path=[], lock=MagicMock())
 
         event = KytosEvent(name="e1", content={"evcs": [evc1, evc2, evc3]})
+        assert evc1.old_path
+        assert evc2.old_path
         self.napp.handle_cleanup_evcs_old_path(event)
         evc1._prepare_nni_flows.assert_called_with(["1"])
         evc1._prepare_uni_flows.assert_called_with(["1"], skip_in=True)
@@ -2139,10 +2161,14 @@ class TestMain:
         assert create_flows.call_count == 4
         assert emit_event.call_count == 1
         assert emit_event.call_args[0][1] == "failover_old_path"
+        assert map_evc_content.call_args[1]['removed_flows'] == ['1', '2']
         assert len(emit_event.call_args[1]["content"]) == 2
         assert send_flows.call_count == 1
         assert send_flows.call_args[0][1] == ['1', '2']
         assert send_flows.call_args[0][2] == 'delete'
+        assert merge_flows.call_count == 4
+        assert not evc1.old_path
+        assert not evc2.old_path
 
     async def test_add_metadata(self):
         """Test method to add metadata"""
