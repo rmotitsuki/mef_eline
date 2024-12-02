@@ -64,6 +64,7 @@
            <k-checkbox title="Enable INT" v-model:model="enable_int" :value="'enable'"
                        tooltip="Enable In-band Network Telemetry (INT)"
            ></k-checkbox>
+          </form>
         </k-accordion-item>
 
         <span v-for="constraint in ['primary_constraints', 'secondary_constraints']">
@@ -204,7 +205,6 @@
                 </div>
             </k-accordion-item>
         </span>
-        </form>
         <k-button tooltip="Request Circuit" title="Request Circuit"
         icon="gear" @click="request_circuit">
         </k-button>
