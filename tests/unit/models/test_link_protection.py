@@ -449,9 +449,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         current_handle_link_up = evc.handle_link_up(primary_path[0])
         assert deploy_mocked.call_count == 0
         assert deploy_to_path_mocked.call_count == 1
-        deploy_to_path_mocked.assert_called_once_with(
-            evc.primary_path, path_dict=None
-        )
+        deploy_to_path_mocked.assert_called_once_with(evc.primary_path, None)
         assert current_handle_link_up
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
@@ -516,9 +514,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
 
         assert deploy_mocked.call_count == 0
         assert deploy_to_path_mocked.call_count == 1
-        deploy_to_path_mocked.assert_called_once_with(
-            evc.backup_path, path_dict=None
-        )
+        deploy_to_path_mocked.assert_called_once_with(evc.backup_path, None)
         assert current_handle_link_up
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
@@ -582,7 +578,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         current_handle_link_up = evc.handle_link_up(backup_path[0])
 
         assert deploy_to_path_mocked.call_count == 1
-        deploy_to_path_mocked.assert_called_once_with(path_dict=None)
+        deploy_to_path_mocked.assert_called_once_with(old_path_dict=None)
         assert current_handle_link_up
 
     async def test_handle_link_up_case_5(self):

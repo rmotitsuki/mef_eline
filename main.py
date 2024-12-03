@@ -548,12 +548,13 @@ class Main(KytosNApp):
         evc.sync()
         return JSONResponse("Operation successful")
 
-    @rest("/v2/evc/{circuit_id}/redeploy/", methods=["PATCH"])
+    @rest("/v2/evc/{circuit_id}/redeploy", methods=["PATCH"])
     def redeploy(self, request: Request) -> JSONResponse:
         """Endpoint to force the redeployment of an EVC."""
         circuit_id = request.path_params["circuit_id"]
-        avoid_vlan = request.query_params.get("avoid_vlan", "false").lower()
-        if avoid_vlan not in {"true", "false"}:
+        try_avoid_same_s_vlan = request.query_params.get("avoid_vlan", "true")
+        try_avoid_same_s_vlan = try_avoid_same_s_vlan.lower()
+        if try_avoid_same_s_vlan not in {"true", "false"}:
             msg = "Parameter avoid_vlan does not have a valid value."
             raise HTTPException(400, detail=msg)
         log.debug("redeploy /v2/evc/%s/redeploy", circuit_id)
@@ -568,7 +569,9 @@ class Main(KytosNApp):
         if evc.is_enabled():
             with evc.lock:
                 path_dict = evc.remove_current_flows(
-                    sync=False, return_path=avoid_vlan == "true")
+                    sync=False,
+                    return_path=try_avoid_same_s_vlan == "true"
+                )
                 evc.remove_failover_flows(sync=True)
                 deployed = evc.deploy(path_dict)
         if deployed:
