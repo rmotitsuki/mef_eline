@@ -6,6 +6,11 @@ All notable changes to the MEF_ELine NApp will be documented in this file.
 [UNRELEASED] - Under development
 ********************************
 
+Fixed
+=====
+- Try to handle uni interface up as link up for inter-EVCs
+- EVCs activation now take into account UNIs statuses before trying to activate
+
 Added
 =====
 - Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
@@ -20,6 +25,7 @@ Changed
 - UI: fixed premature submit when pressing Enter during autocomplete on inputs
 - UI: fixed path constraints fields to be collabsed by default when creating EVC to better usability for listing EVCs
 - ``primary_path``, ``backup_path``, ``primary_links`` and ``backup_links`` now only accept endpoint IDs in the API request content.
+- Now when installing or deleting a path, a single request to ``flow_manager`` will be sent per path.
 
 [2024.1.4] - 2024-09-09
 ***********************

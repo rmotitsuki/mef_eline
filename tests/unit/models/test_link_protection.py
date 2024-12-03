@@ -454,13 +454,11 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.UP)
     async def test_handle_link_up_case_3(
         self,
-        _install_uni_flows_mocked,
-        _install_nni_flows_mocked,
+        _install_flows_mocked,
         deploy_to_path_mocked,
         deploy_mocked,
     ):
@@ -518,14 +516,12 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         assert current_handle_link_up
 
     @patch("napps.kytos.mef_eline.models.evc.EVCDeploy.deploy_to_path")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.path.Path.status", EntityStatus.DOWN)
     async def test_handle_link_up_case_4(self, *args):
         """Test if not path is found a dynamic path is used."""
         (
-            _install_uni_flows_mocked,
-            _install_nni_flows_mocked,
+            _install_flows_mocked,
             deploy_to_path_mocked,
         ) = args
 
@@ -820,7 +816,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         monkeypatch.setattr("napps.kytos.mef_eline.models.evc.emit_event",
                             emit_mock)
 
-        self.evc.activate = MagicMock()
+        self.evc.try_to_activate = MagicMock()
         self.evc.deactivate = MagicMock()
         self.evc.sync = MagicMock()
 
@@ -829,7 +825,7 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
 
         self.evc.handle_interface_link_up(interface_a)
 
-        self.evc.activate.assert_not_called()
+        self.evc.try_to_activate.assert_not_called()
         self.evc.sync.assert_not_called()
 
         # Test deactivating
@@ -854,8 +850,10 @@ class TestLinkProtection():  # pylint: disable=too-many-public-methods
         interface_a.activate()
 
         assert emit_mock.call_count == 1
+        self.evc.try_to_handle_uni_as_link_up = MagicMock()
+        self.evc.try_to_handle_uni_as_link_up.return_value = False
         self.evc.handle_interface_link_up(interface_a)
 
-        self.evc.activate.assert_called_once()
+        self.evc.try_to_activate.assert_called_once()
         assert self.evc.sync.call_count == 2
         assert emit_mock.call_count == 2

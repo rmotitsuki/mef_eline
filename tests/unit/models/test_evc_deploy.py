@@ -14,7 +14,8 @@ from httpx import TimeoutException
 sys.path.insert(0, "/var/lib/kytos/napps/..")
 # pylint: enable=wrong-import-position
 
-from napps.kytos.mef_eline.exceptions import (FlowModException,   # NOQA
+from napps.kytos.mef_eline.exceptions import (ActivationError,
+                                              FlowModException,   # NOQA
                                               EVCPathNotInstalled)
 from napps.kytos.mef_eline.models import EVC, EVCDeploy, Path  # NOQA
 from napps.kytos.mef_eline.settings import (ANY_SB_PRIORITY,  # NOQA
@@ -110,9 +111,8 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.httpx")
     def test_send_flow_mods_case1(self, httpx_mock):
-        """Test if you are sending flow_mods."""
-        flow_mods = {"id": 20}
-        switch = Mock(spec=Switch, id=1)
+        """Test if _send_flow_mods is sending flow_mods to be installed."""
+        flow_mods = {"00:01": {"flows": [20]}}
 
         response = MagicMock()
         response.status_code = 201
@@ -120,10 +120,11 @@ class TestEVC():
         httpx_mock.post.return_value = response
 
         # pylint: disable=protected-access
-        EVC._send_flow_mods(switch.id, flow_mods)
+        EVC._send_flow_mods(flow_mods, "install")
 
-        expected_endpoint = f"{MANAGER_URL}/flows/{switch.id}"
-        expected_data = {"flows": flow_mods, "force": False}
+        expected_endpoint = f"{MANAGER_URL}/flows"
+        expected_data = flow_mods
+        expected_data["force"] = False
         assert httpx_mock.post.call_count == 1
         httpx_mock.post.assert_called_once_with(
             expected_endpoint, json=expected_data, timeout=30
@@ -131,30 +132,30 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.httpx")
     def test_send_flow_mods_case2(self, httpx_mock):
-        """Test if you are sending flow_mods."""
-        flow_mods = {"id": 20}
-        switch = Mock(spec=Switch, id=1)
+        """Test if _send_flow_mods are sending flow_mods to be deleted
+         and by_switch."""
+        flow_mods = {"00:01": {"flows": [20]}}
         response = MagicMock()
         response.status_code = 201
         response.is_server_error = False
-        httpx_mock.post.return_value = response
+        httpx_mock.request.return_value = response
 
         # pylint: disable=protected-access
-        EVC._send_flow_mods(switch.id, flow_mods, command='delete', force=True)
+        EVC._send_flow_mods(
+            flow_mods, command='delete', force=True, by_switch=True
+        )
 
-        expected_endpoint = f"{MANAGER_URL}/delete/{switch.id}"
-        expected_data = {"flows": flow_mods, "force": True}
-        assert httpx_mock.post.call_count == 1
-        httpx_mock.post.assert_called_once_with(
-            expected_endpoint, json=expected_data, timeout=30
+        expected_endpoint = f"{MANAGER_URL}/flows_by_switch/?force={True}"
+        assert httpx_mock.request.call_count == 1
+        httpx_mock.request.assert_called_once_with(
+            "DELETE", expected_endpoint, json=flow_mods, timeout=30
         )
 
     @patch("time.sleep")
     @patch("napps.kytos.mef_eline.models.evc.httpx")
     def test_send_flow_mods_error(self, httpx_mock, _):
         """Test flow_manager call fails."""
-        flow_mods = {"id": 20}
-        switch = Mock(spec=Switch, id=1)
+        flow_mods = {"00:01": {"flows": [20]}}
         response = MagicMock()
         response.status_code = 415
         httpx_mock.post.return_value = response
@@ -162,12 +163,11 @@ class TestEVC():
         # pylint: disable=protected-access
         with pytest.raises(FlowModException):
             EVC._send_flow_mods(
-                switch.id,
                 flow_mods,
                 command='delete',
                 force=True
             )
-        assert httpx_mock.post.call_count == 3
+        assert httpx_mock.request.call_count == 3
 
     def test_prepare_flow_mod(self):
         """Test prepare flow_mod method."""
@@ -323,135 +323,6 @@ class TestEVC():
         assert expected_flow_mod == flow_mod
 
     @staticmethod
-    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_install_uni_flows(send_flow_mods_mock):
-        """Test install uni flows method.
-
-        This test will verify the flows send to the send_flow_mods method.
-        """
-        evc = TestEVC.create_evc_inter_switch()
-
-        # pylint: disable=protected-access
-        evc._install_uni_flows()
-        send_flow_mods_mock.assert_not_called()
-
-        # pylint: disable=protected-access
-        uni_flows = evc._install_uni_flows(evc.primary_links)
-        assert uni_flows
-        assert list(uni_flows.keys()) == [evc.uni_a.interface.switch.id,
-                                          evc.uni_z.interface.switch.id]
-
-        expected_flow_mod_a = [
-            {
-                "match": {
-                    "in_port": evc.uni_a.interface.port_number,
-                    "dl_vlan": evc.uni_a.user_tag.value,
-                },
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {
-                        "action_type": "set_vlan",
-                        "vlan_id": evc.uni_z.user_tag.value
-                    },
-                    {"action_type": "push_vlan", "tag_type": "s"},
-                    {
-                        "action_type": "set_vlan",
-                        "vlan_id": evc.primary_links[0]
-                        .get_metadata("s_vlan")
-                        .value,
-                    },
-                    {
-                        "action_type": "output",
-                        "port": evc.primary_links[0].endpoint_a.port_number,
-                    },
-                ],
-                "priority": EVPL_SB_PRIORITY,
-            },
-            {
-                "match": {
-                    "in_port": evc.primary_links[0].endpoint_a.port_number,
-                    "dl_vlan": evc.primary_links[0]
-                    .get_metadata("s_vlan")
-                    .value,
-                },
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {"action_type": "pop_vlan"},
-                    {
-                        "action_type": "output",
-                        "port": evc.uni_a.interface.port_number,
-                    },
-                ],
-                "priority": EVPL_SB_PRIORITY,
-            },
-        ]
-
-        send_flow_mods_mock.assert_any_call(
-            evc.uni_a.interface.switch.id, expected_flow_mod_a
-        )
-
-        expected_flow_mod_z = [
-            {
-                "match": {
-                    "in_port": evc.uni_z.interface.port_number,
-                    "dl_vlan": evc.uni_z.user_tag.value,
-                },
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {
-                        "action_type": "set_vlan",
-                        "vlan_id": evc.uni_a.user_tag.value
-                    },
-                    {"action_type": "push_vlan", "tag_type": "s"},
-                    {
-                        "action_type": "set_vlan",
-                        "vlan_id": evc.primary_links[-1]
-                        .get_metadata("s_vlan")
-                        .value,
-                    },
-                    {
-                        "action_type": "output",
-                        "port": evc.primary_links[-1].endpoint_b.port_number,
-                    },
-                ],
-                "priority": EVPL_SB_PRIORITY,
-            },
-            {
-                "match": {
-                    "in_port": evc.primary_links[-1].endpoint_b.port_number,
-                    "dl_vlan": evc.primary_links[-1]
-                    .get_metadata("s_vlan")
-                    .value,
-                },
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {"action_type": "pop_vlan"},
-                    {
-                        "action_type": "output",
-                        "port": evc.uni_z.interface.port_number,
-                    },
-                ],
-                "priority": EVPL_SB_PRIORITY,
-            },
-        ]
-
-        send_flow_mods_mock.assert_any_call(
-            evc.uni_z.interface.switch.id, expected_flow_mod_z
-        )
-
-    @staticmethod
     def create_evc_inter_switch(tag_value_a=82, tag_value_z=83):
         """Create inter-switch EVC with two links in the path"""
         uni_a = get_uni_mocked(
@@ -495,74 +366,13 @@ class TestEVC():
         }
         return EVC(**attributes)
 
-    @staticmethod
-    @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")
-    def test_install_nni_flows(send_flow_mods_mock):
-        """Test install nni flows method.
-
-        This test will verify the flows send to the send_flow_mods method.
-        """
-        evc = TestEVC.create_evc_inter_switch()
-
-        # pylint: disable=protected-access
-        nni_flows = evc._install_nni_flows(evc.primary_links)
-        assert nni_flows
-        dpid = evc.primary_links[0].endpoint_b.switch.id
-        assert list(nni_flows.keys()) == [dpid]
-
-        in_vlan = evc.primary_links[0].get_metadata("s_vlan").value
-        out_vlan = evc.primary_links[-1].get_metadata("s_vlan").value
-
-        in_port = evc.primary_links[0].endpoint_b.port_number
-        out_port = evc.primary_links[-1].endpoint_a.port_number
-
-        expected_flow_mods = [
-            {
-                "match": {"in_port": in_port, "dl_vlan": in_vlan},
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {"action_type": "set_vlan", "vlan_id": out_vlan},
-                    {"action_type": "output", "port": out_port},
-                ],
-                "priority": EVPL_SB_PRIORITY
-            },
-            {
-                "match": {"in_port": out_port, "dl_vlan": out_vlan},
-                "cookie": evc.get_cookie(),
-                "owner": "mef_eline",
-                "table_group": "evpl",
-                "table_id": 0,
-                "actions": [
-                    {"action_type": "set_vlan", "vlan_id": in_vlan},
-                    {"action_type": "output", "port": in_port},
-                ],
-                "priority": EVPL_SB_PRIORITY,
-            },
-        ]
-
-        dpid = evc.primary_links[0].endpoint_b.switch.id
-        send_flow_mods_mock.assert_called_once_with(dpid, expected_flow_mods)
-
-    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
-    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
-    def test_install_nni_flows_error(self, prepare_nni_mock, send_flow_mock):
-        """Test _install_nni_flows with error"""
-        prepare_nni_mock.return_value = {'1': 1}
-        send_flow_mock.side_effect = FlowModException('err')
-        with pytest.raises(EVCPathNotInstalled):
-            self.evc_deploy._install_nni_flows()
-
     @patch("httpx.post")
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC._install_direct_uni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
+    @patch("napps.kytos.mef_eline.models.evc.EVC.try_to_activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     def test_deploy_successfully(self, *args):
         """Test if all methods to deploy are called."""
@@ -571,8 +381,7 @@ class TestEVC():
             should_deploy_mock,
             activate_mock,
             install_direct_uni_flows_mock,
-            install_uni_flows_mock,
-            install_nni_flows,
+            install_unni_flows_mock,
             chose_vlans_mock,
             log_mock,
             _,
@@ -590,8 +399,7 @@ class TestEVC():
 
         assert should_deploy_mock.call_count == 1
         assert activate_mock.call_count == 1
-        assert install_uni_flows_mock.call_count == 1
-        assert install_nni_flows.call_count == 1
+        assert install_unni_flows_mock.call_count == 1
         assert chose_vlans_mock.call_count == 1
         log_mock.info.assert_called_with(f"{evc} was deployed.")
         assert deployed is True
@@ -604,12 +412,76 @@ class TestEVC():
         assert log_mock.info.call_count == 2
         log_mock.info.assert_called_with(f"{evc} was deployed.")
 
+    def test_try_to_activate_intra_evc(self) -> None:
+        """Test try_to_activate for intra EVC."""
+
+        evc = self.create_evc_intra_switch()
+        assert evc.is_intra_switch()
+        assert not evc.is_active()
+        assert evc.uni_a.interface.status == EntityStatus.DISABLED
+        assert evc.uni_z.interface.status == EntityStatus.DISABLED
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_a.interface.enable()
+        evc.uni_z.interface.enable()
+        evc.uni_a.interface.activate()
+        evc.uni_z.interface.deactivate()
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_z.interface.activate()
+
+        assert evc.try_to_activate()
+        assert evc.is_active()
+
+    def test_try_to_activate_inter_evc(self) -> None:
+        """Test try_to_activate for inter EVC."""
+
+        evc = self.create_evc_inter_switch()
+        assert not evc.is_intra_switch()
+        assert not evc.is_active()
+        assert evc.uni_a.interface.status == EntityStatus.DISABLED
+        assert evc.uni_z.interface.status == EntityStatus.DISABLED
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_a.interface.enable()
+        evc.uni_z.interface.enable()
+        evc.uni_a.interface.activate()
+        evc.uni_z.interface.deactivate()
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "Won't be able to activate" in str(exc)
+        assert "due to UNI" in str(exc)
+        assert not evc.is_active()
+
+        evc.uni_z.interface.activate()
+
+        with pytest.raises(ActivationError) as exc:
+            evc.try_to_activate()
+        assert "due to current_path status EntityStatus.DISABLED" in str(exc)
+
+        cur_path = MagicMock()
+        setattr(evc, "current_path", cur_path)
+        cur_path.status = EntityStatus.UP
+        assert evc.try_to_activate()
+        assert evc.is_active()
+
     @patch("httpx.post")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.EVC.sync")
@@ -620,8 +492,7 @@ class TestEVC():
             sync_mock,
             should_deploy_mock,
             activate_mock,
-            install_uni_flows_mock,
-            install_nni_flows,
+            install_unni_flows_mock,
             choose_vlans_mock,
             discover_new_paths_mock,
             log_mock,
@@ -640,8 +511,7 @@ class TestEVC():
         assert discover_new_paths_mock.call_count == 1
         assert should_deploy_mock.call_count == 1
         assert activate_mock.call_count == 0
-        assert install_uni_flows_mock.call_count == 0
-        assert install_nni_flows.call_count == 0
+        assert install_unni_flows_mock.call_count == 0
         assert choose_vlans_mock.call_count == 0
         assert log_mock.info.call_count == 0
         assert sync_mock.call_count == 0
@@ -664,7 +534,7 @@ class TestEVC():
         return_value=[],
     )
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC.remove_current_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.sync")
@@ -675,13 +545,13 @@ class TestEVC():
             sync_mock,
             remove_current_flows,
             should_deploy_mock,
-            install_nni_flows,
+            install_unni_flows,
             choose_vlans_mock,
             discover_new_paths,
             log_mock,
         ) = args
 
-        install_nni_flows.side_effect = EVCPathNotInstalled
+        install_unni_flows.side_effect = EVCPathNotInstalled
         should_deploy_mock.return_value = True
         uni_a = get_uni_mocked(
             interface_port=2,
@@ -724,7 +594,7 @@ class TestEVC():
 
         assert discover_new_paths.call_count == 0
         assert should_deploy_mock.call_count == 1
-        assert install_nni_flows.call_count == 1
+        assert install_unni_flows.call_count == 1
         assert choose_vlans_mock.call_count == 1
         assert log_mock.error.call_count == 1
         assert sync_mock.call_count == 0
@@ -733,8 +603,7 @@ class TestEVC():
 
     @patch("napps.kytos.mef_eline.models.evc.emit_event")
     @patch("napps.kytos.mef_eline.models.evc.EVC.get_failover_path_candidates")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
     @patch("napps.kytos.mef_eline.models.evc.EVC.remove_path_flows")
     @patch("napps.kytos.mef_eline.models.EVC.sync")
     def test_setup_failover_path(self, *args):
@@ -742,8 +611,7 @@ class TestEVC():
         (
             sync_mock,
             remove_path_flows_mock,
-            install_uni_flows_mock,
-            install_nni_flows_mock,
+            install_unni_flows_mock,
             get_failover_path_candidates_mock,
             emit_event_mock,
         ) = args
@@ -772,8 +640,7 @@ class TestEVC():
         assert evc2.setup_failover_path() is True
         remove_path_flows_mock.assert_called_with(["link1", "link2"])
         mock_choose.assert_called()
-        install_nni_flows_mock.assert_called_with(path_mock)
-        install_uni_flows_mock.assert_called_with(path_mock, skip_in=True)
+        install_unni_flows_mock.assert_called_with(path_mock, skip_in=True)
         assert evc2.failover_path == path_mock
         assert sync_mock.call_count == 1
         assert emit_event_mock.call_count == 1
@@ -791,7 +658,7 @@ class TestEVC():
         # case 5: failed to setup failover_path - FlowMod exception
         evc2.failover_path = []
         mock_choose.side_effect = None
-        install_nni_flows_mock.side_effect = EVCPathNotInstalled("error")
+        install_unni_flows_mock.side_effect = EVCPathNotInstalled("error")
         sync_mock.call_count = 0
 
         assert evc2.setup_failover_path() is False
@@ -834,9 +701,8 @@ class TestEVC():
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.log")
     @patch("napps.kytos.mef_eline.models.path.Path.choose_vlans")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_nni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC._install_uni_flows")
-    @patch("napps.kytos.mef_eline.models.evc.EVC.activate")
+    @patch("napps.kytos.mef_eline.models.evc.EVC._install_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVC.try_to_activate")
     @patch("napps.kytos.mef_eline.models.evc.EVC.should_deploy")
     @patch("napps.kytos.mef_eline.models.evc.EVC.discover_new_paths")
     def test_deploy_without_path_case1(self, *args):
@@ -846,8 +712,7 @@ class TestEVC():
             discover_new_paths_mocked,
             should_deploy_mock,
             activate_mock,
-            install_uni_flows_mock,
-            install_nni_flows,
+            install_unni_flows_mock,
             chose_vlans_mock,
             log_mock,
             _,
@@ -904,8 +769,7 @@ class TestEVC():
         assert should_deploy_mock.call_count == 1
         assert discover_new_paths_mocked.call_count == 1
         assert activate_mock.call_count == 1
-        assert install_uni_flows_mock.call_count == 1
-        assert install_nni_flows.call_count == 1
+        assert install_unni_flows_mock.call_count == 1
         assert chose_vlans_mock.call_count == 1
         log_mock.info.assert_called_with(f"{evc} was deployed.")
         assert deployed is True
@@ -1005,18 +869,24 @@ class TestEVC():
         evc.current_path = evc.primary_links
         evc.remove_current_flows()
 
-        assert send_flow_mods_mocked.call_count == 5
+        assert send_flow_mods_mocked.call_count == 1
         assert evc.is_active() is False
         flows = [
             {"cookie": evc.get_cookie(), "cookie_mask": 18446744073709551615,
              "owner": "mef_eline"}
         ]
-        switch_1 = evc.primary_links[0].endpoint_a.switch
-        switch_2 = evc.primary_links[0].endpoint_b.switch
-        send_flow_mods_mocked.assert_any_call(switch_1.id, flows, 'delete',
-                                              force=True)
-        send_flow_mods_mocked.assert_any_call(switch_2.id, flows, 'delete',
-                                              force=True)
+        expected_flows = {
+            "switches": [
+                switch_a.id, switch_b.id, switch_c.id,
+                evc.uni_a.interface.switch.id,
+                evc.uni_z.interface.switch.id,
+            ],
+            "flows": flows
+        }
+        args = send_flow_mods_mocked.call_args[0]
+        assert set(expected_flows["switches"]) == set(args[0]["switches"])
+        assert expected_flows["flows"] == args[0]["flows"]
+        assert 'delete' == args[1]
 
         send_flow_mods_mocked.side_effect = FlowModException("error")
         evc.remove_current_flows()
@@ -1080,7 +950,11 @@ class TestEVC():
              "cookie_mask": int(0xffffffffffffffff),
              "owner": "mef_eline"}
         ]
-        send_flow_mods_mocked.assert_any_call(switch_b.id, flows, 'delete',
+        expected_flows = {
+            "switches": [switch_b.id],
+            "flows": flows
+        }
+        send_flow_mods_mocked.assert_any_call(expected_flows, 'delete',
                                               force=True)
         assert mock_upsert.call_count == 1
 
@@ -1139,18 +1013,20 @@ class TestEVC():
         evc = EVC(**attributes)
         evc.remove_failover_flows(exclude_uni_switches=False, sync=True)
 
-        assert send_flow_mods_mocked.call_count == 3
+        assert send_flow_mods_mocked.call_count == 1
         flows = [
             {"cookie": evc.get_cookie(),
              "cookie_mask": int(0xffffffffffffffff),
              "owner": "mef_eline"}
         ]
-        send_flow_mods_mocked.assert_any_call(switch_a.id, flows, 'delete',
-                                              force=True)
-        send_flow_mods_mocked.assert_any_call(switch_b.id, flows, 'delete',
-                                              force=True)
-        send_flow_mods_mocked.assert_any_call(switch_c.id, flows, 'delete',
-                                              force=True)
+        expected_flows = {
+            "switches": [switch_a.id, switch_b.id, switch_c.id],
+            "flows": flows
+        }
+        args = send_flow_mods_mocked.call_args[0]
+        assert set(args[0]["switches"]) == set(expected_flows["switches"])
+        assert args[0]["flows"] == expected_flows["flows"]
+        assert args[1] == 'delete'
         assert mock_upsert.call_count == 1
 
     @staticmethod
@@ -1284,9 +1160,8 @@ class TestEVC():
                     0, {"action_type": "push_vlan",
                         "tag_type": "c"}
                 )
-        send_flow_mods_mock.assert_called_with(
-            expected_dpid, expected_flows
-        )
+        flow_mods = {"switches": [expected_dpid], "flows": expected_flows}
+        send_flow_mods_mock.assert_called_with(flow_mods, "install")
 
     def test_is_affected_by_link(self):
         """Test is_affected_by_link method"""
@@ -1403,11 +1278,15 @@ class TestEVC():
         assert sum(len(flows) for flows in dpid_flows.values()) == len(
             expected_flows_1
         ) + len(expected_flows_2) + len(expected_flows_3)
-        send_flow_mods_mock.assert_has_calls([
-            call(1, expected_flows_1, 'delete', force=True),
-            call(2, expected_flows_2, 'delete', force=True),
-            call(3, expected_flows_3, 'delete', force=True),
-        ], any_order=True)
+        send_flow_mods_mock.assert_called_once()
+        expected_flows = {
+            1: {"flows": expected_flows_1},
+            2: {"flows": expected_flows_2},
+            3: {"flows": expected_flows_3}
+        }
+        send_flow_mods_mock.assert_called_with(
+            expected_flows, "delete", force=True, by_switch=True
+        )
 
         send_flow_mods_mock.side_effect = FlowModException("err")
         evc.remove_path_flows(evc.primary_links)
@@ -2229,3 +2108,43 @@ class TestEVC():
         send_mock.side_effect = FlowModException
         with pytest.raises(EVCPathNotInstalled):
             self.evc_deploy._install_direct_uni_flows()
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
+    def test_install_flows_error(
+        self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
+    ):
+        """Test _install_flows with error"""
+        prepare_nni_mock.return_value = {'1': [1]}
+        prepare_uni_mock.return_value = {'2': [2]}
+        send_flow_mock.side_effect = FlowModException('err')
+        with pytest.raises(EVCPathNotInstalled):
+            self.evc_deploy._install_flows()
+
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._send_flow_mods")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_nni_flows")
+    @patch("napps.kytos.mef_eline.models.evc.EVCDeploy._prepare_uni_flows")
+    def test_install_flows(
+        self, prepare_uni_mock, prepare_nni_mock, send_flow_mock
+    ):
+        """Test that the dictionary contains uni and nni flows sent
+         to be installed from _install_uni_flows."""
+        prepare_nni_mock.return_value = {'00:01': ["flow1"]}
+        prepare_uni_mock.return_value = {
+            '00:02': ["flow1"], '00:01': ["flow2"]
+        }
+        out_flows = self.evc_deploy._install_flows()
+        expected_out_fows = {
+            '00:01': ["flow1", "flow2"],
+            '00:02': ["flow1"]
+        }
+        assert out_flows == expected_out_fows
+
+        expected_installed_flows = {
+            '00:01': {"flows": ["flow1", "flow2"]},
+            '00:02': {"flows": ["flow1"]}
+        }
+        send_flow_mock.assert_called_with(
+            expected_installed_flows, "install", by_switch=True
+        )
