@@ -828,7 +828,9 @@ class TestMain:
         url = f"{self.base_endpoint}/v2/evc/1/redeploy"
         response = await self.api_client.patch(url)
         evc1.remove_failover_flows.assert_called()
-        evc1.remove_current_flows.assert_called()
+        evc1.remove_current_flows.assert_called_with(
+            sync=False, return_path=True
+        )
         assert response.status_code == 202, response.data
 
     async def test_redeploy_evc_disabled(self):

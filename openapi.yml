@@ -142,7 +142,7 @@ paths:
           required: true
           schema:
             type: string
-        - name: avoid_vlan
+        - name: try_avoid_same_s_vlan
           description: Avoid tags from currently deployed current_path.
           in: query
           schema:

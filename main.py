@@ -552,10 +552,12 @@ class Main(KytosNApp):
     def redeploy(self, request: Request) -> JSONResponse:
         """Endpoint to force the redeployment of an EVC."""
         circuit_id = request.path_params["circuit_id"]
-        try_avoid_same_s_vlan = request.query_params.get("avoid_vlan", "true")
+        try_avoid_same_s_vlan = request.query_params.get(
+            "try_avoid_same_s_vlan", "true"
+        )
         try_avoid_same_s_vlan = try_avoid_same_s_vlan.lower()
         if try_avoid_same_s_vlan not in {"true", "false"}:
-            msg = "Parameter avoid_vlan does not have a valid value."
+            msg = "Parameter try_avoid_same_s_vlan has an invalid value."
             raise HTTPException(400, detail=msg)
         log.debug("redeploy /v2/evc/%s/redeploy", circuit_id)
         try:
