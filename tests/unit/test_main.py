@@ -833,6 +833,20 @@ class TestMain:
         )
         assert response.status_code == 202, response.data
 
+        url = f"{self.base_endpoint}/v2/evc/1/redeploy"
+        url = url + "?try_avoid_same_s_vlan=false"
+        response = await self.api_client.patch(url)
+        evc1.remove_current_flows.assert_called_with(
+            sync=False, return_path=False
+        )
+
+        url = f"{self.base_endpoint}/v2/evc/1/redeploy"
+        url = url + "?try_avoid_same_s_vlan=True"
+        response = await self.api_client.patch(url)
+        evc1.remove_current_flows.assert_called_with(
+            sync=False, return_path=True
+        )
+
     async def test_redeploy_evc_disabled(self):
         """Test endpoint to redeploy an EVC."""
         evc1 = MagicMock()
