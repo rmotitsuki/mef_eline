@@ -694,7 +694,7 @@ class TestEVC():
 
         deployed = evc.deploy_to_backup_path()
 
-        deploy_to_path_mocked.assert_called_once_with()
+        deploy_to_path_mocked.assert_called_once_with(old_path_dict=None)
         assert deployed is True
 
     @patch("httpx.post")
@@ -838,6 +838,20 @@ class TestEVC():
         switch_a = Switch("00:00:00:00:00:01")
         switch_b = Switch("00:00:00:00:00:02")
         switch_c = Switch("00:00:00:00:00:03")
+        link_a_b = get_link_mocked(
+            switch_a=switch_a,
+            switch_b=switch_b,
+            endpoint_a_port=9,
+            endpoint_b_port=10,
+            metadata={"s_vlan": Mock(value=5)},
+        )
+        link_b_c = get_link_mocked(
+            switch_a=switch_b,
+            switch_b=switch_c,
+            endpoint_a_port=11,
+            endpoint_b_port=12,
+            metadata={"s_vlan": Mock(value=6)},
+        )
 
         attributes = {
             "controller": get_controller_mock(),
@@ -846,29 +860,20 @@ class TestEVC():
             "uni_z": uni_z,
             "active": True,
             "enabled": True,
-            "primary_links": [
-                get_link_mocked(
-                    switch_a=switch_a,
-                    switch_b=switch_b,
-                    endpoint_a_port=9,
-                    endpoint_b_port=10,
-                    metadata={"s_vlan": 5},
-                ),
-                get_link_mocked(
-                    switch_a=switch_b,
-                    switch_b=switch_c,
-                    endpoint_a_port=11,
-                    endpoint_b_port=12,
-                    metadata={"s_vlan": 6},
-                ),
-            ],
+            "primary_links": [link_a_b, link_b_c]
+
+        }
+
+        expected_old_path = {
+            link_a_b.id: 5,
+            link_b_c.id: 6
         }
 
         evc = EVC(**attributes)
 
         evc.current_path = evc.primary_links
-        evc.remove_current_flows()
-
+        old_path = evc.remove_current_flows(return_path=True)
+        assert old_path == expected_old_path
         assert send_flow_mods_mocked.call_count == 1
         assert evc.is_active() is False
         flows = [
