@@ -947,11 +947,13 @@ class TestEVC():
             "primary_links": [],
         }
         evc = EVC(**attributes)
+        assert evc.is_active()
         current_path.make_vlans_available.side_effect = (
             KytosTagtypeNotSupported("")
         )
         evc.remove_current_flows(current_path)
         log_error_mock.assert_called()
+        assert not evc.is_active()
 
     @patch("napps.kytos.mef_eline.controllers.ELineController.upsert_evc")
     @patch("napps.kytos.mef_eline.models.evc.EVC._send_flow_mods")

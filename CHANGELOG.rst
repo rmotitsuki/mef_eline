@@ -10,6 +10,8 @@ Fixed
 =====
 - Try to handle uni interface up as link up for inter-EVCs
 - EVCs activation now take into account UNIs statuses before trying to activate
+- ``EVC.remove_current_flows()`` had its parameter ``current_path`` used when ``evc.current_path`` fails to install flows.
+- ``evc.current_path`` is deleted when an error with TAG type is raised.
 
 Added
 =====
