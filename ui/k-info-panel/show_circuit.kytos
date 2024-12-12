@@ -1059,7 +1059,7 @@ module.exports = {
     align-self: flex-end;
   }
   .right-bottom-buttons {
-    border: 2px solid #1e1d1d;
+    border: 2px solid #515151;
     border-radius: 4px;
     display: flex;
     align-items: center;

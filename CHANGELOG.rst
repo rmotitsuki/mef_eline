@@ -16,6 +16,8 @@ Fixed
 Added
 =====
 - Added migration script for updating the default ``queue_id`` from ``None`` to ``-1``
+- Added added paramenter support for redeployment, ``PATCH v2/evc/{evc_id}/redeploy?try_avoid_same_s_vlan=true``. By default it will try to avoid ``s_vlan`` from ``current_path`` links.
+- Added option to opt out from trying to avoid previous ``s_vlan`` when redeploying EVCs.
 
 Fixed
 =======
