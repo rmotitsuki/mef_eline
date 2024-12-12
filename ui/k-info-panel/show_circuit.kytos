@@ -239,10 +239,17 @@
         <p>Loading EVC</p>
       </div>
       <div class="mef-bottom-buttons">
-        <k-button tooltip="List installed EVCs" title="< Back to list" @click="showInfoPanel">
-        </k-button>
-        <k-button tooltip="Redeploy EVC" title="Redeploy EVC" @click="redeployEvc">
-        </k-button>
+        <div class="left-bottom-buttons">
+          <k-button tooltip="List installed EVCs" title="< Back to list" @click="showInfoPanel">
+          </k-button>
+        </div>
+        <div class="right-bottom-buttons">
+          <k-checkbox style="background: none;" title="Try to avoid previous VLAN"
+                      :action="toggle_avoid" :checked=true
+          ></k-checkbox>
+          <k-button tooltip="Redeploy EVC" title="Redeploy EVC" @click="redeployEvc">
+          </k-button>
+        </div>
       </div>
       <k-modal
         message="Delete EVC?"
@@ -251,7 +258,6 @@
         v-model:show-modal="showDelModal">
       </k-modal>
     </div>
-    
 </template>
 <script>
 module.exports = {
@@ -285,6 +291,7 @@ module.exports = {
         constraint_descriptions: {}, // constraint mouse over description
         link_options: [], // constraint link dropdown options
         form_constraints: {}, // constraint data vue object synchronization
+        avoid_vlan: false, // Try to avoid previous s_vlan when redeploying. false so it is true by default.
     }
   },
   methods: {
@@ -735,7 +742,8 @@ module.exports = {
       let id = this.basics["ID"]["value"];
       let name = this.basics["Name"]["value"];
       var request = $.ajax({
-        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id + "/redeploy",
+        url: this.$kytos_server_api + "kytos/mef_eline/v2/evc/" + id + "/redeploy" +
+             '?try_avoid_same_s_vlan=' + this.avoid_vlan.toString(),
         type:"PATCH",
         contentType: "application/json; charset=utf-8"
       });
@@ -880,6 +888,9 @@ module.exports = {
       this.load_topology();
       this.loadEVC(this.content.id);
       this.flag_loading = false
+    },
+    toggle_avoid: function(){
+      this.avoid_vlan = !this.avoid_vlan
     },
   },
   mounted() {
@@ -1043,6 +1054,16 @@ module.exports = {
     display: flex;
     clear: both;
     justify-content: space-between;
+  }
+  .left-bottom-buttons {
+    align-self: flex-end;
+  }
+  .right-bottom-buttons {
+    border: 2px solid #515151;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    flex-direction: column;
   }
   #mef-flags {
     clear:both;
