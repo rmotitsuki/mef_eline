@@ -25,7 +25,8 @@ Fixed
 
 Changed
 =======
-- The mef_eline modal now uses the modal component
+- UI: changed the interface variable for k_interface since it was a reserved keyword
+- UI: the mef_eline modal now uses the modal component
 - UI: fixed premature submit when pressing Enter during autocomplete on inputs
 - UI: fixed path constraints fields to be collabsed by default when creating EVC to better usability for listing EVCs
 - ``primary_path``, ``backup_path``, ``primary_links`` and ``backup_links`` now only accept endpoint IDs in the API request content.
