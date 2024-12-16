@@ -588,18 +588,18 @@ module.exports = {
                 _dpid_names[sw.dpid] = sw.metadata.node_name;
               }
               if(sw.interfaces) {
-                $.each(sw.interfaces, function(j , interface) {
+                $.each(sw.interfaces, function(j , k_interface) {
                   // store interface name data 
-                  let metadata = interface.metadata;
-                  _interface_data[interface.id] = {
-                    "name": interface.name,
-                    "link_name": (metadata && "link_name" in metadata) ? interface.metadata.link_name : "",
-                    "port_name": (metadata && "port_name" in metadata) ? interface.metadata.port_name : ""
+                  let metadata = k_interface.metadata;
+                  _interface_data[k_interface.id] = {
+                    "name": k_interface.name,
+                    "link_name": (metadata && "link_name" in metadata) ? k_interface.metadata.link_name : "",
+                    "port_name": (metadata && "port_name" in metadata) ? k_interface.metadata.port_name : ""
                   };
                   // store autocomplete dpids
-                  let value = interface.id;
-                  if(interface.name) {
-                    value = interface.name + " - " + value;
+                  let value = k_interface.id;
+                  if(k_interface.name) {
+                    value = k_interface.name + " - " + value;
                   }
                   if(!_this.dpids.includes(value)) {
                     _this.dpids.push(value);
