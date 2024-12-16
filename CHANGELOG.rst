@@ -25,6 +25,7 @@ Fixed
 
 Changed
 =======
+- UI: changed variable name which was the reserved keyword interface to k_interface
 - UI: changed the interface variable for k_interface since it was a reserved keyword
 - UI: the mef_eline modal now uses the modal component
 - UI: fixed premature submit when pressing Enter during autocomplete on inputs
