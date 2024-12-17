@@ -210,8 +210,8 @@ module.exports = {
                 _dpid_names[sw.dpid] = sw.metadata.node_name;
               }
               if(sw.interfaces) {
-                $.each(sw.interfaces, function(j , interface) {
-                  _interface_names[interface.id] = interface.name;
+                $.each(sw.interfaces, function(j , k_interface) {
+                  _interface_names[k_interface.id] = k_interface.name;
                 });
               }
             });
